@@ -1,0 +1,20 @@
+{
+  "name": "dogmatch_frontend",
+  "license": "0BSD",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@expo/ngrok": "^4.1.3",
+    "expo": "~54.0.10",
+    "expo-status-bar": "~3.0.8",
+    "react": "18.2.0",
+    "react-native": "0.74.6"
+  },
+  "private": true
+}
