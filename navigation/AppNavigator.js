@@ -11,6 +11,8 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import EventsScreen from '../screens/EventsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CreateDogScreen from '../screens/CreateDogScreen';
+import CreateEventScreen from '../screens/CreateEventScreen';
+import RegisterEventsScreen from '../screens/RegisterEventsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -21,6 +23,17 @@ function MyDogsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MyDogsList" component={MyDogsScreen} />
       <Stack.Screen name="AddDog" component={CreateDogScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Create a stack navigator for Events tab
+function EventsStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="EventsList" component={EventsScreen} />
+      <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+      <Stack.Screen name="RegisterEvent" component={RegisterEventsScreen} />
     </Stack.Navigator>
   );
 }
@@ -86,7 +99,7 @@ export default function AppNavigator() {
       />
       <Tab.Screen
         name="Events"
-        component={EventsScreen}
+        component={EventsStack}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Image

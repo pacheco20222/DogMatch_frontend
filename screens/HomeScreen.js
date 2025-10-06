@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GlobalStyles from '../styles/GlobalStyles';
 import { AuthContext } from '../auth/AuthContext';
+import { getUserTypeDisplayName, getUserTypeColor } from '../utils/permissions';
 
 export default function HomeScreen({ navigation }) {
   const { user } = useContext(AuthContext);
@@ -16,6 +17,24 @@ export default function HomeScreen({ navigation }) {
         <Text style={GlobalStyles.label}>
           Hello, {user?.first_name || user?.username || 'User'}!
         </Text>
+        
+        {/* User Role Badge */}
+        <View style={{ 
+          alignSelf: 'flex-start', 
+          backgroundColor: getUserTypeColor(user?.user_type), 
+          paddingHorizontal: 12, 
+          paddingVertical: 6, 
+          borderRadius: 20, 
+          marginTop: 10 
+        }}>
+          <Text style={{ 
+            color: 'white', 
+            fontSize: 12, 
+            fontWeight: '600' 
+          }}>
+            {getUserTypeDisplayName(user?.user_type)}
+          </Text>
+        </View>
         
         {/* Quick Stats */}
         <View style={[GlobalStyles.card, { marginVertical: 20 }]}>
