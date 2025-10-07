@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -10,40 +10,21 @@ import {
   StyleSheet
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-  interpolate,
-  Extrapolate,
-  interpolateColor,
-  useDerivedValue,
-} from 'react-native-reanimated';
+import { Swiper } from 'rn-swiper-list';
 import { AuthContext } from '../auth/AuthContext';
 import { apiFetch } from '../api/client';
 import GlobalStyles from '../styles/GlobalStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CARD_WIDTH = screenWidth - 40;
-const CARD_HEIGHT = screenHeight * 0.65; // Reduced height for better spacing
-const SWIPE_THRESHOLD = screenWidth * 0.25; // Reduced threshold for easier swiping
-const ROTATION_MULTIPLIER = 0.1; // Smoother rotation
+const CARD_HEIGHT = screenHeight * 0.55;
 
 export default function DiscoverScreen({ navigation }) {
   const { user, accessToken } = useContext(AuthContext);
   const [dogs, setDogs] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [swiping, setSwiping] = useState(false);
-
-  // Animated values for the current card
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const rotate = useSharedValue(0);
-  const scale = useSharedValue(1);
+  const swiperRef = useRef();
 
   // Fetch dogs for swiping
   const fetchDogs = useCallback(async () => {
@@ -64,10 +45,10 @@ export default function DiscoverScreen({ navigation }) {
   }, [fetchDogs]);
 
   // Handle swipe action
-  const handleSwipe = useCallback(async (action) => {
-    if (currentIndex >= dogs.length || swiping) return;
+  const handleSwipe = useCallback(async (action, cardIndex) => {
+    if (cardIndex >= dogs.length || swiping) return;
     
-    const currentDog = dogs[currentIndex];
+    const currentDog = dogs[cardIndex];
     setSwiping(true);
 
     try {
@@ -91,9 +72,6 @@ export default function DiscoverScreen({ navigation }) {
           ]
         );
       }
-
-      // Move to next card
-      setCurrentIndex(prev => prev + 1);
       
     } catch (error) {
       console.error('Error swiping:', error);
@@ -101,274 +79,78 @@ export default function DiscoverScreen({ navigation }) {
     } finally {
       setSwiping(false);
     }
-  }, [currentIndex, dogs, accessToken, navigation, swiping]);
+  }, [dogs, accessToken, navigation, swiping]);
 
-  // Enhanced gesture handler with smooth finger tracking
-  const onGestureEvent = (event) => {
-    'worklet';
-    // Real-time finger tracking - card follows finger exactly
-    translateX.value = event.translationX;
-    translateY.value = event.translationY;
-    
-    // Smoother rotation calculation
-    rotate.value = interpolate(
-      translateX.value,
-      [-screenWidth, 0, screenWidth],
-      [-30, 0, 30],
-      Extrapolate.CLAMP
-    ) * ROTATION_MULTIPLIER;
-    
-    // Enhanced scale for super like with more dramatic effect
-    scale.value = interpolate(
-      translateY.value,
-      [-150, 0, 50],
-      [1.15, 1, 0.95],
-      Extrapolate.CLAMP
-    );
-    
-    // Debug logging
-    runOnJS(console.log)('Gesture Event:', {
-      translationX: event.translationX,
-      translationY: event.translationY,
-      state: event.state
-    });
-  };
-
-  const onHandlerStateChange = (event) => {
-    'worklet';
-    runOnJS(console.log)('State Change:', {
-      state: event.nativeEvent.state,
-      translateX: translateX.value,
-      translateY: translateY.value
-    });
-    
-    if (event.nativeEvent.state === State.END) {
-      const shouldSwipeLeft = translateX.value < -SWIPE_THRESHOLD;
-      const shouldSwipeRight = translateX.value > SWIPE_THRESHOLD;
-      const shouldSuperLike = translateY.value < -100;
-      
-      runOnJS(console.log)('Swipe Decision:', {
-        shouldSwipeLeft,
-        shouldSwipeRight,
-        shouldSuperLike,
-        threshold: SWIPE_THRESHOLD
-      });
-
-      if (shouldSuperLike) {
-        // Super like animation - full screen movement
-        translateY.value = withTiming(-screenHeight * 1.5, { duration: 400 });
-        translateX.value = withTiming(0, { duration: 400 });
-        rotate.value = withTiming(0, { duration: 400 });
-        scale.value = withTiming(1.2, { duration: 400 });
-        runOnJS(handleSwipe)('super_like');
-      } else if (shouldSwipeLeft) {
-        // Pass animation - full screen movement with rotation
-        translateX.value = withTiming(-screenWidth * 1.5, { duration: 400 });
-        translateY.value = withTiming(0, { duration: 400 });
-        rotate.value = withTiming(-30, { duration: 400 });
-        scale.value = withTiming(0.8, { duration: 400 });
-        runOnJS(handleSwipe)('pass');
-      } else if (shouldSwipeRight) {
-        // Like animation - full screen movement with rotation
-        translateX.value = withTiming(screenWidth * 1.5, { duration: 400 });
-        translateY.value = withTiming(0, { duration: 400 });
-        rotate.value = withTiming(30, { duration: 400 });
-        scale.value = withTiming(0.8, { duration: 400 });
-        runOnJS(handleSwipe)('like');
-      } else {
-        // Enhanced snap back with spring physics
-        translateX.value = withSpring(0, {
-          damping: 15,
-          stiffness: 150,
-          mass: 1,
-        });
-        translateY.value = withSpring(0, {
-          damping: 15,
-          stiffness: 150,
-          mass: 1,
-        });
-        rotate.value = withSpring(0, {
-          damping: 15,
-          stiffness: 150,
-          mass: 1,
-        });
-        scale.value = withSpring(1, {
-          damping: 15,
-          stiffness: 150,
-          mass: 1,
-        });
-      }
-    }
-  };
-
-  // Enhanced animated style for the current card with shadow effects
-  const animatedCardStyle = useAnimatedStyle(() => {
-    const shadowOpacity = interpolate(
-      Math.abs(translateX.value) + Math.abs(translateY.value),
-      [0, 100],
-      [0.25, 0.4],
-      Extrapolate.CLAMP
-    );
-
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-        { rotate: `${rotate.value}deg` },
-        { scale: scale.value },
-      ],
-      shadowOpacity,
-      elevation: interpolate(
-        Math.abs(translateX.value) + Math.abs(translateY.value),
-        [0, 100],
-        [5, 15],
-        Extrapolate.CLAMP
-      ),
-    };
-  });
-
-  // Action overlay styles - moved to top level to fix hooks violation
-  const likeOverlayStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateX.value,
-      [0, 30, SWIPE_THRESHOLD],
-      [0, 0.3, 1],
-      Extrapolate.CLAMP
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          translateX.value,
-          [0, SWIPE_THRESHOLD],
-          [0.8, 1.2],
-          Extrapolate.CLAMP
-        )
-      }
-    ]
-  }));
-
-  const passOverlayStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateX.value,
-      [-SWIPE_THRESHOLD, -30, 0],
-      [1, 0.3, 0],
-      Extrapolate.CLAMP
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          translateX.value,
-          [-SWIPE_THRESHOLD, 0],
-          [1.2, 0.8],
-          Extrapolate.CLAMP
-        )
-      }
-    ]
-  }));
-
-  const superLikeOverlayStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      translateY.value,
-      [-100, -50, 0],
-      [1, 0.3, 0],
-      Extrapolate.CLAMP
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          translateY.value,
-          [-100, 0],
-          [1.3, 0.8],
-          Extrapolate.CLAMP
-        )
-      }
-    ]
-  }));
-
-  // Reset animation values when moving to next card
-  useEffect(() => {
-    translateX.value = 0;
-    translateY.value = 0;
-    rotate.value = 0;
-    scale.value = 1;
-  }, [currentIndex]);
-
-  const renderDogCard = (dog, index) => {
-    if (index !== currentIndex) return null;
-
+  // Render individual dog card
+  const renderCard = useCallback((dog) => {
     return (
-      <PanGestureHandler 
-        onGestureEvent={onGestureEvent}
-        onHandlerStateChange={onHandlerStateChange}
-        activeOffsetX={[-10, 10]}
-        activeOffsetY={[-10, 10]}
-      >
-        <Animated.View style={[styles.card, animatedCardStyle]}>
-          {/* Dog Photo */}
-          <View style={styles.imageContainer}>
-            <Image
-              source={{ 
-                uri: dog.photos && dog.photos.length > 0 
-                  ? (dog.photos[0].url.startsWith('http') 
-                      ? dog.photos[0].url 
-                      : `https://dogmatch-backend.onrender.com${dog.photos[0].url}`)
-                  : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face'
-              }}
-              style={styles.dogImage}
-              resizeMode="cover"
-              onError={(error) => {
-                console.log('Image load error:', error);
-              }}
-              defaultSource={{ uri: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face' }}
-            />
-            
-            {/* Enhanced Action Overlays with better visual feedback */}
-            <Animated.View style={[styles.actionOverlay, styles.likeOverlay, likeOverlayStyle]}>
-              <Text style={styles.actionText}>LIKE</Text>
-            </Animated.View>
-            <Animated.View style={[styles.actionOverlay, styles.passOverlay, passOverlayStyle]}>
-              <Text style={styles.actionText}>PASS</Text>
-            </Animated.View>
-            <Animated.View style={[styles.actionOverlay, styles.superLikeOverlay, superLikeOverlayStyle]}>
-              <Text style={styles.actionText}>SUPER LIKE</Text>
-            </Animated.View>
+      <View style={styles.card}>
+        {/* Dog Photo */}
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ 
+              uri: dog.photos && dog.photos.length > 0 
+                ? (dog.photos[0].url.startsWith('http') 
+                    ? dog.photos[0].url 
+                    : `https://dogmatch-backend.onrender.com${dog.photos[0].url}`)
+                : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face'
+            }}
+            style={styles.dogImage}
+            resizeMode="cover"
+            onError={(error) => {
+              console.log('Image load error:', error);
+            }}
+            defaultSource={{ uri: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face' }}
+          />
+        </View>
+
+        {/* Dog Info */}
+        <View style={styles.dogInfo}>
+          <View style={styles.nameAgeContainer}>
+            <Text style={styles.dogName}>{dog.name}</Text>
+            <Text style={styles.dogAge}> {dog.age} years old</Text>
           </View>
-
-          {/* Dog Info */}
-          <View style={styles.dogInfo}>
-            <View style={styles.nameAgeContainer}>
-              <Text style={styles.dogName}>{dog.name}</Text>
-              <Text style={styles.dogAge}>{dog.age} years old</Text>
+          <Text style={styles.dogBreed}>{dog.breed}</Text>
+          <Text style={styles.dogDescription}>{dog.description}</Text>
+          
+          <View style={styles.traitsContainer}>
+            <View style={styles.traitRow}>
+              <Text style={styles.traitLabel}>Size:</Text>
+              <Text style={styles.traitValue}> {dog.size}</Text>
             </View>
-            
-            <Text style={styles.dogBreed}>{dog.breed}</Text>
-            
-            {dog.description && (
-              <Text style={styles.dogDescription} numberOfLines={3}>
-                {dog.description}
-              </Text>
-            )}
-
-            {/* Dog Traits */}
-            <View style={styles.traitsContainer}>
-              <View style={styles.traitRow}>
-                <Text style={styles.traitLabel}>Size:</Text>
-                <Text style={styles.traitValue}>{dog.size}</Text>
-              </View>
-              <View style={styles.traitRow}>
-                <Text style={styles.traitLabel}>Energy:</Text>
-                <Text style={styles.traitValue}>{dog.energy_level}</Text>
-              </View>
-              <View style={styles.traitRow}>
-                <Text style={styles.traitLabel}>Good with kids:</Text>
-                <Text style={styles.traitValue}>{dog.good_with_kids ? 'Yes' : 'No'}</Text>
-              </View>
+            <View style={styles.traitRow}>
+              <Text style={styles.traitLabel}>Energy:</Text>
+              <Text style={styles.traitValue}> {dog.energy_level || 'Medium'}</Text>
+            </View>
+            <View style={styles.traitRow}>
+              <Text style={styles.traitLabel}>Good with:</Text>
+              <Text style={styles.traitValue}> {dog.good_with_kids ? 'Kids' : ''} {dog.good_with_dogs ? 'Dogs' : ''} {dog.good_with_cats ? 'Cats' : ''}</Text>
             </View>
           </View>
-        </Animated.View>
-      </PanGestureHandler>
+        </View>
+      </View>
     );
-  };
+  }, []);
+
+  // Overlay components for swipe feedback
+  const OverlayLabelRight = useCallback(() => (
+    <View style={[styles.overlayLabelContainer, styles.likeOverlay]}>
+      <Text style={styles.actionText}>LIKE</Text>
+    </View>
+  ), []);
+
+  const OverlayLabelLeft = useCallback(() => (
+    <View style={[styles.overlayLabelContainer, styles.passOverlay]}>
+      <Text style={styles.actionText}>PASS</Text>
+    </View>
+  ), []);
+
+  const OverlayLabelTop = useCallback(() => (
+    <View style={[styles.overlayLabelContainer, styles.superLikeOverlay]}>
+      <Text style={styles.actionText}>SUPER LIKE</Text>
+    </View>
+  ), []);
+
 
   if (loading) {
     return (
@@ -381,7 +163,7 @@ export default function DiscoverScreen({ navigation }) {
     );
   }
 
-  if (currentIndex >= dogs.length) {
+  if (dogs.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
@@ -392,7 +174,6 @@ export default function DiscoverScreen({ navigation }) {
           <TouchableOpacity 
             style={styles.refreshButton}
             onPress={() => {
-              setCurrentIndex(0);
               fetchDogs();
             }}
           >
@@ -409,20 +190,45 @@ export default function DiscoverScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.title}>Discover</Text>
         <Text style={styles.subtitle}>
-          {currentIndex + 1} of {dogs.length} dogs
+          {dogs.length} dogs available
         </Text>
       </View>
 
-      {/* Card Container with proper spacing */}
-      <View style={styles.cardContainer}>
-        {renderDogCard(dogs[currentIndex], currentIndex)}
+      {/* Swiper Container */}
+      <View style={styles.swiperContainer}>
+        <Swiper
+          ref={swiperRef}
+          data={dogs}
+          renderCard={renderCard}
+          cardStyle={styles.swiperCard}
+          overlayLabelContainerStyle={styles.overlayLabelContainerStyle}
+          onSwipeLeft={(cardIndex) => handleSwipe('pass', cardIndex)}
+          onSwipeRight={(cardIndex) => handleSwipe('like', cardIndex)}
+          onSwipeTop={(cardIndex) => handleSwipe('super_like', cardIndex)}
+          onSwipedAll={() => {
+            Alert.alert('No More Dogs!', 'You\'ve seen all available dogs. Check back later for new matches!');
+          }}
+          OverlayLabelLeft={OverlayLabelLeft}
+          OverlayLabelRight={OverlayLabelRight}
+          OverlayLabelTop={OverlayLabelTop}
+          translateXRange={[-screenWidth / 3, 0, screenWidth / 3]}
+          translateYRange={[-screenHeight / 3, 0, screenHeight / 3]}
+          rotateInputRange={[-screenWidth / 3, 0, screenWidth / 3]}
+          rotateOutputRange={[-Math.PI / 20, 0, Math.PI / 20]}
+          inputOverlayLabelRightOpacityRange={[0, screenWidth / 3]}
+          outputOverlayLabelRightOpacityRange={[0, 1]}
+          inputOverlayLabelLeftOpacityRange={[0, -(screenWidth / 3)]}
+          outputOverlayLabelLeftOpacityRange={[0, 1]}
+          inputOverlayLabelTopOpacityRange={[0, -(screenHeight / 3)]}
+          outputOverlayLabelTopOpacityRange={[0, 1]}
+        />
       </View>
 
       {/* Action Buttons with proper spacing */}
       <View style={styles.actionButtons}>
         <TouchableOpacity 
           style={[styles.actionButton, styles.passButton]}
-          onPress={() => handleSwipe('pass')}
+          onPress={() => swiperRef.current?.swipeLeft()}
           disabled={swiping}
         >
           <Text style={styles.actionButtonText}>✕</Text>
@@ -430,7 +236,7 @@ export default function DiscoverScreen({ navigation }) {
         
         <TouchableOpacity 
           style={[styles.actionButton, styles.superLikeButton]}
-          onPress={() => handleSwipe('super_like')}
+          onPress={() => swiperRef.current?.swipeTop()}
           disabled={swiping}
         >
           <Text style={styles.actionButtonText}>⭐</Text>
@@ -438,7 +244,7 @@ export default function DiscoverScreen({ navigation }) {
         
         <TouchableOpacity 
           style={[styles.actionButton, styles.likeButton]}
-          onPress={() => handleSwipe('like')}
+          onPress={() => swiperRef.current?.swipeRight()}
           disabled={swiping}
         >
           <Text style={styles.actionButtonText}>♥</Text>
@@ -456,7 +262,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 15,
+    paddingBottom: 20, // Increased bottom padding
     backgroundColor: '#F9FAFB',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -511,13 +317,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  cardContainer: {
+  swiperContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 30, // Increased top padding
-    paddingBottom: 30, // Increased bottom padding
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  swiperCard: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 20,
   },
   card: {
     width: CARD_WIDTH,
@@ -543,7 +354,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
-  actionOverlay: {
+  overlayLabelContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -552,6 +363,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
+  },
+  overlayLabelContainerStyle: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   likeOverlay: {
     backgroundColor: 'rgba(34, 197, 94, 0.8)',
@@ -572,7 +387,7 @@ const styles = StyleSheet.create({
   },
   dogInfo: {
     padding: 20,
-    height: 200,
+    height: 180, // Reduced height to fit better in smaller card
   },
   nameAgeContainer: {
     flexDirection: 'row',
@@ -621,20 +436,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 25,
+    paddingVertical: 20,
     paddingHorizontal: 40,
-    marginBottom: 30, // Increased bottom margin
+    marginBottom: 20, // Reduced bottom margin
     backgroundColor: '#F9FAFB',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
   actionButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 55, // Reduced button size
+    height: 55, // Reduced button size
+    borderRadius: 27.5, // Adjusted for new size
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 15,
+    marginHorizontal: 12, // Reduced horizontal margin
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
