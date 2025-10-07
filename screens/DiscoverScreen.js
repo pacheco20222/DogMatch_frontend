@@ -122,10 +122,6 @@ export default function DiscoverScreen({ navigation }) {
               <Text style={styles.traitLabel}>Energy:</Text>
               <Text style={styles.traitValue}> {dog.energy_level || 'Medium'}</Text>
             </View>
-            <View style={styles.traitRow}>
-              <Text style={styles.traitLabel}>Good with:</Text>
-              <Text style={styles.traitValue}> {dog.good_with_kids ? 'Kids' : ''} {dog.good_with_dogs ? 'Dogs' : ''} {dog.good_with_cats ? 'Cats' : ''}</Text>
-            </View>
           </View>
         </View>
       </View>
@@ -189,9 +185,6 @@ export default function DiscoverScreen({ navigation }) {
       {/* Fixed Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Discover</Text>
-        <Text style={styles.subtitle}>
-          {dogs.length} dogs available
-        </Text>
       </View>
 
       {/* Swiper Container */}
@@ -271,11 +264,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#1F2937',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
   },
   loadingContainer: {
     flex: 1,
