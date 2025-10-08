@@ -75,7 +75,18 @@ export default function DiscoverScreen({ navigation }) {
       
     } catch (error) {
       console.error('Error swiping:', error);
-      Alert.alert('Error', 'Failed to process swipe. Please try again.');
+      
+      // Handle specific error cases
+      if (error.message && error.message.includes('already swiped')) {
+        // Don't show alert for already swiped - just continue to next card
+        console.log('Already swiped on this dog, continuing...');
+      } else if (error.status === 400) {
+        // Handle 400 errors (like already swiped) silently
+        console.log('Swipe request failed (likely already swiped), continuing...');
+      } else {
+        // Show alert for other errors
+        Alert.alert('Error', 'Failed to process swipe. Please try again.');
+      }
     } finally {
       setSwiping(false);
     }
