@@ -1,9 +1,9 @@
 import React, { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../auth/AuthContext';
-import MainScreen from '../screens/MainScreen';
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
+import MainScreen from '../screens/MainScreen.jsx';
+import LoginScreen from '../screens/LoginScreen.jsx';
+import RegisterScreen from '../screens/RegisterScreen.jsx';
 import AppNavigator from './AppNavigator';
 
 const Stack = createNativeStackNavigator();

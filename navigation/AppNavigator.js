@@ -5,15 +5,15 @@ import { Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Import your screens
-import HomeScreen from '../screens/HomeScreen';
-import MyDogsScreen from '../screens/MyDogsScreen';
-import DiscoverScreen from '../screens/DiscoverScreen';
-import EventsScreen from '../screens/EventsScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import CreateDogScreen from '../screens/CreateDogScreen';
-import CreateEventScreen from '../screens/CreateEventScreen';
-import RegisterEventsScreen from '../screens/RegisterEventsScreen';
-import MatchesScreen from '../screens/MatchesScreen';
+import HomeScreen from '../screens/HomeScreen.jsx';
+import MyDogsScreen from '../screens/MyDogsScreen.jsx';
+import DiscoverScreen from '../screens/DiscoverScreen.jsx';
+import EventsScreen from '../screens/EventsScreen.jsx';
+import ProfileScreen from '../screens/ProfileScreen.jsx';
+import CreateDogScreen from '../screens/CreateDogScreen.jsx';
+import CreateEventScreen from '../screens/CreateEventScreen.jsx';
+import RegisterEventsScreen from '../screens/RegisterEventsScreen.jsx';
+import MatchesScreen from '../screens/MatchesScreen.jsx';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
