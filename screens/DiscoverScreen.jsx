@@ -26,8 +26,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const CARD_WIDTH = screenWidth - 32;
-const CARD_HEIGHT = screenHeight * 0.65;
+const CARD_WIDTH = screenWidth - 40;
+const CARD_HEIGHT = screenHeight * 0.6;
 
 const DiscoverScreen = ({ navigation }) => {
   const { user, accessToken } = useContext(AuthContext);
@@ -291,31 +291,29 @@ const DiscoverScreen = ({ navigation }) => {
 
       {/* Modern Action Buttons */}
       <Animated.View style={[styles.actionButtons, cardAnimatedStyle]} entering={SlideInUp.delay(600).duration(600)}>
-        <AnimatedButton
-          title="✕"
+        <TouchableOpacity
+          style={[styles.actionButton, styles.passButton]}
           onPress={() => swiperRef.current?.swipeLeft()}
           disabled={swiping}
-          variant="outline"
-          size="large"
-          style={[styles.actionButton, styles.passButton]}
-        />
+        >
+          <Text style={styles.actionButtonEmoji}>✕</Text>
+        </TouchableOpacity>
         
-        <AnimatedButton
-          title="⭐"
+        <TouchableOpacity
+          style={[styles.actionButton, styles.superLikeButton]}
           onPress={() => swiperRef.current?.swipeTop()}
           disabled={swiping}
-          variant="secondary"
-          size="large"
-          style={[styles.actionButton, styles.superLikeButton]}
-        />
+        >
+          <Text style={styles.actionButtonEmoji}>⭐</Text>
+        </TouchableOpacity>
         
-        <AnimatedButton
-          title="💖"
+        <TouchableOpacity
+          style={[styles.actionButton, styles.likeButton]}
           onPress={() => swiperRef.current?.swipeRight()}
           disabled={swiping}
-          size="large"
-          style={[styles.actionButton, styles.likeButton]}
-        />
+        >
+          <Text style={styles.actionButtonEmoji}>💖</Text>
+        </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>
   );
@@ -377,13 +375,17 @@ const styles = StyleSheet.create({
   
   swiperContainer: {
     flex: 1,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   
   swiperCard: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
+    alignSelf: 'center',
   },
   
   card: {
@@ -420,9 +422,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     backgroundColor: 'rgba(255,255,255,0.95)',
     backdropFilter: 'blur(10px)',
+    borderBottomLeftRadius: BorderRadius.xl,
+    borderBottomRightRadius: BorderRadius.xl,
   },
   
   nameAgeContainer: {
@@ -465,7 +469,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: Colors.text.secondary,
     lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   
   traitsContainer: {
@@ -508,20 +512,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.md,
     backgroundColor: Colors.background.primary,
     borderTopWidth: 1,
     borderTopColor: Colors.neutral[100],
   },
   
   actionButton: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: BorderRadius.full,
     marginHorizontal: Spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.md,
+  },
+  
+  actionButtonEmoji: {
+    fontSize: Typography.fontSize.xl,
   },
   
   passButton: {
+    backgroundColor: Colors.background.primary,
+    borderWidth: 2,
     borderColor: Colors.error[300],
   },
   
