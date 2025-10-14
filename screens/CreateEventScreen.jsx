@@ -7,8 +7,10 @@ import {
   Alert,
   StyleSheet,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -28,6 +30,8 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/De
 const CreateEventScreen = ({ navigation }) => {
   const { accessToken } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -109,6 +113,75 @@ const CreateEventScreen = ({ navigation }) => {
     return true;
   };
 
+  const handlePickImage = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload photos!');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9], // Good aspect ratio for event banners
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setSelectedImage(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const uploadEventPhoto = async (eventId, imageAsset) => {
+    try {
+      setUploadingPhoto(true);
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: imageAsset.uri,
+        type: 'image/jpeg',
+        name: 'event_banner.jpg',
+      });
+
+      // Upload to backend
+      const response = await fetch(`https://dogmatch-backend.onrender.com/api/s3/upload/event-photo/${eventId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('Event photo upload endpoint not available yet - skipping photo upload');
+          return; // Silently skip if endpoint doesn't exist
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      console.log('Event photo uploaded successfully:', result);
+      
+    } catch (error) {
+      console.log('Event photo upload failed (optional feature):', error.message);
+      // Don't show error to user as event was created successfully
+      // Photo upload is optional and endpoint might not be deployed yet
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -159,6 +232,11 @@ const CreateEventScreen = ({ navigation }) => {
         token: accessToken,
         body: submitData
       });
+
+      // Upload photo if one was selected
+      if (selectedImage && response.event && response.event.id) {
+        await uploadEventPhoto(response.event.id, selectedImage);
+      }
 
       Alert.alert(
         'Success!', 
@@ -255,6 +333,37 @@ const CreateEventScreen = ({ navigation }) => {
                     </TouchableOpacity>
                   ))}
                 </View>
+              </View>
+            </AnimatedCard>
+
+            {/* Event Photo */}
+            <AnimatedCard variant="elevated" style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Event Banner Photo</Text>
+              
+              <View style={styles.photoSection}>
+                {selectedImage ? (
+                  <View style={styles.photoContainer}>
+                    <Image
+                      source={{ uri: selectedImage.uri }}
+                      style={styles.eventPhoto}
+                    />
+                    <TouchableOpacity
+                      style={styles.changePhotoButton}
+                      onPress={handlePickImage}
+                    >
+                      <Text style={styles.changePhotoText}>📷</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.photoPlaceholder}
+                    onPress={handlePickImage}
+                  >
+                    <Text style={styles.photoIcon}>📸</Text>
+                    <Text style={styles.photoText}>Add Banner Photo</Text>
+                    <Text style={styles.photoSubtext}>Optional: Add a banner image for your event</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </AnimatedCard>
 
@@ -554,6 +663,67 @@ const styles = StyleSheet.create({
   
   categoryTextSelected: {
     color: Colors.primary[600],
+  },
+  
+  photoSection: {
+    alignItems: 'center',
+  },
+  
+  photoContainer: {
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  
+  eventPhoto: {
+    width: 200,
+    height: 112, // 16:9 aspect ratio
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+  },
+  
+  changePhotoButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.primary[500],
+    borderRadius: BorderRadius.full,
+  },
+  
+  changePhotoText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.text.inverse,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  
+  photoPlaceholder: {
+    width: 200,
+    height: 112,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.neutral[200],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.neutral[300],
+    borderStyle: 'dashed',
+    marginBottom: Spacing.md,
+  },
+  
+  photoIcon: {
+    fontSize: Typography.fontSize['2xl'],
+    marginBottom: Spacing.sm,
+  },
+  
+  photoText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+    color: Colors.text.primary,
+    textAlign: 'center',
+    marginBottom: Spacing.xs,
+  },
+  
+  photoSubtext: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.text.tertiary,
+    textAlign: 'center',
   },
   
   helpText: {

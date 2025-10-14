@@ -133,7 +133,7 @@ const EventsScreen = ({ navigation }) => {
       'adoption': Colors.success[500],
       'competition': Colors.warning[500],
       'social': Colors.info[500],
-      'educational': Colors.purple[500]
+      'educational': Colors.secondary[600]
     };
     return colorMap[category] || Colors.primary[500];
   };

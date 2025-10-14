@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -18,12 +19,14 @@ import Animated, {
   SlideInUp,
 } from 'react-native-reanimated';
 import { AuthContext } from '../auth/AuthContext';
+import { apiFetch } from '../api/client';
 import AnimatedButton from '../components/AnimatedButton';
 import AnimatedCard from '../components/AnimatedCard';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, accessToken } = useContext(AuthContext);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -55,6 +58,73 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleEditProfile = () => {
     Alert.alert('Coming Soon', 'Edit Profile screen coming soon!');
+  };
+
+  const handleChangePhoto = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload photos!');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadProfilePhoto(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const uploadProfilePhoto = async (imageAsset) => {
+    try {
+      setUploadingPhoto(true);
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: imageAsset.uri,
+        type: 'image/jpeg',
+        name: 'profile_photo.jpg',
+      });
+
+      // Upload to backend
+      const response = await fetch('https://dogmatch-backend.onrender.com/api/s3/upload/user-profile', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      Alert.alert('Success!', 'Profile photo updated successfully!');
+      
+      // The user object will be updated on next login/refresh
+      // For now, we could trigger a refresh or update the context
+      
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Upload Failed', error.message || 'Failed to upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleMyMatches = () => {
@@ -119,12 +189,25 @@ const ProfileScreen = ({ navigation }) => {
                         : `https://dogmatch-backend.onrender.com${user.profile_photo_url}`
                     }}
                     style={styles.avatar}
+                    onError={() => {
+                      console.log('Profile photo failed to load:', user.profile_photo_url);
+                    }}
                   />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarEmoji}>👤</Text>
                   </View>
                 )}
+                
+                <TouchableOpacity
+                  style={styles.changePhotoButton}
+                  onPress={handleChangePhoto}
+                  disabled={uploadingPhoto}
+                >
+                  <Text style={styles.changePhotoText}>
+                    {uploadingPhoto ? '⏳' : '📷'}
+                  </Text>
+                </TouchableOpacity>
               </View>
               
               <View style={styles.userInfo}>
@@ -279,6 +362,7 @@ const styles = StyleSheet.create({
   
   avatarContainer: {
     marginRight: Spacing.lg,
+    position: 'relative',
   },
   
   avatar: {
@@ -298,6 +382,25 @@ const styles = StyleSheet.create({
   
   avatarEmoji: {
     fontSize: Typography.fontSize['2xl'],
+  },
+  
+  changePhotoButton: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 28,
+    height: 28,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background.primary,
+    ...Shadows.sm,
+  },
+  
+  changePhotoText: {
+    fontSize: Typography.fontSize.sm,
   },
   
   userInfo: {
