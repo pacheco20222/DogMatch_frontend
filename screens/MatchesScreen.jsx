@@ -63,7 +63,13 @@ const MatchesScreen = ({ navigation }) => {
   }, [fetchMatches]);
 
   const handleChatPress = (match) => {
-    Alert.alert('Coming Soon', 'Chat functionality will be implemented next!');
+    // Navigate to chat conversation
+    navigation.navigate('ChatConversation', {
+      matchId: match.id,
+      otherUser: match.other_user,
+      otherDog: match.other_dog,
+      match: match
+    });
   };
 
   const renderMatch = ({ item, index }) => {

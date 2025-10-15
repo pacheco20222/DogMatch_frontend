@@ -34,6 +34,7 @@ const DiscoverScreen = ({ navigation }) => {
   const [dogs, setDogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [swiping, setSwiping] = useState(false);
+  const [pendingSwipesCount, setPendingSwipesCount] = useState(0);
   const swiperRef = useRef();
 
   // Animation values
@@ -54,12 +55,25 @@ const DiscoverScreen = ({ navigation }) => {
     }
   }, [accessToken]);
 
+  // Fetch pending swipes count
+  const fetchPendingSwipesCount = useCallback(async () => {
+    try {
+      const response = await apiFetch('/api/matches/pending', { token: accessToken });
+      if (response.success) {
+        setPendingSwipesCount(response.pending_swipes?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching pending swipes count:', error);
+    }
+  }, [accessToken]);
+
   useEffect(() => {
     fetchDogs();
+    fetchPendingSwipesCount();
     // Animate header and cards
     headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
     cardOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
-  }, [fetchDogs]);
+  }, [fetchDogs, fetchPendingSwipesCount]);
 
   // Handle swipe action
   const handleSwipe = useCallback(async (action, cardIndex) => {
@@ -143,6 +157,16 @@ const DiscoverScreen = ({ navigation }) => {
           <View style={styles.breedContainer}>
             <Text style={styles.dogBreed}>{dog.breed}</Text>
           </View>
+          
+          {/* Owner Information */}
+          {dog.owner && (
+            <View style={styles.ownerContainer}>
+              <Text style={styles.ownerLabel}>Owner:</Text>
+              <Text style={styles.ownerName}>
+                {dog.owner.first_name} {dog.owner.last_name}
+              </Text>
+            </View>
+          )}
           
           <Text style={styles.dogDescription} numberOfLines={3}>
             {dog.description}
@@ -251,12 +275,27 @@ const DiscoverScreen = ({ navigation }) => {
           <Text style={styles.title}>Discover</Text>
           <Text style={styles.subtitle}>Find your perfect match</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.matchesButton}
-          onPress={() => navigation.navigate('Matches')}
-        >
-          <Text style={styles.matchesButtonText}>💕</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          {pendingSwipesCount > 0 && (
+            <TouchableOpacity 
+              style={styles.pendingSwipesButton}
+              onPress={() => navigation.navigate('PendingSwipes')}
+            >
+              <Text style={styles.pendingSwipesButtonText}>💝</Text>
+              <View style={styles.pendingSwipesBadge}>
+                <Text style={styles.pendingSwipesBadgeText}>
+                  {pendingSwipesCount > 99 ? '99+' : pendingSwipesCount}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity 
+            style={styles.matchesButton}
+            onPress={() => navigation.navigate('Matches')}
+          >
+            <Text style={styles.matchesButtonText}>💕</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       {/* Swiper Container with modern design */}
@@ -356,6 +395,48 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
     marginTop: -Spacing.xs,
+  },
+  
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  
+  pendingSwipesButton: {
+    position: 'relative',
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.secondary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.secondary[200],
+  },
+  
+  pendingSwipesButtonText: {
+    fontSize: Typography.fontSize.lg,
+  },
+  
+  pendingSwipesBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.error[500],
+    borderRadius: BorderRadius.full,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background.primary,
+  },
+  
+  pendingSwipesBadgeText: {
+    color: Colors.background.primary,
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.bold,
   },
   
   matchesButton: {
@@ -463,6 +544,29 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.medium,
     color: Colors.text.secondary,
+  },
+  
+  ownerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    backgroundColor: Colors.primary[50],
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+  },
+  
+  ownerLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+    color: Colors.text.secondary,
+    marginRight: Spacing.xs,
+  },
+  
+  ownerName: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: Colors.primary[600],
   },
   
   dogDescription: {

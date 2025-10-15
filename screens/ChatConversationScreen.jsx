@@ -1,0 +1,576 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../auth/AuthContext';
+import { useSocket } from '../auth/SocketContext';
+import { apiFetch } from '../api/client';
+import chatService from '../services/chatService';
+import { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+const { width: screenWidth } = Dimensions.get('window');
+
+const ChatConversationScreen = ({ navigation, route }) => {
+  const { matchId, otherUser, otherDog, match } = route.params;
+  const { accessToken, user } = useAuth();
+  const { socket, isConnected, joinMatch, leaveMatch, sendMessage, sendTypingIndicator } = useSocket();
+  
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [error, setError] = useState(null);
+  
+  const flatListRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+
+  // Load messages on mount
+  useFocusEffect(
+    useCallback(() => {
+      loadMessages();
+      
+      // Join match room for real-time updates
+      if (isConnected) {
+        joinMatch(matchId);
+      }
+      
+      return () => {
+        // Leave match room when screen is unfocused
+        if (isConnected) {
+          leaveMatch(matchId);
+        }
+      };
+    }, [matchId, isConnected, joinMatch, leaveMatch])
+  );
+
+  // Setup socket listeners
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewMessage = (messageData) => {
+      if (messageData.match_id === matchId) {
+        setMessages(prev => [...prev, messageData]);
+        scrollToBottom();
+      }
+    };
+
+    const handleUserTyping = (typingData) => {
+      if (typingData.match_id === matchId && typingData.user_id !== user.id) {
+        if (typingData.is_typing) {
+          setTypingUsers(prev => {
+            if (!prev.includes(typingData.user_id)) {
+              return [...prev, typingData.user_id];
+            }
+            return prev;
+          });
+        } else {
+          setTypingUsers(prev => prev.filter(id => id !== typingData.user_id));
+        }
+      }
+    };
+
+    const handleMessageSent = (data) => {
+      setSending(false);
+    };
+
+    const handleError = (errorData) => {
+      setSending(false);
+      Alert.alert('Error', errorData.message || 'An error occurred');
+    };
+
+    // Setup socket listeners
+    chatService.setupSocketListeners(socket, {
+      onNewMessage: handleNewMessage,
+      onUserTyping: handleUserTyping,
+      onMessageSent: handleMessageSent,
+      onError: handleError
+    });
+
+    return () => {
+      // Cleanup
+    };
+  }, [socket, isConnected, matchId, user.id]);
+
+  // Load messages from API
+  const loadMessages = async () => {
+    try {
+      setError(null);
+      const response = await apiFetch(`/api/messages/matches/${matchId}/messages`, {
+        token: accessToken
+      });
+      
+      if (response.success) {
+        setMessages(response.messages || []);
+        scrollToBottom();
+      } else {
+        setError(response.message || 'Failed to load messages');
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      setError('Failed to load messages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Send message
+  const handleSendMessage = async () => {
+    const text = messageText.trim();
+    if (!text || sending || !isConnected) return;
+
+    setSending(true);
+    setMessageText('');
+    
+    // Stop typing indicator
+    if (isTypingRef.current) {
+      sendTypingIndicator(matchId, false);
+      isTypingRef.current = false;
+    }
+
+    try {
+      // Send via socket for real-time delivery
+      sendMessage(matchId, text, 'text');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setSending(false);
+      Alert.alert('Error', 'Failed to send message');
+    }
+  };
+
+  // Handle typing
+  const handleTextChange = (text) => {
+    setMessageText(text);
+    
+    // Send typing indicator
+    if (!isTypingRef.current && text.length > 0) {
+      sendTypingIndicator(matchId, true);
+      isTypingRef.current = true;
+    }
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to stop typing indicator
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTypingRef.current) {
+        sendTypingIndicator(matchId, false);
+        isTypingRef.current = false;
+      }
+    }, 1000);
+  };
+
+  // Scroll to bottom
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  // Format timestamp
+  const formatMessageTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Render message
+  const renderMessage = ({ item: message, index }) => {
+    const isFromCurrentUser = message.sender_user_id === user.id;
+    const showAvatar = index === 0 || messages[index - 1]?.sender_user_id !== message.sender_user_id;
+    
+    return (
+      <Animated.View
+        entering={FadeInUp.delay(index * 50).duration(400)}
+        style={[
+          styles.messageContainer,
+          isFromCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
+        ]}
+      >
+        {!isFromCurrentUser && showAvatar && (
+          <Image
+            source={{
+              uri: otherUser?.profile_photo_url || 
+                   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
+            }}
+            style={styles.messageAvatar}
+            defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
+          />
+        )}
+        
+        <View style={[
+          styles.messageBubble,
+          isFromCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
+        ]}>
+          <Text style={[
+            styles.messageText,
+            isFromCurrentUser ? styles.currentUserText : styles.otherUserText
+          ]}>
+            {message.content}
+          </Text>
+          <Text style={[
+            styles.messageTime,
+            isFromCurrentUser ? styles.currentUserTime : styles.otherUserTime
+          ]}>
+            {formatMessageTime(message.sent_at)}
+          </Text>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  // Render typing indicator
+  const renderTypingIndicator = () => {
+    if (typingUsers.length === 0) return null;
+    
+    return (
+      <Animated.View 
+        entering={FadeIn.duration(300)}
+        style={styles.typingContainer}
+      >
+        <Image
+          source={{
+            uri: otherUser?.profile_photo_url || 
+                 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
+          }}
+          style={styles.typingAvatar}
+          defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
+        />
+        <View style={styles.typingBubble}>
+          <Text style={styles.typingText}>typing...</Text>
+          <View style={styles.typingDots}>
+            <View style={[styles.typingDot, styles.typingDot1]} />
+            <View style={[styles.typingDot, styles.typingDot2]} />
+            <View style={[styles.typingDot, styles.typingDot3]} />
+          </View>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  // Render header
+  const renderHeader = () => (
+    <Animated.View 
+      entering={FadeInDown.duration(600)}
+      style={styles.header}
+    >
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.backButtonText}>←</Text>
+      </TouchableOpacity>
+      
+      <View style={styles.headerInfo}>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {otherUser?.first_name} {otherUser?.last_name}
+        </Text>
+        <Text style={styles.headerSubtitle} numberOfLines={1}>
+          🐕 {otherDog?.name} & {match?.dog_one?.name}
+        </Text>
+      </View>
+      
+      {!isConnected && (
+        <View style={styles.connectionStatus}>
+          <View style={styles.offlineDot} />
+        </View>
+      )}
+    </Animated.View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        {renderHeader()}
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading messages...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {renderHeader()}
+      
+      <KeyboardAvoidingView 
+        style={styles.chatContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        {/* Messages List */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderMessage}
+          ListFooterComponent={renderTypingIndicator}
+          contentContainerStyle={styles.messagesList}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToBottom}
+          onLayout={scrollToBottom}
+        />
+        
+        {/* Message Input */}
+        <Animated.View 
+          entering={FadeInUp.duration(600)}
+          style={styles.inputContainer}
+        >
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              value={messageText}
+              onChangeText={handleTextChange}
+              placeholder="Type a message..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              maxLength={500}
+              editable={isConnected && !sending}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                (!messageText.trim() || sending || !isConnected) && styles.sendButtonDisabled
+              ]}
+              onPress={handleSendMessage}
+              disabled={!messageText.trim() || sending || !isConnected}
+            >
+              <Text style={[
+                styles.sendButtonText,
+                (!messageText.trim() || sending || !isConnected) && styles.sendButtonTextDisabled
+              ]}>
+                {sending ? '⏳' : '➤'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 8,
+  },
+  backButtonText: {
+    fontSize: 24,
+    color: '#4F8EF7',
+    fontWeight: 'bold',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  connectionStatus: {
+    marginLeft: 12,
+  },
+  offlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  chatContainer: {
+    flex: 1,
+  },
+  messagesList: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  messageContainer: {
+    flexDirection: 'row',
+    marginVertical: 4,
+    alignItems: 'flex-end',
+  },
+  currentUserMessage: {
+    justifyContent: 'flex-end',
+  },
+  otherUserMessage: {
+    justifyContent: 'flex-start',
+  },
+  messageAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  messageBubble: {
+    maxWidth: screenWidth * 0.75,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  currentUserBubble: {
+    backgroundColor: '#4F8EF7',
+    borderBottomRightRadius: 4,
+  },
+  otherUserBubble: {
+    backgroundColor: '#F3F4F6',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  currentUserText: {
+    color: '#FFFFFF',
+  },
+  otherUserText: {
+    color: '#1F2937',
+  },
+  messageTime: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  currentUserTime: {
+    color: '#E5E7EB',
+  },
+  otherUserTime: {
+    color: '#9CA3AF',
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginVertical: 4,
+  },
+  typingAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  typingBubble: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginRight: 8,
+  },
+  typingDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#9CA3AF',
+    marginHorizontal: 1,
+  },
+  typingDot1: {
+    animationDelay: '0s',
+  },
+  typingDot2: {
+    animationDelay: '0.2s',
+  },
+  typingDot3: {
+    animationDelay: '0.4s',
+  },
+  inputContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    maxHeight: 100,
+    paddingVertical: 8,
+  },
+  sendButton: {
+    marginLeft: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#4F8EF7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  sendButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  sendButtonTextDisabled: {
+    color: '#9CA3AF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+});
+
+export default ChatConversationScreen;

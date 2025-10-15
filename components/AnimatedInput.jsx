@@ -11,7 +11,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 import { Colors, Typography, BorderRadius, Spacing, Shadows } from '../styles/DesignSystem';
 
@@ -36,25 +35,19 @@ const AnimatedInput = ({
   const [showPassword, setShowPassword] = useState(false);
   const inputRef = useRef(null);
   
-  const labelScale = useSharedValue(value ? 0.8 : 1);
-  const labelTranslateY = useSharedValue(value ? -8 : 0);
+  const isFloating = value || isFocused;
+  
   const borderColor = useSharedValue(Colors.neutral[300]);
   const scale = useSharedValue(1);
 
   const handleFocus = () => {
     setIsFocused(true);
-    labelScale.value = withSpring(0.8, { damping: 15, stiffness: 300 });
-    labelTranslateY.value = withSpring(-8, { damping: 15, stiffness: 300 });
     borderColor.value = withTiming(Colors.primary[500], { duration: 200 });
-    scale.value = withSpring(1.02, { damping: 15, stiffness: 300 });
+    scale.value = withSpring(1.01, { damping: 15, stiffness: 300 });
   };
 
   const handleBlur = () => {
     setIsFocused(false);
-    if (!value) {
-      labelScale.value = withSpring(1, { damping: 15, stiffness: 300 });
-      labelTranslateY.value = withSpring(0, { damping: 15, stiffness: 300 });
-    }
     borderColor.value = withTiming(error ? Colors.error[500] : Colors.neutral[300], { duration: 200 });
     scale.value = withSpring(1, { damping: 15, stiffness: 300 });
   };
@@ -63,26 +56,11 @@ const AnimatedInput = ({
     if (onChangeText) {
       onChangeText(text);
     }
-    
-    if (text && !value) {
-      labelScale.value = withSpring(0.8, { damping: 15, stiffness: 300 });
-      labelTranslateY.value = withSpring(-8, { damping: 15, stiffness: 300 });
-    } else if (!text && value) {
-      labelScale.value = withSpring(1, { damping: 15, stiffness: 300 });
-      labelTranslateY.value = withSpring(0, { damping: 15, stiffness: 300 });
-    }
   };
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
-
-  const animatedLabelStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: labelScale.value },
-      { translateY: labelTranslateY.value },
-    ],
-  }));
 
   const animatedContainerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -110,9 +88,11 @@ const AnimatedInput = ({
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.inputContainer, animatedContainerStyle]}>
-        <Animated.Text style={[styles.label, animatedLabelStyle]}>
-          {label}
-        </Animated.Text>
+        {isFloating && (
+          <Text style={styles.labelFloating}>
+            {label}
+          </Text>
+        )}
         
         <AnimatedTextInput
           ref={inputRef}
@@ -121,7 +101,7 @@ const AnimatedInput = ({
           onChangeText={handleChangeText}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholder={isFocused ? placeholder : ''}
+          placeholder={isFloating ? placeholder : label}
           placeholderTextColor={Colors.neutral[400]}
           secureTextEntry={secureTextEntry && !showPassword}
           keyboardType={keyboardType}
@@ -166,19 +146,20 @@ const styles = StyleSheet.create({
     ...Shadows.sm,
   },
   
-  label: {
+  labelFloating: {
     position: 'absolute',
-    left: Spacing.lg,
-    top: Spacing.md,
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
+    left: Spacing.md,
+    top: -8,
+    fontSize: Typography.fontSize.sm,
+    color: Colors.primary[500],
     backgroundColor: Colors.background.primary,
     paddingHorizontal: Spacing.xs,
     zIndex: 1,
   },
   
   input: {
-    paddingVertical: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
     paddingHorizontal: Spacing.lg,
     fontSize: Typography.fontSize.base,
     color: Colors.text.primary,

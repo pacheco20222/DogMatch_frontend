@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -32,6 +33,7 @@ const CreateEventScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const insets = useSafeAreaInsets();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -273,12 +275,15 @@ const CreateEventScreen = ({ navigation }) => {
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Modern Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
+        <Animated.View style={[styles.header, { paddingTop: insets.top + Spacing.md }, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Create New Event</Text>
-            <Text style={styles.subtitle}>Fill in the details to create your event</Text>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Create New Event</Text>
+              <Text style={styles.subtitle}>Fill in the details to create your event</Text>
+            </View>
           </View>
         </Animated.View>
 
@@ -566,7 +571,7 @@ const styles = StyleSheet.create({
   
   header: {
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingBottom: Spacing.md,
     backgroundColor: Colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.neutral[100],
@@ -578,6 +583,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   
+  titleContainer: {
+    flex: 1,
+  },
+  
   title: {
     fontSize: Typography.fontSize['3xl'],
     fontWeight: Typography.fontWeight.bold,
@@ -587,7 +596,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
-    marginTop: -Spacing.xs,
+    marginTop: Spacing.xs,
   },
   
   scrollView: {

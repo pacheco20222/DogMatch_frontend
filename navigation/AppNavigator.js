@@ -14,6 +14,9 @@ import CreateDogScreen from '../screens/CreateDogScreen.jsx';
 import CreateEventScreen from '../screens/CreateEventScreen.jsx';
 import RegisterEventsScreen from '../screens/RegisterEventsScreen.jsx';
 import MatchesScreen from '../screens/MatchesScreen.jsx';
+import ChatsScreen from '../screens/ChatsScreen.jsx';
+import ChatConversationScreen from '../screens/ChatConversationScreen.jsx';
+import PendingSwipesScreen from '../screens/PendingSwipesScreen.jsx';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -34,6 +37,7 @@ function DiscoverStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="DiscoverMain" component={DiscoverScreen} />
       <Stack.Screen name="Matches" component={MatchesScreen} />
+      <Stack.Screen name="PendingSwipes" component={PendingSwipesScreen} />
     </Stack.Navigator>
   );
 }
@@ -45,6 +49,16 @@ function EventsStack() {
       <Stack.Screen name="EventsList" component={EventsScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
       <Stack.Screen name="RegisterEvent" component={RegisterEventsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Create a stack navigator for Chats tab
+function ChatsStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ChatsList" component={ChatsScreen} />
+      <Stack.Screen name="ChatConversation" component={ChatConversationScreen} />
     </Stack.Navigator>
   );
 }
@@ -103,6 +117,18 @@ export default function AppNavigator() {
           tabBarIcon: ({ color, size }) => (
             <Image
               source={require('../assets/icons/heart.png')}
+              style={{ width: size, height: size, tintColor: color }}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Chats"
+        component={ChatsStack}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Image
+              source={require('../assets/icons/chat.png')}
               style={{ width: size, height: size, tintColor: color }}
             />
           ),
