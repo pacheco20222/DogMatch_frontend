@@ -6,6 +6,7 @@ export const AuthContext = createContext({
   user: null,
   accessToken: null,
   loading: true,
+  isAuthenticated: false,
   login: async () => {},
   logout: async () => {},
   refresh: async () => {},
@@ -65,9 +66,11 @@ export function AuthProvider({ children }) {
     setAccessToken(null);
   };
 
+  const isAuthenticated = useMemo(() => !!(user && accessToken), [user, accessToken]);
+
   const value = useMemo(
-    () => ({ user, accessToken, loading, login, logout, refresh }),
-    [user, accessToken, loading]
+    () => ({ user, accessToken, loading, isAuthenticated, login, logout, refresh }),
+    [user, accessToken, loading, isAuthenticated]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

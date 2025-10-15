@@ -1,4 +1,4 @@
-export const BASE_URL = "https://dogmatch-backend.onrender.com";
+export const BASE_URL = "http://localhost:5000";
 
 export async function apiFetch(path, { method = "GET", token, body} = {}) {
     const headers = { "Content-Type": "application/json" };

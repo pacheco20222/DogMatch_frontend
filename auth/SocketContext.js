@@ -22,8 +22,8 @@ export const SocketProvider = ({ children }) => {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // Backend URL - use production URL for deployed backend
-  const SOCKET_URL = 'https://dogmatch-backend.onrender.com';
+  // Backend URL - use local URL for development
+  const SOCKET_URL = 'http://localhost:5000';
 
   useEffect(() => {
     console.log('🔌 SocketContext useEffect triggered:', { isAuthenticated, hasAccessToken: !!accessToken });
