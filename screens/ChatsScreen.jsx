@@ -290,15 +290,15 @@ const ChatsScreen = ({ navigation }) => {
             </View>
           )}
           {/* Debug button - remove after testing */}
-          <TouchableOpacity 
-            style={styles.debugButton}
-            onPress={() => {
-              console.log('🔌 Manual connection test');
-              console.log('🔌 Socket state:', socket ? 'Present' : 'Missing');
-              console.log('🔌 Is connected:', isConnected);
-              console.log('🔌 Connection error:', connectionError);
-            }}
-          >
+        <TouchableOpacity 
+          style={styles.debugButton}
+          onPress={() => {
+            console.log('🔌 Manual connection test');
+            console.log('🔌 Socket state:', socket ? 'Present' : 'Missing');
+            console.log('🔌 Is connected:', isConnected);
+            console.log('🔌 Connection error:', connectionError || 'None');
+          }}
+        >
             <Text style={styles.debugButtonText}>🔍</Text>
           </TouchableOpacity>
         </View>

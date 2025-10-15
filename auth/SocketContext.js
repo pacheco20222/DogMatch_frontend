@@ -47,17 +47,19 @@ export const SocketProvider = ({ children }) => {
 
     try {
       // Create socket connection with JWT token
-      const newSocket = io(SOCKET_URL, {
-        auth: {
-          token: accessToken
-        },
-        query: {
-          token: accessToken
-        },
-        transports: ['websocket', 'polling'],
-        timeout: 20000,
-        forceNew: true
-      });
+          const newSocket = io(SOCKET_URL, {
+            auth: {
+              token: accessToken
+            },
+            query: {
+              token: accessToken
+            },
+            transports: ['polling', 'websocket'], // Try polling first for Render compatibility
+            timeout: 20000,
+            forceNew: true,
+            upgrade: true,
+            rememberUpgrade: false
+          });
 
       // Connection event handlers
       newSocket.on('connect', () => {
