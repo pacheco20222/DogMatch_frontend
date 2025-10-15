@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -19,7 +19,7 @@ import Animated, {
   SlideInUp,
   Layout,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
+import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../api/client';
 import AnimatedButton from '../components/AnimatedButton';
 import AnimatedCard from '../components/AnimatedCard';
@@ -27,7 +27,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const MatchesScreen = ({ navigation }) => {
-  const { user, accessToken } = useContext(AuthContext);
+  const { user, accessToken } = useAuth();
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

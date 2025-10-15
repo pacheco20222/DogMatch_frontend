@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -19,7 +19,7 @@ import Animated, {
   SlideInUp,
   interpolate,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
+import { useAuth } from '../auth/AuthContext';
 import { apiFetch } from '../api/client';
 import AnimatedButton from '../components/AnimatedButton';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -30,7 +30,7 @@ const CARD_WIDTH = screenWidth - 40;
 const CARD_HEIGHT = screenHeight * 0.6;
 
 const DiscoverScreen = ({ navigation }) => {
-  const { user, accessToken } = useContext(AuthContext);
+  const { user, accessToken } = useAuth();
   const [dogs, setDogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [swiping, setSwiping] = useState(false);

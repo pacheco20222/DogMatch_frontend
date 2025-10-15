@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { AuthContext } from './AuthContext';
+import { useAuth } from './AuthContext';
 import { Alert } from 'react-native';
 
 const SocketContext = createContext();
@@ -14,7 +14,7 @@ export const useSocket = () => {
 };
 
 export const SocketProvider = ({ children }) => {
-  const { accessToken, isAuthenticated } = useContext(AuthContext);
+  const { accessToken, isAuthenticated } = useAuth();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);

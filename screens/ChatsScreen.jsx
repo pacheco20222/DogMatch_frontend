@@ -15,13 +15,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
 import { useSocket } from '../auth/SocketContext';
 import { apiFetch } from '../api/client';
-import chatService from '../services/chatService';
+import { useChatService } from '../services/chatService';
 import { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 
 const ChatsScreen = ({ navigation }) => {
   const { accessToken } = useAuth();
   const { socket, isConnected } = useSocket();
+  const chatService = useChatService();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,7 +96,7 @@ const ChatsScreen = ({ navigation }) => {
     };
 
     // Setup socket listeners
-    chatService.setupSocketListeners(socket, {
+    chatService.chatService.setupSocketListeners(socket, {
       onNewMessage: handleNewMessage,
       onMessageRead: handleMessageRead
     });

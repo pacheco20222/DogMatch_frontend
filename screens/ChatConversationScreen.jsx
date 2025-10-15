@@ -18,7 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
 import { useSocket } from '../auth/SocketContext';
 import { apiFetch } from '../api/client';
-import chatService from '../services/chatService';
+import { useChatService } from '../services/chatService';
 import { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 
@@ -28,6 +28,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const { matchId, otherUser, otherDog, match } = route.params;
   const { accessToken, user } = useAuth();
   const { socket, isConnected, joinMatch, leaveMatch, sendMessage, sendTypingIndicator } = useSocket();
+  const chatService = useChatService();
   
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +96,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
     };
 
     // Setup socket listeners
-    chatService.setupSocketListeners(socket, {
+    chatService.chatService.setupSocketListeners(socket, {
       onNewMessage: handleNewMessage,
       onUserTyping: handleUserTyping,
       onMessageSent: handleMessageSent,
