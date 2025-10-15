@@ -51,7 +51,13 @@ const ChatConversationScreen = ({ navigation, route }) => {
         joinMatch(matchId);
       }
       
+      // Mark all messages as read when entering the chat
+      markAllMessagesAsRead();
+      
       return () => {
+        // Mark all messages as read before leaving
+        markAllMessagesAsRead();
+        
         // Leave match room when screen is unfocused
         if (isConnected) {
           leaveMatch(matchId);
@@ -68,6 +74,12 @@ const ChatConversationScreen = ({ navigation, route }) => {
       if (messageData.match_id === matchId) {
         setMessages(prev => [...prev, messageData]);
         scrollToBottom();
+        
+        // Mark message as read immediately if it's from another user and we're viewing the chat
+        if (!messageData.is_sent_by_me && !messageData.is_read) {
+          // Mark as read immediately since user is actively viewing the chat
+          markMessageAsRead(messageData.id);
+        }
       }
     };
 
@@ -119,6 +131,9 @@ const ChatConversationScreen = ({ navigation, route }) => {
       if (response.success) {
         setMessages(response.messages || []);
         scrollToBottom();
+        
+        // Mark messages as read when loading (backend does this automatically)
+        // This ensures messages are marked as read when entering the chat
       } else {
         setError(response.message || 'Failed to load messages');
       }
@@ -127,6 +142,44 @@ const ChatConversationScreen = ({ navigation, route }) => {
       setError('Failed to load messages');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Mark all messages as read
+  const markAllMessagesAsRead = async () => {
+    try {
+      console.log('📖 Marking all messages as read for match', matchId);
+      
+      // Use the backend's built-in functionality to mark all messages as read
+      // by making a request to load messages with mark_as_read=true (default)
+      const response = await apiFetch(`/api/messages/matches/${matchId}/messages?mark_as_read=true`, {
+        token: accessToken
+      });
+      
+      if (response.success) {
+        console.log('✅ All messages marked as read for match', matchId);
+      } else {
+        console.log('❌ Failed to mark messages as read:', response.message);
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
+  // Mark a single message as read
+  const markMessageAsRead = async (messageId) => {
+    try {
+      await apiFetch(`/api/messages/${messageId}/read`, {
+        method: 'POST',
+        token: accessToken
+      });
+      
+      // Update local state to reflect the read status
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId ? { ...msg, is_read: true } : msg
+      ));
+    } catch (error) {
+      console.error('Error marking message as read:', error);
     }
   };
 
@@ -299,6 +352,15 @@ const ChatConversationScreen = ({ navigation, route }) => {
         <Text style={styles.backButtonText}>←</Text>
       </TouchableOpacity>
       
+      <Image
+        source={{
+          uri: otherUser?.profile_photo_url || 
+               'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
+        }}
+        style={styles.headerAvatar}
+        defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
+      />
+      
       <View style={styles.headerInfo}>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {otherUser?.first_name} {otherUser?.last_name}
@@ -414,6 +476,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#4F8EF7',
     fontWeight: 'bold',
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: '#F3F4F6',
   },
   headerInfo: {
     flex: 1,

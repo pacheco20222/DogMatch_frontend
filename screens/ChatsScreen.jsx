@@ -37,6 +37,10 @@ const ChatsScreen = ({ navigation }) => {
       });
       
       if (response.success) {
+        console.log('📋 Loaded conversations:', response.conversations?.length || 0);
+        response.conversations?.forEach(conv => {
+          console.log(`  - Match ${conv.match.id}: ${conv.unread_count} unread messages`);
+        });
         setConversations(response.conversations || []);
       } else {
         setError(response.message || 'Failed to fetch conversations');
@@ -57,22 +61,40 @@ const ChatsScreen = ({ navigation }) => {
     }, [fetchConversations])
   );
 
+  // Refresh conversations when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Small delay to ensure any read operations have completed
+      const timer = setTimeout(() => {
+        fetchConversations();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }, [fetchConversations])
+  );
+
   // Setup socket listeners for real-time updates
   useEffect(() => {
     if (!socket || !isConnected) return;
 
     const handleNewMessage = (messageData) => {
+      console.log('📱 ChatsScreen received new message:', messageData);
+      
       // Update conversations list with new message
       setConversations(prevConversations => {
         return prevConversations.map(conversation => {
           if (conversation.match.id === messageData.match_id) {
+            const newUnreadCount = messageData.is_sent_by_me 
+              ? conversation.unread_count 
+              : (conversation.unread_count || 0) + 1;
+            
+            console.log(`📱 Updated unread count for match ${messageData.match_id}: ${newUnreadCount}`);
+            
             return {
               ...conversation,
               last_message: messageData,
               last_message_at: messageData.sent_at,
-              unread_count: messageData.is_from_current_user 
-                ? conversation.unread_count 
-                : (conversation.unread_count || 0) + 1
+              unread_count: newUnreadCount
             };
           }
           return conversation;
@@ -95,7 +117,23 @@ const ChatsScreen = ({ navigation }) => {
       });
     };
 
+    const handleAllMessagesRead = (matchId) => {
+      // Reset unread count to 0 when all messages are marked as read
+      setConversations(prevConversations => {
+        return prevConversations.map(conversation => {
+          if (conversation.match.id === matchId) {
+            return {
+              ...conversation,
+              unread_count: 0
+            };
+          }
+          return conversation;
+        });
+      });
+    };
+
     // Setup socket listeners
+    console.log('🔌 Setting up socket listeners in ChatsScreen');
     chatService.chatService.setupSocketListeners(socket, {
       onNewMessage: handleNewMessage,
       onMessageRead: handleMessageRead

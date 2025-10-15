@@ -100,7 +100,7 @@ class ChatService {
       this.messageCache.set(matchId, cachedMessages);
 
       // Update unread count if not from current user
-      if (!messageData.is_from_current_user) {
+      if (!messageData.is_sent_by_me) {
         const currentCount = this.unreadCounts.get(matchId) || 0;
         this.unreadCounts.set(matchId, currentCount + 1);
       }

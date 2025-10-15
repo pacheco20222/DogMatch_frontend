@@ -1,4 +1,4 @@
-export const BASE_URL = "http://localhost:5000";
+export const BASE_URL = "http://192.168.1.69:5002";
 
 export async function apiFetch(path, { method = "GET", token, body} = {}) {
     const headers = { "Content-Type": "application/json" };

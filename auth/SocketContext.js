@@ -23,7 +23,7 @@ export const SocketProvider = ({ children }) => {
   const maxReconnectAttempts = 5;
 
   // Backend URL - use local URL for development
-  const SOCKET_URL = 'http://localhost:5000';
+  const SOCKET_URL = 'http://192.168.1.69:5002';
 
   useEffect(() => {
     console.log('🔌 SocketContext useEffect triggered:', { isAuthenticated, hasAccessToken: !!accessToken });
