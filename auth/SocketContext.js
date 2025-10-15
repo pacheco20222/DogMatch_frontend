@@ -26,9 +26,12 @@ export const SocketProvider = ({ children }) => {
   const SOCKET_URL = 'https://dogmatch-backend.onrender.com';
 
   useEffect(() => {
+    console.log('🔌 SocketContext useEffect triggered:', { isAuthenticated, hasAccessToken: !!accessToken });
     if (isAuthenticated && accessToken) {
+      console.log('🔌 Attempting to connect socket...');
       connectSocket();
     } else {
+      console.log('🔌 Disconnecting socket (not authenticated or no token)');
       disconnectSocket();
     }
 

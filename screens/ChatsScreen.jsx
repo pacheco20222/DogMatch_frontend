@@ -21,7 +21,7 @@ import Animated from 'react-native-reanimated';
 
 const ChatsScreen = ({ navigation }) => {
   const { accessToken } = useAuth();
-  const { socket, isConnected } = useSocket();
+  const { socket, isConnected, connectionError, reconnect } = useSocket();
   const chatService = useChatService();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -289,18 +289,6 @@ const ChatsScreen = ({ navigation }) => {
               <Text style={styles.connectionText}>Offline</Text>
             </View>
           )}
-          {/* Debug button - remove after testing */}
-        <TouchableOpacity 
-          style={styles.debugButton}
-          onPress={() => {
-            console.log('🔌 Manual connection test');
-            console.log('🔌 Socket state:', socket ? 'Present' : 'Missing');
-            console.log('🔌 Is connected:', isConnected);
-            console.log('🔌 Connection error:', connectionError || 'None');
-          }}
-        >
-            <Text style={styles.debugButtonText}>🔍</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -348,17 +336,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  debugButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  debugButtonText: {
-    fontSize: 16,
   },
   headerTitle: {
     fontSize: 28,
