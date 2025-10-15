@@ -42,6 +42,9 @@ export const SocketProvider = ({ children }) => {
       return; // Already connected
     }
 
+    console.log('🔌 Attempting to connect to Socket.IO server:', SOCKET_URL);
+    console.log('🔌 Using access token:', accessToken ? 'Present' : 'Missing');
+
     try {
       // Create socket connection with JWT token
       const newSocket = io(SOCKET_URL, {
@@ -76,6 +79,12 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on('connect_error', (error) => {
         console.error('🔌 Socket connection error:', error);
+        console.error('🔌 Error details:', {
+          message: error.message,
+          description: error.description,
+          context: error.context,
+          type: error.type
+        });
         setConnectionError(error.message);
         setIsConnected(false);
         

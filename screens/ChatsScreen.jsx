@@ -282,12 +282,26 @@ const ChatsScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Chats</Text>
-        {!isConnected && (
-          <View style={styles.connectionStatus}>
-            <View style={styles.offlineDot} />
-            <Text style={styles.connectionText}>Offline</Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          {!isConnected && (
+            <View style={styles.connectionStatus}>
+              <View style={styles.offlineDot} />
+              <Text style={styles.connectionText}>Offline</Text>
+            </View>
+          )}
+          {/* Debug button - remove after testing */}
+          <TouchableOpacity 
+            style={styles.debugButton}
+            onPress={() => {
+              console.log('🔌 Manual connection test');
+              console.log('🔌 Socket state:', socket ? 'Present' : 'Missing');
+              console.log('🔌 Is connected:', isConnected);
+              console.log('🔌 Connection error:', connectionError);
+            }}
+          >
+            <Text style={styles.debugButtonText}>🔍</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Content */}
@@ -329,6 +343,22 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  debugButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    fontSize: 16,
   },
   headerTitle: {
     fontSize: 28,
