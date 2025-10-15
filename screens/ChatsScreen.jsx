@@ -65,7 +65,7 @@ const ChatsScreen = ({ navigation }) => {
       // Update conversations list with new message
       setConversations(prevConversations => {
         return prevConversations.map(conversation => {
-          if (conversation.match_id === messageData.match_id) {
+          if (conversation.match.id === messageData.match_id) {
             return {
               ...conversation,
               last_message: messageData,
@@ -84,7 +84,7 @@ const ChatsScreen = ({ navigation }) => {
       // Update read status for messages
       setConversations(prevConversations => {
         return prevConversations.map(conversation => {
-          if (conversation.match_id === readData.match_id) {
+          if (conversation.match.id === readData.match_id) {
             return {
               ...conversation,
               unread_count: 0 // Reset unread count when messages are read
@@ -115,9 +115,9 @@ const ChatsScreen = ({ navigation }) => {
   // Handle conversation tap
   const handleConversationPress = (conversation) => {
     navigation.navigate('ChatConversation', {
-      matchId: conversation.match_id,
-      otherUser: conversation.other_user,
-      otherDog: conversation.other_dog,
+      matchId: conversation.match.id,
+      otherUser: conversation.match.other_dog?.owner,
+      otherDog: conversation.match.other_dog,
       match: conversation.match
     });
   };
@@ -174,7 +174,7 @@ const ChatsScreen = ({ navigation }) => {
         <View style={styles.avatarContainer}>
           <Image
             source={{
-              uri: conversation.other_user?.profile_photo_url || 
+              uri: conversation.match.other_dog?.owner?.profile_photo_url || 
                    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
             }}
             style={styles.avatar}
@@ -193,10 +193,10 @@ const ChatsScreen = ({ navigation }) => {
         <View style={styles.conversationInfo}>
           <View style={styles.conversationHeader}>
             <Text style={styles.userName} numberOfLines={1}>
-              {conversation.other_user?.first_name} {conversation.other_user?.last_name}
+              {conversation.match.other_dog?.owner?.full_name || 'Unknown User'}
             </Text>
             <Text style={styles.timestamp}>
-              {formatTimestamp(conversation.last_message_at)}
+              {formatTimestamp(conversation.updated_at)}
             </Text>
           </View>
           
@@ -298,7 +298,7 @@ const ChatsScreen = ({ navigation }) => {
       ) : (
         <FlatList
           data={conversations}
-          keyExtractor={(item) => item.match_id.toString()}
+          keyExtractor={(item) => item.match.id.toString()}
           renderItem={renderConversation}
           refreshControl={
             <RefreshControl
