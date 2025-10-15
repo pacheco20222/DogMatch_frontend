@@ -133,7 +133,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
   // Send message
   const handleSendMessage = async () => {
     const text = messageText.trim();
-    if (!text || sending || !isConnected) return;
+    if (!text || sending) return;
 
     setSending(true);
     setMessageText('');
@@ -145,8 +145,29 @@ const ChatConversationScreen = ({ navigation, route }) => {
     }
 
     try {
-      // Send via socket for real-time delivery
-      sendMessage(matchId, text, 'text');
+      if (isConnected) {
+        // Send via socket for real-time delivery
+        sendMessage(matchId, text, 'text');
+      } else {
+        // Fallback to REST API when socket is not connected
+        const response = await apiFetch(`/api/messages/matches/${matchId}/messages`, {
+          method: 'POST',
+          token: accessToken,
+          body: JSON.stringify({
+            content: text,
+            message_type: 'text'
+          })
+        });
+        
+        if (response.success) {
+          // Add the message to the local state
+          setMessages(prevMessages => [...prevMessages, response.data]);
+          scrollToBottom();
+          setSending(false);
+        } else {
+          throw new Error(response.message || 'Failed to send message');
+        }
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       setSending(false);
@@ -193,7 +214,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
 
   // Render message
   const renderMessage = ({ item: message, index }) => {
-    const isFromCurrentUser = message.sender_user_id === user.id;
+    const isFromCurrentUser = message.is_sent_by_me;
     const showAvatar = index === 0 || messages[index - 1]?.sender_user_id !== message.sender_user_id;
     
     return (
@@ -345,19 +366,21 @@ const ChatConversationScreen = ({ navigation, route }) => {
               placeholderTextColor="#9CA3AF"
               multiline
               maxLength={500}
-              editable={isConnected && !sending}
+              editable={!sending}
+              onSubmitEditing={handleSendMessage}
+              returnKeyType="send"
             />
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                (!messageText.trim() || sending || !isConnected) && styles.sendButtonDisabled
+                (!messageText.trim() || sending) && styles.sendButtonDisabled
               ]}
               onPress={handleSendMessage}
-              disabled={!messageText.trim() || sending || !isConnected}
+              disabled={!messageText.trim() || sending}
             >
               <Text style={[
                 styles.sendButtonText,
-                (!messageText.trim() || sending || !isConnected) && styles.sendButtonTextDisabled
+                (!messageText.trim() || sending) && styles.sendButtonTextDisabled
               ]}>
                 {sending ? '⏳' : '➤'}
               </Text>
