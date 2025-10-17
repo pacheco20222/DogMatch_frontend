@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
-  Text, 
   FlatList, 
-  TouchableOpacity, 
-  Image, 
   StyleSheet,
   Alert,
   RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { 
+  Text, 
+  Surface, 
+  Card, 
+  Avatar, 
+  Chip, 
+  IconButton, 
+  ActivityIndicator,
+  Snackbar,
+  Portal
+} from 'react-native-paper';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,48 +27,51 @@ import Animated, {
   SlideInUp,
   Layout,
 } from 'react-native-reanimated';
-import { useAuth } from '../auth/AuthContext';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedCard from '../components/AnimatedCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../hooks/useAuth';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchMatches } from '../store/slices/matchesSlice';
+import EmptyState from '../components/ui/EmptyState';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const MatchesScreen = ({ navigation }) => {
-  const { user, accessToken } = useAuth();
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const dispatch = useAppDispatch();
+  const { matches, loading, error } = useAppSelector(state => state.matches);
   const [refreshing, setRefreshing] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
   const cardsOpacity = useSharedValue(0);
 
   // Fetch user's matches
-  const fetchMatches = useCallback(async (isRefresh = false) => {
+  const loadMatches = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
-      } else {
-        setLoading(true);
       }
-      const response = await apiFetch('/api/matches?status=matched', { token: accessToken });
-      setMatches(response.matches || []);
+      await dispatch(fetchMatches({ status: 'matched' }));
     } catch (error) {
       console.error('Error fetching matches:', error);
       Alert.alert('Error', 'Failed to load matches. Please try again.');
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  }, [accessToken]);
+  }, [dispatch]);
 
   useEffect(() => {
-    fetchMatches();
+    loadMatches();
     // Animate header and cards
     headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
     cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
-  }, [fetchMatches]);
+  }, [loadMatches]);
+
+  // Show error snackbar when error occurs
+  useEffect(() => {
+    if (error) {
+      setSnackbarVisible(true);
+    }
+  }, [error]);
 
   const handleChatPress = (match) => {
     // Navigate to chat conversation
@@ -81,14 +92,15 @@ const MatchesScreen = ({ navigation }) => {
         entering={FadeIn.delay(index * 100).duration(600)}
         layout={Layout.springify()}
       >
-        <AnimatedCard
-          variant="elevated"
+        <Card
+          mode="elevated"
           style={styles.matchCard}
           onPress={() => handleChatPress(item)}
         >
-          <View style={styles.matchContent}>
-            <View style={styles.imageContainer}>
-              <Image
+          <Card.Content style={styles.matchContent}>
+            <View style={styles.matchHeader}>
+              <Avatar.Image
+                size={60}
                 source={{ 
                   uri: otherDog.photos && otherDog.photos.length > 0 
                     ? (otherDog.photos[0].url.startsWith('http')
@@ -96,34 +108,41 @@ const MatchesScreen = ({ navigation }) => {
                         : `https://dogmatch-backend.onrender.com${otherDog.photos[0].url}`)
                     : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop&crop=face'
                 }}
-                style={styles.matchImage}
-                onError={() => {
-                  console.log('Image failed to load for match:', otherDog.name);
-                }}
+                style={styles.matchAvatar}
               />
               <View style={styles.onlineIndicator} />
-            </View>
-            
-            <View style={styles.matchInfo}>
-              <Text style={styles.matchName}>{otherDog.name}</Text>
-              <Text style={styles.ownerName}>
-                {otherOwner.first_name} {otherOwner.last_name}
-              </Text>
-              <Text style={styles.matchDate}>
-                Matched {new Date(item.matched_at).toLocaleDateString()}
-              </Text>
-            </View>
+              
+              <View style={styles.matchInfo}>
+                <Text variant="titleMedium" style={styles.matchName}>
+                  {otherDog.name}
+                </Text>
+                <Text variant="bodyMedium" style={styles.ownerName}>
+                  {otherOwner.first_name} {otherOwner.last_name}
+                </Text>
+                <Text variant="bodySmall" style={styles.matchDate}>
+                  Matched {new Date(item.matched_at).toLocaleDateString()}
+                </Text>
+              </View>
 
-            <View style={styles.matchActions}>
-              <View style={styles.matchBadge}>
-                <Text style={styles.matchBadgeText}>💕</Text>
-              </View>
-              <View style={styles.chatIndicator}>
-                <Text style={styles.chatIcon}>💬</Text>
+              <View style={styles.matchActions}>
+                <Chip 
+                  icon="heart" 
+                  mode="flat" 
+                  compact
+                  style={styles.matchChip}
+                >
+                  Match
+                </Chip>
+                <IconButton
+                  icon="message"
+                  size={20}
+                  onPress={() => handleChatPress(item)}
+                  style={styles.chatButton}
+                />
               </View>
             </View>
-          </View>
-        </AnimatedCard>
+          </Card.Content>
+        </Card>
       </Animated.View>
     );
   };
@@ -138,46 +157,37 @@ const MatchesScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" text="Loading your matches..." />
+          <ActivityIndicator size="large" />
+          <Text variant="bodyLarge" style={styles.loadingText}>
+            Loading your matches...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Modern Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
+      <Surface style={[styles.header, headerAnimatedStyle]} elevation={2}>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>Your Matches</Text>
-          <Text style={styles.subtitle}>
+          <Text variant="headlineMedium" style={styles.title}>Your Matches</Text>
+          <Text variant="bodyMedium" style={styles.subtitle}>
             {matches.length} {matches.length === 1 ? 'match' : 'matches'}
           </Text>
         </View>
-      </Animated.View>
+      </Surface>
 
       {matches.length === 0 ? (
-        <Animated.View style={styles.emptyContainer} entering={FadeIn.duration(800)}>
-          <AnimatedCard variant="outlined" style={styles.emptyCard}>
-            <View style={styles.emptyContent}>
-              <View style={styles.emptyIcon}>
-                <Text style={styles.emptyEmoji}>💕</Text>
-              </View>
-              <Text style={styles.emptyTitle}>No matches yet!</Text>
-              <Text style={styles.emptySubtitle}>
-                Start swiping in the Discover tab to find your dog's perfect playmate.
-              </Text>
-              <AnimatedButton
-                title="Start Discovering"
-                onPress={() => navigation.navigate('Discover')}
-                size="large"
-                style={styles.discoverButton}
-              />
-            </View>
-          </AnimatedCard>
-        </Animated.View>
+        <EmptyState
+          icon="heart"
+          title="No matches yet!"
+          subtitle="Start swiping in the Discover tab to find your dog's perfect playmate."
+          actionText="Start Discovering"
+          onActionPress={() => navigation.navigate('Discover')}
+        />
       ) : (
         <Animated.View style={[styles.matchesContainer, cardsAnimatedStyle]}>
           <FlatList
@@ -189,7 +199,7 @@ const MatchesScreen = ({ navigation }) => {
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-                onRefresh={() => fetchMatches(true)}
+                onRefresh={() => loadMatches(true)}
                 colors={[Colors.primary[500]]}
                 tintColor={Colors.primary[500]}
               />
@@ -197,6 +207,23 @@ const MatchesScreen = ({ navigation }) => {
           />
         </Animated.View>
       )}
+
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={4000}
+          action={{
+            label: 'Retry',
+            onPress: () => {
+              setSnackbarVisible(false);
+              loadMatches();
+            },
+          }}
+        >
+          {error || 'Failed to load matches'}
+        </Snackbar>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -211,6 +238,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  
+  loadingText: {
+    marginTop: Spacing.md,
+    color: Colors.text.secondary,
   },
   
   header: {
@@ -302,19 +334,16 @@ const styles = StyleSheet.create({
   },
   
   matchContent: {
+    padding: Spacing.md,
+  },
+  
+  matchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   
-  imageContainer: {
-    position: 'relative',
-    marginRight: Spacing.lg,
-  },
-  
-  matchImage: {
-    width: 70,
-    height: 70,
-    borderRadius: BorderRadius.full,
+  matchAvatar: {
+    marginRight: Spacing.md,
   },
   
   onlineIndicator: {
@@ -353,34 +382,17 @@ const styles = StyleSheet.create({
   },
   
   matchActions: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.sm,
   },
   
-  matchBadge: {
-    width: 50,
-    height: 50,
-    borderRadius: BorderRadius.full,
+  matchChip: {
     backgroundColor: Colors.primary[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
   },
   
-  matchBadgeText: {
-    fontSize: Typography.fontSize.xl,
-  },
-  
-  chatIndicator: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.secondary[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  chatIcon: {
-    fontSize: Typography.fontSize.lg,
+  chatButton: {
+    margin: 0,
   },
 });
 

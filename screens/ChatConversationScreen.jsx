@@ -15,10 +15,13 @@ import {
   Dimensions
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../auth/AuthContext';
-import { useSocket } from '../auth/SocketContext';
-import { apiFetch } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
+import { useSocket } from '../hooks/useSocket';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchMessages, sendMessage, markMessageAsRead } from '../store/slices/chatsSlice';
 import { useChatService } from '../services/chatService';
+import { apiFetch } from '../api/client';
+import { store } from '../store';
 import { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 
@@ -26,16 +29,16 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const ChatConversationScreen = ({ navigation, route }) => {
   const { matchId, otherUser, otherDog, match } = route.params;
-  const { accessToken, user } = useAuth();
-  const { socket, isConnected, joinMatch, leaveMatch, sendMessage, sendTypingIndicator } = useSocket();
+  const { user } = useAuth();
+  const { isConnected, joinMatch, leaveMatch, sendMessage: sendSocketMessage, sendTypingIndicator } = useSocket();
   const chatService = useChatService();
+  const dispatch = useAppDispatch();
+  const { messages: reduxMessages, loading, error } = useAppSelector(state => state.chats);
   
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const messages = reduxMessages[matchId] || [];
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [typingUsers, setTypingUsers] = useState([]);
-  const [error, setError] = useState(null);
   
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -46,102 +49,42 @@ const ChatConversationScreen = ({ navigation, route }) => {
     useCallback(() => {
       loadMessages();
       
-      // Join match room for real-time updates
-      if (isConnected) {
-        joinMatch(matchId);
-      }
-      
       // Mark all messages as read when entering the chat
       markAllMessagesAsRead();
       
       return () => {
         // Mark all messages as read before leaving
         markAllMessagesAsRead();
-        
-        // Leave match room when screen is unfocused
-        if (isConnected) {
-          leaveMatch(matchId);
-        }
       };
-    }, [matchId, isConnected, joinMatch, leaveMatch])
+    }, [matchId])
   );
 
-  // Setup socket listeners
+  // Handle socket connection changes
   useEffect(() => {
-    if (!socket || !isConnected) return;
-
-    const handleNewMessage = (messageData) => {
-      if (messageData.match_id === matchId) {
-        setMessages(prev => [...prev, messageData]);
-        scrollToBottom();
-        
-        // Mark message as read immediately if it's from another user and we're viewing the chat
-        if (!messageData.is_sent_by_me && !messageData.is_read) {
-          // Mark as read immediately since user is actively viewing the chat
-          markMessageAsRead(messageData.id);
-        }
-      }
-    };
-
-    const handleUserTyping = (typingData) => {
-      if (typingData.match_id === matchId && typingData.user_id !== user.id) {
-        if (typingData.is_typing) {
-          setTypingUsers(prev => {
-            if (!prev.includes(typingData.user_id)) {
-              return [...prev, typingData.user_id];
-            }
-            return prev;
-          });
-        } else {
-          setTypingUsers(prev => prev.filter(id => id !== typingData.user_id));
-        }
-      }
-    };
-
-    const handleMessageSent = (data) => {
-      setSending(false);
-    };
-
-    const handleError = (errorData) => {
-      setSending(false);
-      Alert.alert('Error', errorData.message || 'An error occurred');
-    };
-
-    // Setup socket listeners
-    chatService.chatService.setupSocketListeners(socket, {
-      onNewMessage: handleNewMessage,
-      onUserTyping: handleUserTyping,
-      onMessageSent: handleMessageSent,
-      onError: handleError
-    });
-
+    if (isConnected) {
+      console.log('🔌 ChatConversationScreen: Socket connected, joining match room', matchId);
+      joinMatch(matchId);
+    }
+    
     return () => {
-      // Cleanup
+      // Leave match room when component unmounts
+      if (isConnected) {
+        console.log('🔌 ChatConversationScreen: Component unmounting, leaving match room', matchId);
+        leaveMatch(matchId);
+      }
     };
-  }, [socket, isConnected, matchId, user.id]);
+  }, [isConnected, matchId]); // Remove joinMatch and leaveMatch from dependencies
+
+  // Socket listeners are now handled by Redux middleware
+  // Real-time updates are managed through Redux state
 
   // Load messages from API
   const loadMessages = async () => {
     try {
-      setError(null);
-      const response = await apiFetch(`/api/messages/matches/${matchId}/messages`, {
-        token: accessToken
-      });
-      
-      if (response.success) {
-        setMessages(response.messages || []);
-        scrollToBottom();
-        
-        // Mark messages as read when loading (backend does this automatically)
-        // This ensures messages are marked as read when entering the chat
-      } else {
-        setError(response.message || 'Failed to load messages');
-      }
+      await dispatch(fetchMessages(matchId));
+      scrollToBottom();
     } catch (error) {
       console.error('Error loading messages:', error);
-      setError('Failed to load messages');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -150,29 +93,30 @@ const ChatConversationScreen = ({ navigation, route }) => {
     try {
       console.log('📖 Marking all messages as read for match', matchId);
       
-      // Use the backend's built-in functionality to mark all messages as read
-      // by making a request to load messages with mark_as_read=true (default)
-      const response = await apiFetch(`/api/messages/matches/${matchId}/messages?mark_as_read=true`, {
-        token: accessToken
-      });
+      // Get current messages and mark unread ones as read
+      const currentMessages = messages.filter(msg => 
+        !msg.is_sent_by_me && !msg.is_read
+      );
       
-      if (response.success) {
-        console.log('✅ All messages marked as read for match', matchId);
-      } else {
-        console.log('❌ Failed to mark messages as read:', response.message);
+      // Mark each unread message as read
+      for (const message of currentMessages) {
+        try {
+          await dispatch(markMessageAsRead(message.id));
+        } catch (error) {
+          console.error('Error marking message as read:', error);
+        }
       }
+      
+      console.log('✅ All messages marked as read for match', matchId);
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
   };
 
   // Mark a single message as read
-  const markMessageAsRead = async (messageId) => {
+  const markSingleMessageAsRead = async (messageId) => {
     try {
-      await apiFetch(`/api/messages/${messageId}/read`, {
-        method: 'POST',
-        token: accessToken
-      });
+      await dispatch(markMessageAsRead(messageId));
       
       // Update local state to reflect the read status
       setMessages(prev => prev.map(msg => 
@@ -200,25 +144,23 @@ const ChatConversationScreen = ({ navigation, route }) => {
     try {
       if (isConnected) {
         // Send via socket for real-time delivery
-        sendMessage(matchId, text, 'text');
+        sendSocketMessage(matchId, text, 'text');
+        setSending(false); // Reset sending state for socket messages
       } else {
         // Fallback to REST API when socket is not connected
-        const response = await apiFetch(`/api/messages/matches/${matchId}/messages`, {
-          method: 'POST',
-          token: accessToken,
-          body: JSON.stringify({
+        const response = await dispatch(sendMessage({
+          matchId,
+          messageData: {
             content: text,
             message_type: 'text'
-          })
-        });
+          }
+        }));
         
-        if (response.success) {
-          // Add the message to the local state
-          setMessages(prevMessages => [...prevMessages, response.data]);
+        if (response.payload?.success) {
           scrollToBottom();
-          setSending(false);
+          setSending(false); // Reset sending state for API messages
         } else {
-          throw new Error(response.message || 'Failed to send message');
+          throw new Error(response.payload?.message || 'Failed to send message');
         }
       }
     } catch (error) {
@@ -380,7 +322,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         {renderHeader()}
         <View style={styles.loadingContainer}>
@@ -391,7 +333,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {renderHeader()}

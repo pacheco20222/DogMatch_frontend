@@ -1,13 +1,12 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { 
   View, 
-  Text, 
   ScrollView, 
-  TouchableOpacity, 
   StyleSheet,
   RefreshControl
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text, Surface, FAB, Chip, Avatar } from 'react-native-paper';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,51 +15,49 @@ import Animated, {
   FadeIn,
   SlideInUp,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getUserTypeDisplayName, getUserTypeColor } from '../utils/permissions';
-import { apiFetch } from '../api/client';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchMatches } from '../store/slices/matchesSlice';
+import { fetchMyDogs } from '../store/slices/dogsSlice';
+import { fetchEvents } from '../store/slices/eventsSlice';
+import { selectDashboardStats } from '../store/selectors';
 import AnimatedButton from '../components/AnimatedButton';
-import AnimatedCard from '../components/AnimatedCard';
+import StatCard from '../components/ui/StatCard';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const HomeScreen = ({ navigation }) => {
-  const { user, accessToken } = useContext(AuthContext);
-  const [stats, setStats] = useState({
-    matches: 0,
-    dogs: 0,
-    events: 0
-  });
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const dispatch = useAppDispatch();
+  const stats = useAppSelector(selectDashboardStats);
+  const { loading: matchesLoading } = useAppSelector(state => state.matches);
+  const { loading: dogsLoading } = useAppSelector(state => state.dogs);
+  const { loading: eventsLoading } = useAppSelector(state => state.events);
+  const insets = useSafeAreaInsets();
+  
   const [refreshing, setRefreshing] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
   const cardsOpacity = useSharedValue(0);
 
+  const loading = matchesLoading || dogsLoading || eventsLoading;
+
   const fetchStats = async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
-      } else {
-        setLoading(true);
       }
 
-      // Fetch user's stats
-      const [matchesResponse, dogsResponse, eventsResponse] = await Promise.all([
-        apiFetch('/api/matches?status=matched', { token: accessToken }).catch(() => ({ matches: [] })),
-        apiFetch('/api/dogs/my-dogs', { token: accessToken }).catch(() => ({ dogs: [] })),
-        apiFetch('/api/events', { token: accessToken }).catch(() => ({ events: [] }))
+      // Fetch user's stats using Redux async thunks
+      await Promise.all([
+        dispatch(fetchMatches({ status: 'matched' })),
+        dispatch(fetchMyDogs()),
+        dispatch(fetchEvents())
       ]);
-
-      setStats({
-        matches: matchesResponse.matches?.length || 0,
-        dogs: dogsResponse.dogs?.length || 0,
-        events: eventsResponse.events?.length || 0
-      });
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
@@ -91,7 +88,7 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + Spacing.xl }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -105,52 +102,51 @@ const HomeScreen = ({ navigation }) => {
         {/* Welcome Header */}
         <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
           <View style={styles.welcomeSection}>
-            <Text style={styles.greeting}>{getGreeting()}!</Text>
-            <Text style={styles.userName}>
+            <Text variant="displaySmall" style={styles.greeting}>{getGreeting()}!</Text>
+            <Text variant="headlineMedium" style={styles.userName}>
               {user?.first_name || user?.username || 'User'}
             </Text>
-            <View style={[styles.roleBadge, { backgroundColor: getUserTypeColor(user?.user_type) }]}>
-              <Text style={styles.roleText}>
-                {getUserTypeDisplayName(user?.user_type)}
-              </Text>
-            </View>
+            <Chip 
+              style={[styles.roleBadge, { backgroundColor: getUserTypeColor(user?.user_type) }]}
+              textStyle={styles.roleText}
+            >
+              {getUserTypeDisplayName(user?.user_type)}
+            </Chip>
           </View>
         </Animated.View>
 
         {/* Stats Cards */}
         <Animated.View style={[styles.statsContainer, cardsAnimatedStyle]} entering={FadeIn.delay(200).duration(600)}>
-          <Text style={styles.sectionTitle}>Your Activity</Text>
+          <Text variant="headlineSmall" style={styles.sectionTitle}>Your Activity</Text>
           <View style={styles.statsGrid}>
-            <AnimatedCard variant="elevated" style={styles.statCard}>
-              <View style={styles.statContent}>
-                <Text style={styles.statNumber}>{stats.matches}</Text>
-                <Text style={styles.statLabel}>Matches</Text>
-                <Text style={styles.statIcon}>💕</Text>
-              </View>
-            </AnimatedCard>
-
-            <AnimatedCard variant="elevated" style={styles.statCard}>
-              <View style={styles.statContent}>
-                <Text style={styles.statNumber}>{stats.dogs}</Text>
-                <Text style={styles.statLabel}>Dogs</Text>
-                <Text style={styles.statIcon}>🐕</Text>
-              </View>
-            </AnimatedCard>
-
-            <AnimatedCard variant="elevated" style={styles.statCard}>
-              <View style={styles.statContent}>
-                <Text style={styles.statNumber}>{stats.events}</Text>
-                <Text style={styles.statLabel}>Events</Text>
-                <Text style={styles.statIcon}>📅</Text>
-              </View>
-            </AnimatedCard>
+            <StatCard
+              title="Matches"
+              value={stats.matches}
+              icon="heart"
+              color="primary"
+              onPress={() => navigation.navigate('Matches')}
+            />
+            <StatCard
+              title="Dogs"
+              value={stats.dogs}
+              icon="dog"
+              color="secondary"
+              onPress={() => navigation.navigate('MyDogs')}
+            />
+            <StatCard
+              title="Events"
+              value={stats.events}
+              icon="calendar"
+              color="success"
+              onPress={() => navigation.navigate('Events')}
+            />
           </View>
         </Animated.View>
 
         {/* Quick Actions */}
         <Animated.View style={[styles.actionsContainer, cardsAnimatedStyle]} entering={FadeIn.delay(400).duration(600)}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <AnimatedCard variant="outlined" style={styles.actionsCard}>
+          <Text variant="headlineSmall" style={styles.sectionTitle}>Quick Actions</Text>
+          <Surface style={styles.actionsCard} elevation={2}>
             <AnimatedButton
               title="Add New Dog"
               onPress={() => navigation.navigate('AddDog')}
@@ -173,23 +169,23 @@ const HomeScreen = ({ navigation }) => {
               size="large"
               style={styles.actionButton}
             />
-          </AnimatedCard>
+          </Surface>
         </Animated.View>
 
         {/* Recent Activity */}
         <Animated.View style={[styles.activityContainer, cardsAnimatedStyle]} entering={FadeIn.delay(600).duration(600)}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <AnimatedCard variant="flat" style={styles.activityCard}>
+          <Text variant="headlineSmall" style={styles.sectionTitle}>Recent Activity</Text>
+          <Surface style={styles.activityCard} elevation={1}>
             <View style={styles.activityItem}>
-              <Text style={styles.activityIcon}>🎉</Text>
+              <Avatar.Icon icon="party-popper" size={40} style={styles.activityIcon} />
               <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Welcome to DogMatch!</Text>
-                <Text style={styles.activityDescription}>
+                <Text variant="titleMedium" style={styles.activityTitle}>Welcome to DogMatch!</Text>
+                <Text variant="bodyMedium" style={styles.activityDescription}>
                   Start by adding your first dog profile to begin matching.
                 </Text>
               </View>
             </View>
-          </AnimatedCard>
+          </Surface>
         </Animated.View>
       </ScrollView>
     </SafeAreaView>

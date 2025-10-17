@@ -1,9 +1,7 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
-  Text, 
   ScrollView, 
-  TouchableOpacity, 
   Image, 
   Alert,
   StyleSheet,
@@ -11,6 +9,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import {
+  Text,
+  Card,
+  Surface,
+  FAB,
+  Chip,
+  Menu,
+  IconButton,
+  Button,
+  Avatar,
+  ActivityIndicator,
+  Snackbar,
+  Portal,
+} from 'react-native-paper';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,44 +32,39 @@ import Animated, {
   SlideInUp,
   Layout,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedCard from '../components/AnimatedCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchMyDogs, deleteDog, clearError } from '../store/slices/dogsSlice';
+import { useAuth } from '../hooks/useAuth';
+import EmptyState from '../components/ui/EmptyState';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const MyDogsScreen = ({ navigation }) => {
-  const { user, accessToken } = useContext(AuthContext);
-  const [dogs, setDogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const { myDogs, loading, error } = useAppSelector(state => state.dogs);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [menuVisible, setMenuVisible] = useState({});
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
   const cardsOpacity = useSharedValue(0);
 
-  const fetchMyDogs = async (isRefresh = false) => {
+  const loadDogs = async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
-      } else {
-        setLoading(true);
       }
-      setError('');
-      const data = await apiFetch('/api/dogs/my-dogs', { token: accessToken });
-      setDogs(data.dogs || []);
+      await dispatch(fetchMyDogs()).unwrap();
     } catch (e) {
-      setError(e.message || 'Failed to load dogs');
+      setSnackbarVisible(true);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchMyDogs();
+    loadDogs();
     // Animate header and cards
     headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
     cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
@@ -66,9 +73,16 @@ const MyDogsScreen = ({ navigation }) => {
   // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      fetchMyDogs();
+      loadDogs();
     }, [])
   );
+
+  // Clear error when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
 
   const handleDeleteDog = (dogId, dogName) => {
     Alert.alert(
@@ -81,11 +95,7 @@ const MyDogsScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await apiFetch(`/api/dogs/${dogId}`, {
-                method: 'DELETE',
-                token: accessToken
-              });
-              fetchMyDogs();
+              await dispatch(deleteDog(dogId)).unwrap();
               Alert.alert('Success', 'Dog deleted successfully');
             } catch (e) {
               Alert.alert('Error', e.message || 'Failed to delete dog');
@@ -101,80 +111,154 @@ const MyDogsScreen = ({ navigation }) => {
     Alert.alert('Coming Soon', 'Edit dog functionality will be added soon!');
   };
 
+  const toggleMenu = (dogId) => {
+    setMenuVisible(prev => ({
+      ...prev,
+      [dogId]: !prev[dogId]
+    }));
+  };
+
+  const closeMenu = (dogId) => {
+    setMenuVisible(prev => ({
+      ...prev,
+      [dogId]: false
+    }));
+  };
+
   const renderDogCard = (dog, index) => (
     <Animated.View
       key={dog.id}
       entering={FadeIn.delay(index * 100).duration(600)}
       layout={Layout.springify()}
     >
-      <AnimatedCard
-        variant="elevated"
-        style={styles.dogCard}
-        onPress={() => handleEditDog(dog)}
-      >
-        <View style={styles.cardContent}>
-          {/* Dog Photo */}
-          <View style={styles.photoContainer}>
-            {dog.primary_photo_url ? (
-              <Image
-                source={{ 
-                  uri: dog.primary_photo_url.startsWith('http') 
-                    ? dog.primary_photo_url 
-                    : `https://dogmatch-backend.onrender.com${dog.primary_photo_url}`
-                }}
-                style={styles.dogPhoto}
-                onError={() => {
-                  console.log('Image failed to load:', dog.primary_photo_url);
-                }}
-              />
-            ) : (
-              <View style={styles.placeholderPhoto}>
-                <Text style={styles.placeholderEmoji}>🐕</Text>
-              </View>
-            )}
-          </View>
+      <Card mode="elevated" style={styles.dogCard}>
+        <Card.Content style={styles.cardContent}>
+          {/* Dog Photo and Basic Info */}
+          <View style={styles.dogHeader}>
+            <View style={styles.photoContainer}>
+              {dog.primary_photo_url ? (
+                <Avatar.Image
+                  size={80}
+                  source={{ 
+                    uri: dog.primary_photo_url.startsWith('http') 
+                      ? dog.primary_photo_url 
+                      : `https://dogmatch-backend.onrender.com${dog.primary_photo_url}`
+                  }}
+                  style={styles.dogPhoto}
+                />
+              ) : (
+                <Avatar.Icon
+                  size={80}
+                  icon="dog"
+                  style={styles.placeholderPhoto}
+                />
+              )}
+            </View>
 
-          {/* Dog Info */}
-          <View style={styles.dogInfo}>
-            <View style={styles.nameContainer}>
-              <Text style={styles.dogName}>{dog.name}</Text>
-              <View style={styles.ageBadge}>
-                <Text style={styles.ageText}>{dog.age_string}</Text>
+            <View style={styles.dogInfo}>
+              <View style={styles.nameContainer}>
+                <Text variant="titleLarge" style={styles.dogName}>
+                  {dog.name}
+                </Text>
+                <Chip 
+                  mode="outlined" 
+                  compact 
+                  style={styles.ageChip}
+                  textStyle={styles.ageChipText}
+                >
+                  {dog.age_string}
+                </Chip>
+              </View>
+              
+              <Text variant="bodyMedium" style={styles.dogBreed}>
+                {dog.breed}
+              </Text>
+              
+              <View style={styles.detailsRow}>
+                <Chip 
+                  mode="outlined" 
+                  compact 
+                  icon="ruler"
+                  style={styles.detailChip}
+                >
+                  {dog.size}
+                </Chip>
+                <Chip 
+                  mode="outlined" 
+                  compact 
+                  icon="gender-male-female"
+                  style={styles.detailChip}
+                >
+                  {dog.gender}
+                </Chip>
               </View>
             </View>
-            
-            <Text style={styles.dogBreed}>{dog.breed}</Text>
-            <Text style={styles.dogDetails}>
-              {dog.size} • {dog.gender}
-            </Text>
-            
-            {dog.description && (
-              <Text style={styles.dogDescription} numberOfLines={2}>
-                {dog.description}
-              </Text>
-            )}
+
+            {/* Menu Button */}
+            <Menu
+              visible={menuVisible[dog.id] || false}
+              onDismiss={() => closeMenu(dog.id)}
+              anchor={
+                <IconButton
+                  icon="dots-vertical"
+                  size={20}
+                  onPress={() => toggleMenu(dog.id)}
+                />
+              }
+            >
+              <Menu.Item
+                onPress={() => {
+                  closeMenu(dog.id);
+                  handleEditDog(dog);
+                }}
+                title="Edit"
+                leadingIcon="pencil"
+              />
+              <Menu.Item
+                onPress={() => {
+                  closeMenu(dog.id);
+                  handleDeleteDog(dog.id, dog.name);
+                }}
+                title="Delete"
+                leadingIcon="delete"
+                titleStyle={styles.deleteMenuItem}
+              />
+            </Menu>
           </View>
 
-          {/* Actions */}
-          <View style={styles.actionsContainer}>
-            <AnimatedButton
-              title="Edit"
+          {/* Description */}
+          {dog.description && (
+            <View style={styles.descriptionContainer}>
+              <Text variant="bodyMedium" style={styles.dogDescription} numberOfLines={2}>
+                {dog.description}
+              </Text>
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <Button
+              mode="outlined"
               onPress={() => handleEditDog(dog)}
-              variant="outline"
-              size="small"
+              icon="pencil"
               style={styles.actionButton}
-            />
-            <AnimatedButton
-              title="Delete"
+              compact
+            >
+              Edit
+            </Button>
+            <Button
+              mode="outlined"
               onPress={() => handleDeleteDog(dog.id, dog.name)}
-              variant="outline"
-              size="small"
+              icon="delete"
               style={[styles.actionButton, styles.deleteButton]}
-              textStyle={styles.deleteButtonText}
-            />
+              textColor={Colors.error[600]}
+              compact
+            >
+              Delete
+            </Button>
           </View>
-        </View>
-      </AnimatedCard>
+        </Card.Content>
+      </Card>
     </Animated.View>
   );
 
@@ -186,30 +270,44 @@ const MyDogsScreen = ({ navigation }) => {
     opacity: cardsOpacity.value,
   }));
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" text="Loading your dogs..." />
+          <ActivityIndicator size="large" color={Colors.primary[500]} />
+          <Text variant="bodyLarge" style={styles.loadingText}>
+            Loading your dogs...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Modern Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>My Dogs</Text>
-          <Text style={styles.subtitle}>Manage your dog profiles</Text>
-        </View>
-        <AnimatedButton
-          title="Add Dog"
-          onPress={() => navigation.navigate('AddDog')}
-          size="medium"
-          style={styles.addButton}
-        />
+        <Surface style={styles.headerSurface} elevation={2}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text variant="headlineMedium" style={styles.title}>
+                My Dogs
+              </Text>
+              <Text variant="bodyMedium" style={styles.subtitle}>
+                Manage your dog profiles
+              </Text>
+            </View>
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('AddDog')}
+              icon="plus"
+              style={styles.addButton}
+              compact
+            >
+              Add Dog
+            </Button>
+          </View>
+        </Surface>
       </Animated.View>
 
       <ScrollView
@@ -219,7 +317,7 @@ const MyDogsScreen = ({ navigation }) => {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => fetchMyDogs(true)}
+            onRefresh={() => loadDogs(true)}
             colors={[Colors.primary[500]]}
             tintColor={Colors.primary[500]}
           />
@@ -227,52 +325,62 @@ const MyDogsScreen = ({ navigation }) => {
       >
         {error ? (
           <Animated.View entering={FadeIn.duration(600)}>
-            <AnimatedCard variant="outlined" style={styles.errorCard}>
-              <View style={styles.errorContent}>
-                <Text style={styles.errorEmoji}>😔</Text>
-                <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <AnimatedButton
-                  title="Try Again"
-                  onPress={() => fetchMyDogs()}
-                  variant="outline"
-                  size="medium"
-                  style={styles.retryButton}
-                />
-              </View>
-            </AnimatedCard>
+            <EmptyState
+              icon="alert-circle"
+              title="Oops! Something went wrong"
+              subtitle={error}
+              action={{
+                label: "Try Again",
+                onPress: () => loadDogs()
+              }}
+            />
           </Animated.View>
-        ) : dogs.length === 0 ? (
+        ) : myDogs.length === 0 ? (
           <Animated.View entering={FadeIn.duration(600)}>
-            <AnimatedCard variant="outlined" style={styles.emptyCard}>
-              <View style={styles.emptyContent}>
-                <View style={styles.emptyIcon}>
-                  <Text style={styles.emptyEmoji}>🐕</Text>
-                </View>
-                <Text style={styles.emptyTitle}>No dogs added yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Add your first dog to start connecting with other dog owners!
-                </Text>
-                <AnimatedButton
-                  title="Add Your First Dog"
-                  onPress={() => navigation.navigate('AddDog')}
-                  size="large"
-                  style={styles.firstDogButton}
-                />
-              </View>
-            </AnimatedCard>
+            <EmptyState
+              icon="dog"
+              title="No dogs added yet"
+              subtitle="Add your first dog to start connecting with other dog owners!"
+              action={{
+                label: "Add Your First Dog",
+                onPress: () => navigation.navigate('AddDog')
+              }}
+            />
           </Animated.View>
         ) : (
           <Animated.View style={[styles.dogsContainer, cardsAnimatedStyle]}>
             <View style={styles.dogsHeader}>
-              <Text style={styles.dogsCount}>
-                {dogs.length} dog{dogs.length !== 1 ? 's' : ''}
+              <Text variant="titleMedium" style={styles.dogsCount}>
+                {myDogs.length} dog{myDogs.length !== 1 ? 's' : ''}
               </Text>
             </View>
-            {dogs.map((dog, index) => renderDogCard(dog, index))}
+            {myDogs.map((dog, index) => renderDogCard(dog, index))}
           </Animated.View>
         )}
       </ScrollView>
+
+      {/* FAB for quick add */}
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddDog')}
+        label="Add Dog"
+      />
+
+      {/* Snackbar for errors */}
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={4000}
+          action={{
+            label: 'Dismiss',
+            onPress: () => setSnackbarVisible(false),
+          }}
+        >
+          {error || 'Something went wrong'}
+        </Snackbar>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -287,37 +395,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: Spacing.md,
+  },
+  
+  loadingText: {
+    color: Colors.text.secondary,
   },
   
   header: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
+  },
+  
+  headerSurface: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     backgroundColor: Colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[100],
   },
   
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
   },
   
   title: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
+    marginBottom: -Spacing.xs,
   },
   
   subtitle: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
-    marginTop: -Spacing.xs,
   },
   
   addButton: {
-    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
   },
   
   scrollView: {
@@ -326,6 +438,7 @@ const styles = StyleSheet.create({
   
   scrollContent: {
     padding: Spacing.lg,
+    paddingBottom: 100, // Space for FAB
   },
   
   dogsContainer: {
@@ -337,186 +450,112 @@ const styles = StyleSheet.create({
   },
   
   dogsCount: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
     color: Colors.text.primary,
   },
   
   dogCard: {
     marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.lg,
   },
   
   cardContent: {
+    padding: Spacing.md,
+  },
+  
+  dogHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.md,
   },
   
   photoContainer: {
-    marginRight: Spacing.lg,
+    marginRight: Spacing.md,
   },
   
   dogPhoto: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.neutral[100],
   },
   
   placeholderPhoto: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.neutral[200],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  placeholderEmoji: {
-    fontSize: Typography.fontSize['2xl'],
+    backgroundColor: Colors.primary[100],
   },
   
   dogInfo: {
     flex: 1,
-    marginRight: Spacing.md,
+    marginRight: Spacing.sm,
   },
   
   nameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.xs,
+    gap: Spacing.sm,
   },
   
   dogName: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
-    marginRight: Spacing.sm,
+    flex: 1,
   },
   
-  ageBadge: {
-    backgroundColor: Colors.primary[100],
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
+  ageChip: {
+    backgroundColor: Colors.primary[50],
+    borderColor: Colors.primary[200],
   },
   
-  ageText: {
+  ageChipText: {
+    color: Colors.primary[700],
     fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.primary[600],
   },
   
   dogBreed: {
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.medium,
     color: Colors.text.secondary,
-    marginBottom: Spacing.xs,
-  },
-  
-  dogDetails: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.tertiary,
     marginBottom: Spacing.sm,
   },
   
+  detailsRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+  },
+  
+  detailChip: {
+    backgroundColor: Colors.neutral[50],
+    borderColor: Colors.neutral[200],
+  },
+  
+  descriptionContainer: {
+    marginBottom: Spacing.md,
+  },
+  
   dogDescription: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
     lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
   },
   
-  actionsContainer: {
-    alignItems: 'center',
+  actionButtons: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'flex-end',
   },
   
   actionButton: {
-    marginVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    minWidth: 70,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   
   deleteButton: {
     borderColor: Colors.error[300],
   },
   
-  deleteButtonText: {
+  deleteMenuItem: {
     color: Colors.error[600],
   },
   
-  errorCard: {
-    marginVertical: Spacing.lg,
-  },
-  
-  errorContent: {
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  
-  errorEmoji: {
-    fontSize: Typography.fontSize['4xl'],
-    marginBottom: Spacing.lg,
-  },
-  
-  errorTitle: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  
-  errorText: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-  },
-  
-  retryButton: {
-    paddingHorizontal: Spacing.xl,
-  },
-  
-  emptyCard: {
-    marginVertical: Spacing.lg,
-  },
-  
-  emptyContent: {
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  
-  emptyIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  
-  emptyEmoji: {
-    fontSize: 64,
-  },
-  
-  emptyTitle: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-    textAlign: 'center',
-  },
-  
-  emptySubtitle: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-  },
-  
-  firstDogButton: {
-    paddingHorizontal: Spacing.xl,
+  fab: {
+    position: 'absolute',
+    margin: Spacing.lg,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.primary[500],
   },
 });
 

@@ -1,15 +1,28 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
-  Text, 
   ScrollView, 
-  TouchableOpacity, 
   Image,
   StyleSheet,
   Alert
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Text,
+  Card,
+  Surface,
+  Button,
+  Avatar,
+  Chip,
+  IconButton,
+  ActivityIndicator,
+  Snackbar,
+  Portal,
+  Divider,
+  List,
+} from 'react-native-paper';
+import { Formik } from 'formik';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,15 +31,19 @@ import Animated, {
   FadeIn,
   SlideInUp,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedCard from '../components/AnimatedCard';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { uploadProfilePhoto, clearError } from '../store/slices/userSlice';
+import { useAuth } from '../hooks/useAuth';
+import { updateProfileSchema } from '../validation/profileSchemas';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, logout, accessToken } = useContext(AuthContext);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const dispatch = useAppDispatch();
+  const { user, logout } = useAuth();
+  const { loading, error, uploadProgress } = useAppSelector(state => state.user);
+  const insets = useSafeAreaInsets();
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -37,6 +54,13 @@ const ProfileScreen = ({ navigation }) => {
     headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
     cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
+
+  // Clear error when component unmounts
+  React.useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -88,42 +112,16 @@ const ProfileScreen = ({ navigation }) => {
 
   const uploadProfilePhoto = async (imageAsset) => {
     try {
-      setUploadingPhoto(true);
-
-      // Create form data
-      const formData = new FormData();
-      formData.append('photo', {
+      await dispatch(uploadProfilePhoto({
         uri: imageAsset.uri,
         type: 'image/jpeg',
         name: 'profile_photo.jpg',
-      });
-
-      // Upload to backend
-      const response = await fetch('https://dogmatch-backend.onrender.com/api/s3/upload/user-profile', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const result = await response.json();
+      })).unwrap();
+      
       Alert.alert('Success!', 'Profile photo updated successfully!');
-      
-      // The user object will be updated on next login/refresh
-      // For now, we could trigger a refresh or update the context
-      
     } catch (error) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Upload Failed', error.message || 'Failed to upload photo. Please try again.');
-    } finally {
-      setUploadingPhoto(false);
+      setSnackbarVisible(true);
     }
   };
 
@@ -163,149 +161,203 @@ const ProfileScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Modern Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Profile</Text>
-          <Text style={styles.subtitle}>Manage your account</Text>
-        </View>
-      </Animated.View>
-
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + Spacing.lg }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Modern Header */}
+        <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text variant="headlineMedium" style={styles.title}>
+                Profile
+              </Text>
+              <Text variant="bodyMedium" style={styles.subtitle}>
+                Manage your account
+              </Text>
+            </View>
+            <IconButton
+              icon="pencil"
+              size={24}
+              onPress={() => setEditingProfile(!editingProfile)}
+              style={styles.editButton}
+            />
+          </View>
+        </Animated.View>
+
         {/* Profile Card */}
         <Animated.View entering={FadeIn.delay(200).duration(600)}>
-          <AnimatedCard variant="elevated" style={styles.profileCard}>
-            <View style={styles.profileHeader}>
-              <View style={styles.avatarContainer}>
-                {user?.profile_photo_url ? (
-                  <Image
-                    source={{ 
-                      uri: user.profile_photo_url.startsWith('http') 
-                        ? user.profile_photo_url 
-                        : `https://dogmatch-backend.onrender.com${user.profile_photo_url}`
-                    }}
-                    style={styles.avatar}
-                    onError={() => {
-                      console.log('Profile photo failed to load:', user.profile_photo_url);
-                    }}
+          <Card style={styles.profileCard} mode="elevated">
+            <Card.Content>
+              <View style={styles.profileHeader}>
+                <View style={styles.avatarContainer}>
+                  {user?.profile_photo_url ? (
+                    <Avatar.Image
+                      size={80}
+                      source={{ 
+                        uri: user.profile_photo_url.startsWith('http') 
+                          ? user.profile_photo_url 
+                          : `https://dogmatch-backend.onrender.com${user.profile_photo_url}`
+                      }}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <Avatar.Icon 
+                      size={80} 
+                      icon="account" 
+                      style={styles.avatarPlaceholder}
+                    />
+                  )}
+                  
+                  <IconButton
+                    icon="camera"
+                    size={20}
+                    style={styles.changePhotoButton}
+                    onPress={handleChangePhoto}
+                    disabled={loading}
                   />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarEmoji}>👤</Text>
-                  </View>
+                </View>
+                
+                <View style={styles.userInfo}>
+                  <Text variant="headlineSmall" style={styles.userName}>
+                    {user?.first_name} {user?.last_name}
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.userEmail}>
+                    {user?.email}
+                  </Text>
+                  <Chip 
+                    mode="flat" 
+                    style={[styles.userTypeChip, { backgroundColor: getUserTypeColor(user?.user_type) }]}
+                    textStyle={styles.userTypeText}
+                  >
+                    {getUserTypeDisplay(user?.user_type)}
+                  </Chip>
+                </View>
+              </View>
+              
+              <Divider style={styles.divider} />
+              
+              <View style={styles.profileDetails}>
+                <List.Item
+                  title="Username"
+                  description={user?.username}
+                  left={props => <List.Icon {...props} icon="account" />}
+                />
+                
+                {user?.phone && (
+                  <List.Item
+                    title="Phone"
+                    description={user.phone}
+                    left={props => <List.Icon {...props} icon="phone" />}
+                  />
                 )}
                 
-                <TouchableOpacity
-                  style={styles.changePhotoButton}
-                  onPress={handleChangePhoto}
-                  disabled={uploadingPhoto}
-                >
-                  <Text style={styles.changePhotoText}>
-                    {uploadingPhoto ? '⏳' : '📷'}
-                  </Text>
-                </TouchableOpacity>
+                {user?.city && user?.state && (
+                  <List.Item
+                    title="Location"
+                    description={`${user.city}, ${user.state}`}
+                    left={props => <List.Icon {...props} icon="map-marker" />}
+                  />
+                )}
               </View>
-              
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>
-                  {user?.first_name} {user?.last_name}
-                </Text>
-                <Text style={styles.userEmail}>{user?.email}</Text>
-                <View style={[styles.userTypeBadge, { backgroundColor: getUserTypeColor(user?.user_type) }]}>
-                  <Text style={styles.userTypeText}>
-                    {getUserTypeDisplay(user?.user_type)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            
-            <View style={styles.profileDetails}>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Username</Text>
-                <Text style={styles.detailValue}>{user?.username}</Text>
-              </View>
-              
-              {user?.phone && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Phone</Text>
-                  <Text style={styles.detailValue}>{user.phone}</Text>
-                </View>
-              )}
-              
-              {user?.city && user?.state && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Location</Text>
-                  <Text style={styles.detailValue}>{user.city}, {user.state}</Text>
-                </View>
-              )}
-            </View>
-          </AnimatedCard>
+            </Card.Content>
+          </Card>
         </Animated.View>
 
         {/* Quick Actions */}
         <Animated.View style={[styles.actionsContainer, cardsAnimatedStyle]} entering={FadeIn.delay(400).duration(600)}>
-          <AnimatedCard variant="outlined" style={styles.actionsCard}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            
-            <AnimatedButton
-              title="Edit Profile"
-              onPress={handleEditProfile}
-              variant="outline"
-              size="large"
-              style={styles.actionButton}
-            />
-            
-            <AnimatedButton
-              title="My Matches"
-              onPress={handleMyMatches}
-              variant="outline"
-              size="large"
-              style={styles.actionButton}
-            />
-            
-            <AnimatedButton
-              title="Settings"
-              onPress={handleSettings}
-              variant="outline"
-              size="large"
-              style={styles.actionButton}
-            />
-          </AnimatedCard>
+          <Card style={styles.actionsCard} mode="outlined">
+            <Card.Content>
+              <Text variant="titleLarge" style={styles.sectionTitle}>
+                Quick Actions
+              </Text>
+              
+              <Button
+                mode="outlined"
+                onPress={handleEditProfile}
+                style={styles.actionButton}
+                icon="pencil"
+              >
+                Edit Profile
+              </Button>
+              
+              <Button
+                mode="outlined"
+                onPress={handleMyMatches}
+                style={styles.actionButton}
+                icon="heart"
+              >
+                My Matches
+              </Button>
+              
+              <Button
+                mode="outlined"
+                onPress={handleSettings}
+                style={styles.actionButton}
+                icon="cog"
+              >
+                Settings
+              </Button>
+            </Card.Content>
+          </Card>
         </Animated.View>
 
         {/* Account Management */}
         <Animated.View style={[styles.accountContainer, cardsAnimatedStyle]} entering={FadeIn.delay(600).duration(600)}>
-          <AnimatedCard variant="outlined" style={styles.accountCard}>
-            <Text style={styles.sectionTitle}>Account Management</Text>
-            
-            <AnimatedButton
-              title="Logout"
-              onPress={handleLogout}
-              variant="outline"
-              size="large"
-              style={[styles.actionButton, styles.logoutButton]}
-              textStyle={styles.logoutButtonText}
-            />
-          </AnimatedCard>
+          <Card style={styles.accountCard} mode="outlined">
+            <Card.Content>
+              <Text variant="titleLarge" style={styles.sectionTitle}>
+                Account Management
+              </Text>
+              
+              <Button
+                mode="outlined"
+                onPress={handleLogout}
+                style={[styles.actionButton, styles.logoutButton]}
+                textColor={Colors.error[600]}
+                icon="logout"
+              >
+                Logout
+              </Button>
+            </Card.Content>
+          </Card>
         </Animated.View>
 
         {/* App Info */}
         <Animated.View style={[styles.infoContainer, cardsAnimatedStyle]} entering={FadeIn.delay(800).duration(600)}>
-          <AnimatedCard variant="flat" style={styles.infoCard}>
-            <View style={styles.appInfo}>
-              <Text style={styles.appName}>DogMatch</Text>
-              <Text style={styles.appVersion}>Version 1.0.0</Text>
-              <Text style={styles.appDescription}>
-                Connect with other dog owners and find the perfect match for your furry friend.
-              </Text>
-            </View>
-          </AnimatedCard>
+          <Card style={styles.infoCard} mode="flat">
+            <Card.Content>
+              <View style={styles.appInfo}>
+                <Text variant="headlineSmall" style={styles.appName}>
+                  DogMatch
+                </Text>
+                <Text variant="bodySmall" style={styles.appVersion}>
+                  Version 1.0.0
+                </Text>
+                <Text variant="bodyMedium" style={styles.appDescription}>
+                  Connect with other dog owners and find the perfect match for your furry friend.
+                </Text>
+              </View>
+            </Card.Content>
+          </Card>
         </Animated.View>
       </ScrollView>
+
+      {/* Snackbar for errors */}
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={4000}
+          action={{
+            label: 'Dismiss',
+            onPress: () => setSnackbarVisible(false),
+          }}
+        >
+          {error || 'Something went wrong'}
+        </Snackbar>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -319,9 +371,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[100],
+    marginBottom: Spacing.lg,
   },
   
   headerContent: {
@@ -331,15 +381,18 @@ const styles = StyleSheet.create({
   },
   
   title: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
+    marginBottom: -Spacing.xs,
   },
   
   subtitle: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
-    marginTop: -Spacing.xs,
+  },
+  
+  editButton: {
+    backgroundColor: Colors.primary[50],
+    borderWidth: 1,
+    borderColor: Colors.primary[200],
   },
   
   scrollView: {
@@ -366,41 +419,21 @@ const styles = StyleSheet.create({
   },
   
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.neutral[200],
   },
   
   avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.full,
     backgroundColor: Colors.neutral[200],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  avatarEmoji: {
-    fontSize: Typography.fontSize['2xl'],
   },
   
   changePhotoButton: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    width: 28,
-    height: 28,
-    borderRadius: BorderRadius.full,
     backgroundColor: Colors.primary[500],
-    justifyContent: 'center',
-    alignItems: 'center',
     borderWidth: 2,
     borderColor: Colors.background.primary,
     ...Shadows.sm,
-  },
-  
-  changePhotoText: {
-    fontSize: Typography.fontSize.sm,
   },
   
   userInfo: {
@@ -408,55 +441,30 @@ const styles = StyleSheet.create({
   },
   
   userName: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
     marginBottom: Spacing.xs,
   },
   
   userEmail: {
-    fontSize: Typography.fontSize.base,
     color: Colors.text.secondary,
     marginBottom: Spacing.sm,
   },
   
-  userTypeBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+  userTypeChip: {
     alignSelf: 'flex-start',
   },
   
   userTypeText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
     color: Colors.text.inverse,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  
+  divider: {
+    marginVertical: Spacing.lg,
   },
   
   profileDetails: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.neutral[200],
-    paddingTop: Spacing.lg,
-  },
-  
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  
-  detailLabel: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.medium,
-    color: Colors.text.tertiary,
-  },
-  
-  detailValue: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.primary,
-    flex: 1,
-    textAlign: 'right',
+    // List.Item handles its own styling
   },
   
   actionsContainer: {
@@ -468,8 +476,6 @@ const styles = StyleSheet.create({
   },
   
   sectionTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
     color: Colors.text.primary,
     marginBottom: Spacing.lg,
     paddingBottom: Spacing.sm,
@@ -493,10 +499,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.error[300],
   },
   
-  logoutButtonText: {
-    color: Colors.error[600],
-  },
-  
   infoContainer: {
     marginBottom: Spacing.xl,
   },
@@ -511,20 +513,16 @@ const styles = StyleSheet.create({
   },
   
   appName: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.primary[500],
     marginBottom: Spacing.sm,
   },
   
   appVersion: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.tertiary,
     marginBottom: Spacing.md,
   },
   
   appDescription: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,

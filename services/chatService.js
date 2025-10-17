@@ -1,6 +1,6 @@
 // Chat service for managing real-time messaging functionality
 import { useCallback } from 'react';
-import { useSocket } from '../auth/SocketContext';
+import { useSocket } from '../hooks/useSocket';
 import { apiFetch } from '../api/client';
 
 class ChatService {
@@ -278,62 +278,36 @@ const chatService = new ChatService();
 
 // React hook for using chat service
 export const useChatService = () => {
-  const { socket, isSocketConnected } = useSocket();
+  const { 
+    isConnected, 
+    joinMatch, 
+    leaveMatch, 
+    sendMessage, 
+    sendTypingIndicator 
+  } = useSocket();
 
   const joinMatchRoom = useCallback((matchId) => {
-    if (socket) {
-      socket.emit('join_match', { match_id: matchId });
-    }
-  }, [socket]);
+    joinMatch(matchId);
+  }, [joinMatch]);
 
   const leaveMatchRoom = useCallback((matchId) => {
-    if (socket) {
-      socket.emit('leave_match', { match_id: matchId });
-    }
-  }, [socket]);
+    leaveMatch(matchId);
+  }, [leaveMatch]);
 
-  const sendMessage = useCallback((matchId, content) => {
-    if (socket) {
-      socket.emit('send_message', { match_id: matchId, content });
-    }
-  }, [socket]);
+  const sendChatMessage = useCallback((matchId, content) => {
+    sendMessage(matchId, content);
+  }, [sendMessage]);
 
   const sendTypingEvent = useCallback((matchId, isTyping) => {
-    if (socket) {
-      socket.emit('typing', { match_id: matchId, is_typing: isTyping });
-    }
-  }, [socket]);
-
-  const onReceiveMessage = useCallback((callback) => {
-    if (socket) {
-      socket.on('receive_message', callback);
-    }
-    return () => {
-      if (socket) {
-        socket.off('receive_message', callback);
-      }
-    };
-  }, [socket]);
-
-  const onTypingStatus = useCallback((callback) => {
-    if (socket) {
-      socket.on('typing_status', callback);
-    }
-    return () => {
-      if (socket) {
-        socket.off('typing_status', callback);
-      }
-    };
-  }, [socket]);
+    sendTypingIndicator(matchId, isTyping);
+  }, [sendTypingIndicator]);
 
   return {
     joinMatchRoom,
     leaveMatchRoom,
-    sendMessage,
+    sendMessage: sendChatMessage,
     sendTypingEvent,
-    onReceiveMessage,
-    onTypingStatus,
-    isSocketConnected,
+    isSocketConnected: isConnected,
     // Expose the chat service instance for API calls
     chatService
   };

@@ -1,15 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
-  Text, 
   Image, 
-  TouchableOpacity, 
   Alert, 
   Dimensions,
   StyleSheet
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Swiper } from 'rn-swiper-list';
+import {
+  Text,
+  Surface,
+  Chip,
+  IconButton,
+  Button,
+  Avatar,
+  ActivityIndicator,
+  Snackbar,
+  Portal,
+  Badge,
+} from 'react-native-paper';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,10 +29,11 @@ import Animated, {
   SlideInUp,
   interpolate,
 } from 'react-native-reanimated';
-import { useAuth } from '../auth/AuthContext';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchDiscoverDogs, clearError } from '../store/slices/dogsSlice';
+import { swipeDog, fetchPendingSwipes, clearError as clearMatchesError } from '../store/slices/matchesSlice';
+import { useAuth } from '../hooks/useAuth';
+import EmptyState from '../components/ui/EmptyState';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -30,67 +41,64 @@ const CARD_WIDTH = screenWidth - 40;
 const CARD_HEIGHT = screenHeight * 0.6;
 
 const DiscoverScreen = ({ navigation }) => {
-  const { user, accessToken } = useAuth();
-  const [dogs, setDogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const { discoverDogs, discoverLoading, error: dogsError } = useAppSelector(state => state.dogs);
+  const { pendingSwipes, pendingLoading, error: matchesError } = useAppSelector(state => state.matches);
   const [swiping, setSwiping] = useState(false);
-  const [pendingSwipesCount, setPendingSwipesCount] = useState(0);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
   const swiperRef = useRef();
 
   // Animation values
   const headerOpacity = useSharedValue(0);
   const cardOpacity = useSharedValue(0);
 
-  // Fetch dogs for swiping
-  const fetchDogs = useCallback(async () => {
+  // Load dogs for swiping
+  const loadDogs = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await apiFetch('/api/dogs/discover', { token: accessToken });
-      setDogs(response.dogs || []);
-    } catch (error) {
-      console.error('Error fetching dogs:', error);
-      Alert.alert('Error', 'Failed to load dogs. Please try again.');
-    } finally {
-      setLoading(false);
+      await dispatch(fetchDiscoverDogs()).unwrap();
+    } catch (e) {
+      setSnackbarVisible(true);
     }
-  }, [accessToken]);
+  }, [dispatch]);
 
-  // Fetch pending swipes count
-  const fetchPendingSwipesCount = useCallback(async () => {
+  // Load pending swipes
+  const loadPendingSwipes = useCallback(async () => {
     try {
-      const response = await apiFetch('/api/matches/pending', { token: accessToken });
-      if (response.success) {
-        setPendingSwipesCount(response.pending_swipes?.length || 0);
-      }
-    } catch (error) {
-      console.error('Error fetching pending swipes count:', error);
+      await dispatch(fetchPendingSwipes()).unwrap();
+    } catch (e) {
+      // Silently fail for pending swipes
     }
-  }, [accessToken]);
+  }, [dispatch]);
 
   useEffect(() => {
-    fetchDogs();
-    fetchPendingSwipesCount();
+    loadDogs();
+    loadPendingSwipes();
     // Animate header and cards
     headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
     cardOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
-  }, [fetchDogs, fetchPendingSwipesCount]);
+  }, [loadDogs, loadPendingSwipes]);
+
+  // Clear errors when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearError());
+      dispatch(clearMatchesError());
+    };
+  }, [dispatch]);
 
   // Handle swipe action
   const handleSwipe = useCallback(async (action, cardIndex) => {
-    if (cardIndex >= dogs.length || swiping) return;
+    if (cardIndex >= discoverDogs.length || swiping) return;
     
-    const currentDog = dogs[cardIndex];
+    const currentDog = discoverDogs[cardIndex];
     setSwiping(true);
 
     try {
-      const response = await apiFetch('/api/matches/swipe', {
-        method: 'POST',
-        token: accessToken,
-        body: {
-          target_dog_id: currentDog.id,
-          action: action
-        }
-      });
+      const response = await dispatch(swipeDog({ 
+        dogId: currentDog.id, 
+        action: action 
+      })).unwrap();
 
       // Show match notification if it's a mutual match
       if (response.is_mutual_match) {
@@ -118,7 +126,7 @@ const DiscoverScreen = ({ navigation }) => {
     } finally {
       setSwiping(false);
     }
-  }, [dogs, accessToken, navigation, swiping]);
+  }, [discoverDogs, dispatch, navigation, swiping]);
 
   // Render individual dog card with modern design
   const renderCard = useCallback((dog) => {
@@ -145,46 +153,69 @@ const DiscoverScreen = ({ navigation }) => {
           <View style={styles.imageGradient} />
         </View>
 
-        {/* Dog Info with modern design */}
-        <View style={styles.dogInfo}>
+        {/* Dog Info with Paper components */}
+        <Surface style={styles.dogInfo} elevation={4}>
           <View style={styles.nameAgeContainer}>
-            <Text style={styles.dogName}>{dog.name}</Text>
-            <View style={styles.ageBadge}>
-              <Text style={styles.dogAge}>{dog.age} years</Text>
-            </View>
+            <Text variant="headlineSmall" style={styles.dogName}>
+              {dog.name}
+            </Text>
+            <Chip 
+              mode="outlined" 
+              compact 
+              style={styles.ageChip}
+              textStyle={styles.ageChipText}
+            >
+              {dog.age} years
+            </Chip>
           </View>
           
           <View style={styles.breedContainer}>
-            <Text style={styles.dogBreed}>{dog.breed}</Text>
+            <Text variant="titleMedium" style={styles.dogBreed}>
+              {dog.breed}
+            </Text>
           </View>
           
           {/* Owner Information */}
           {dog.owner && (
             <View style={styles.ownerContainer}>
-              <Text style={styles.ownerLabel}>Owner:</Text>
-              <Text style={styles.ownerName}>
+              <Avatar.Icon 
+                size={24} 
+                icon="account" 
+                style={styles.ownerAvatar}
+              />
+              <Text variant="bodySmall" style={styles.ownerName}>
                 {dog.owner.first_name} {dog.owner.last_name}
               </Text>
             </View>
           )}
           
-          <Text style={styles.dogDescription} numberOfLines={3}>
+          <Text variant="bodyMedium" style={styles.dogDescription} numberOfLines={3}>
             {dog.description}
           </Text>
           
           <View style={styles.traitsContainer}>
             <View style={styles.traitRow}>
-              <View style={styles.traitBadge}>
-                <Text style={styles.traitLabel}>Size</Text>
-                <Text style={styles.traitValue}>{dog.size}</Text>
-              </View>
-              <View style={styles.traitBadge}>
-                <Text style={styles.traitLabel}>Energy</Text>
-                <Text style={styles.traitValue}>{dog.energy_level || 'Medium'}</Text>
-              </View>
+              <Chip 
+                mode="outlined" 
+                compact 
+                icon="ruler"
+                style={styles.traitChip}
+                textStyle={styles.traitChipText}
+              >
+                {dog.size}
+              </Chip>
+              <Chip 
+                mode="outlined" 
+                compact 
+                icon="lightning-bolt"
+                style={styles.traitChip}
+                textStyle={styles.traitChipText}
+              >
+                {dog.energy_level || 'Medium'}
+              </Chip>
             </View>
           </View>
-        </View>
+        </Surface>
       </Animated.View>
     );
   }, []);
@@ -195,10 +226,12 @@ const DiscoverScreen = ({ navigation }) => {
       style={[styles.overlayLabelContainer, styles.likeOverlay]}
       entering={FadeIn.duration(300)}
     >
-      <View style={styles.overlayIcon}>
-        <Text style={styles.overlayEmoji}>💖</Text>
-      </View>
-      <Text style={styles.actionText}>LIKE</Text>
+      <Avatar.Icon 
+        size={48} 
+        icon="heart" 
+        style={styles.overlayIcon}
+      />
+      <Text variant="titleMedium" style={styles.actionText}>LIKE</Text>
     </Animated.View>
   ), []);
 
@@ -207,10 +240,12 @@ const DiscoverScreen = ({ navigation }) => {
       style={[styles.overlayLabelContainer, styles.passOverlay]}
       entering={FadeIn.duration(300)}
     >
-      <View style={styles.overlayIcon}>
-        <Text style={styles.overlayEmoji}>✕</Text>
-      </View>
-      <Text style={styles.actionText}>PASS</Text>
+      <Avatar.Icon 
+        size={48} 
+        icon="close" 
+        style={styles.overlayIcon}
+      />
+      <Text variant="titleMedium" style={styles.actionText}>PASS</Text>
     </Animated.View>
   ), []);
 
@@ -219,10 +254,12 @@ const DiscoverScreen = ({ navigation }) => {
       style={[styles.overlayLabelContainer, styles.superLikeOverlay]}
       entering={FadeIn.duration(300)}
     >
-      <View style={styles.overlayIcon}>
-        <Text style={styles.overlayEmoji}>⭐</Text>
-      </View>
-      <Text style={styles.actionText}>SUPER LIKE</Text>
+      <Avatar.Icon 
+        size={48} 
+        icon="star" 
+        style={styles.overlayIcon}
+      />
+      <Text variant="titleMedium" style={styles.actionText}>SUPER LIKE</Text>
     </Animated.View>
   ), []);
 
@@ -234,33 +271,31 @@ const DiscoverScreen = ({ navigation }) => {
     opacity: cardOpacity.value,
   }));
 
-  if (loading) {
+  if (discoverLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" text="Finding perfect matches for you..." />
+          <ActivityIndicator size="large" color={Colors.primary[500]} />
+          <Text variant="bodyLarge" style={styles.loadingText}>
+            Finding perfect matches for you...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (dogs.length === 0) {
+  if (discoverDogs.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <Animated.View style={[styles.emptyContainer, headerAnimatedStyle]} entering={FadeIn.duration(800)}>
-          <View style={styles.emptyIcon}>
-            <Text style={styles.emptyEmoji}>🐕</Text>
-          </View>
-          <Text style={styles.emptyTitle}>No more dogs to discover!</Text>
-          <Text style={styles.emptySubtitle}>
-            Check back later for new profiles or adjust your preferences.
-          </Text>
-          <AnimatedButton
-            title="Refresh"
-            onPress={fetchDogs}
-            variant="outline"
-            size="large"
-            style={styles.refreshButton}
+          <EmptyState
+            icon="dog"
+            title="No more dogs to discover!"
+            subtitle="Check back later for new profiles or adjust your preferences."
+            action={{
+              label: "Refresh",
+              onPress: loadDogs
+            }}
           />
         </Animated.View>
       </SafeAreaView>
@@ -271,38 +306,41 @@ const DiscoverScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Modern Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Discover</Text>
-          <Text style={styles.subtitle}>Find your perfect match</Text>
-        </View>
-        <View style={styles.headerButtons}>
-          {pendingSwipesCount > 0 && (
-            <TouchableOpacity 
-              style={styles.pendingSwipesButton}
-              onPress={() => navigation.navigate('PendingSwipes')}
-            >
-              <Text style={styles.pendingSwipesButtonText}>💝</Text>
-              <View style={styles.pendingSwipesBadge}>
-                <Text style={styles.pendingSwipesBadgeText}>
-                  {pendingSwipesCount > 99 ? '99+' : pendingSwipesCount}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity 
-            style={styles.matchesButton}
-            onPress={() => navigation.navigate('Matches')}
-          >
-            <Text style={styles.matchesButtonText}>💕</Text>
-          </TouchableOpacity>
-        </View>
+        <Surface style={styles.headerSurface} elevation={2}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text variant="headlineMedium" style={styles.title}>
+                Discover
+              </Text>
+              <Text variant="bodyMedium" style={styles.subtitle}>
+                Find your perfect match
+              </Text>
+            </View>
+            <View style={styles.headerButtons}>
+              {pendingSwipes.length > 0 && (
+                <IconButton
+                  icon="heart-multiple"
+                  size={24}
+                  style={styles.pendingSwipesButton}
+                  onPress={() => navigation.navigate('PendingSwipes')}
+                />
+              )}
+              <IconButton
+                icon="heart"
+                size={24}
+                style={styles.matchesButton}
+                onPress={() => navigation.navigate('Matches')}
+              />
+            </View>
+          </View>
+        </Surface>
       </Animated.View>
 
       {/* Swiper Container with modern design */}
       <Animated.View style={[styles.swiperContainer, cardAnimatedStyle]}>
         <Swiper
           ref={swiperRef}
-          data={dogs}
+          data={discoverDogs}
           renderCard={renderCard}
           cardStyle={styles.swiperCard}
           overlayLabelContainerStyle={styles.overlayLabelContainerStyle}
@@ -330,30 +368,45 @@ const DiscoverScreen = ({ navigation }) => {
 
       {/* Modern Action Buttons */}
       <Animated.View style={[styles.actionButtons, cardAnimatedStyle]} entering={SlideInUp.delay(600).duration(600)}>
-        <TouchableOpacity
+        <IconButton
+          icon="close"
+          size={32}
           style={[styles.actionButton, styles.passButton]}
           onPress={() => swiperRef.current?.swipeLeft()}
           disabled={swiping}
-        >
-          <Text style={styles.actionButtonEmoji}>✕</Text>
-        </TouchableOpacity>
+        />
         
-        <TouchableOpacity
+        <IconButton
+          icon="star"
+          size={32}
           style={[styles.actionButton, styles.superLikeButton]}
           onPress={() => swiperRef.current?.swipeTop()}
           disabled={swiping}
-        >
-          <Text style={styles.actionButtonEmoji}>⭐</Text>
-        </TouchableOpacity>
+        />
         
-        <TouchableOpacity
+        <IconButton
+          icon="heart"
+          size={32}
           style={[styles.actionButton, styles.likeButton]}
           onPress={() => swiperRef.current?.swipeRight()}
           disabled={swiping}
-        >
-          <Text style={styles.actionButtonEmoji}>💖</Text>
-        </TouchableOpacity>
+        />
       </Animated.View>
+
+      {/* Snackbar for errors */}
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={4000}
+          action={{
+            label: 'Dismiss',
+            onPress: () => setSnackbarVisible(false),
+          }}
+        >
+          {dogsError || matchesError || 'Something went wrong'}
+        </Snackbar>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -368,15 +421,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background.primary,
+    gap: Spacing.md,
+  },
+  
+  loadingText: {
+    color: Colors.text.secondary,
   },
   
   header: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
+  },
+  
+  headerSurface: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     backgroundColor: Colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[100],
   },
   
   headerContent: {
@@ -386,15 +446,12 @@ const styles = StyleSheet.create({
   },
   
   title: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
+    marginBottom: -Spacing.xs,
   },
   
   subtitle: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
-    marginTop: -Spacing.xs,
   },
   
   headerButtons: {
@@ -404,54 +461,15 @@ const styles = StyleSheet.create({
   },
   
   pendingSwipesButton: {
-    position: 'relative',
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
     backgroundColor: Colors.secondary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.secondary[200],
   },
   
-  pendingSwipesButtonText: {
-    fontSize: Typography.fontSize.lg,
-  },
-  
-  pendingSwipesBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: Colors.error[500],
-    borderRadius: BorderRadius.full,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.background.primary,
-  },
-  
-  pendingSwipesBadgeText: {
-    color: Colors.background.primary,
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.bold,
-  },
-  
   matchesButton: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
     backgroundColor: Colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.primary[200],
-  },
-  
-  matchesButtonText: {
-    fontSize: Typography.fontSize.lg,
   },
   
   swiperContainer: {
@@ -515,25 +533,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Spacing.sm,
+    gap: Spacing.sm,
   },
   
   dogName: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
+    flex: 1,
   },
   
-  ageBadge: {
-    backgroundColor: Colors.primary[100],
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
+  ageChip: {
+    backgroundColor: Colors.primary[50],
+    borderColor: Colors.primary[200],
   },
   
-  dogAge: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.primary[600],
+  ageChipText: {
+    color: Colors.primary[700],
+    fontSize: Typography.fontSize.xs,
   },
   
   breedContainer: {
@@ -541,8 +556,6 @@ const styles = StyleSheet.create({
   },
   
   dogBreed: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.medium,
     color: Colors.text.secondary,
   },
   
@@ -554,25 +567,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
   },
   
-  ownerLabel: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.medium,
-    color: Colors.text.secondary,
-    marginRight: Spacing.xs,
+  ownerAvatar: {
+    backgroundColor: Colors.primary[200],
   },
   
   ownerName: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
     color: Colors.primary[600],
+    fontWeight: Typography.fontWeight.semibold,
   },
   
   dogDescription: {
-    fontSize: Typography.fontSize.base,
     color: Colors.text.secondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
     marginBottom: Spacing.sm,
   },
   
@@ -585,30 +594,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     flex: 1,
+    gap: Spacing.sm,
   },
   
-  traitBadge: {
-    backgroundColor: Colors.neutral[100],
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    flex: 0.48,
+  traitChip: {
+    backgroundColor: Colors.neutral[50],
+    borderColor: Colors.neutral[200],
+    flex: 1,
   },
   
-  traitLabel: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.medium,
-    color: Colors.text.tertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  
-  traitValue: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
+  traitChipText: {
     color: Colors.text.primary,
-    marginTop: Spacing.xs,
+    fontSize: Typography.fontSize.xs,
   },
   
   actionButtons: {
@@ -620,20 +617,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.primary,
     borderTopWidth: 1,
     borderTopColor: Colors.neutral[100],
+    gap: Spacing.lg,
   },
   
   actionButton: {
     width: 56,
     height: 56,
     borderRadius: BorderRadius.full,
-    marginHorizontal: Spacing.md,
-    justifyContent: 'center',
-    alignItems: 'center',
     ...Shadows.md,
-  },
-  
-  actionButtonEmoji: {
-    fontSize: Typography.fontSize.xl,
   },
   
   passButton: {
@@ -681,14 +672,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   
-  overlayEmoji: {
-    fontSize: Typography.fontSize['2xl'],
-  },
-  
   actionText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.inverse,
+    fontWeight: Typography.fontWeight.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -697,40 +683,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  
-  emptyIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  
-  emptyEmoji: {
-    fontSize: 64,
-  },
-  
-  emptyTitle: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: Spacing.md,
-  },
-  
-  emptySubtitle: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-    marginBottom: Spacing.xl,
-  },
-  
-  refreshButton: {
     paddingHorizontal: Spacing.xl,
   },
 });

@@ -64,7 +64,7 @@ const MainScreen = ({ navigation }) => {
   }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
         {/* Hero Section */}
         <Animated.View style={[styles.heroSection, logoAnimatedStyle]} entering={FadeIn.duration(1000)}>

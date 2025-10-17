@@ -1,4 +1,6 @@
-export const BASE_URL = "http://192.168.1.69:5002";
+import config from '../config';
+
+export const BASE_URL = config.API_URL;
 
 export async function apiFetch(path, { method = "GET", token, body} = {}) {
     const headers = { "Content-Type": "application/json" };

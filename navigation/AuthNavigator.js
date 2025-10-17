@@ -1,6 +1,6 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AuthContext } from '../auth/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import MainScreen from '../screens/MainScreen.jsx';
 import LoginScreen from '../screens/LoginScreen.jsx';
 import RegisterScreen from '../screens/RegisterScreen.jsx';
@@ -9,7 +9,7 @@ import AppNavigator from './AppNavigator';
 const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
-  const { user, loading } = useContext(AuthContext);
+  const { user, loading } = useAuth();
 
   if (loading) {
     return null; // Could add loading spinner here

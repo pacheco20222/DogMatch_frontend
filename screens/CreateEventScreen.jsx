@@ -1,9 +1,7 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
-  Text, 
   ScrollView, 
-  TouchableOpacity, 
   Alert,
   StyleSheet,
   KeyboardAvoidingView,
@@ -12,7 +10,22 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Text,
+  Card,
+  Surface,
+  Button,
+  TextInput,
+  HelperText,
+  Chip,
+  IconButton,
+  ActivityIndicator,
+  Snackbar,
+  Portal,
+  Divider,
+  RadioButton,
+} from 'react-native-paper';
+import { Formik } from 'formik';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,43 +34,17 @@ import Animated, {
   FadeIn,
   SlideInUp,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedInput from '../components/AnimatedInput';
-import AnimatedCard from '../components/AnimatedCard';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { createEvent, uploadEventPhoto, clearError } from '../store/slices/eventsSlice';
+import { useAuth } from '../hooks/useAuth';
+import { createEventSchema } from '../validation/eventSchemas';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const CreateEventScreen = ({ navigation }) => {
-  const { accessToken } = useContext(AuthContext);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector(state => state.events);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const insets = useSafeAreaInsets();
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: 'meetup',
-    event_date: '',
-    duration_hours: '',
-    location: '',
-    city: '',
-    state: '',
-    country: 'Mexico',
-    venue_details: '',
-    max_participants: '',
-    price: '0',
-    currency: 'MXN',
-    min_age_requirement: '',
-    max_age_requirement: '',
-    vaccination_required: true,
-    special_requirements: '',
-    requires_approval: false,
-    contact_email: '',
-    contact_phone: '',
-    additional_info: '',
-    rules_and_guidelines: ''
-  });
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -69,180 +56,65 @@ const CreateEventScreen = ({ navigation }) => {
     formOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
 
+  // Clear error when component unmounts
+  React.useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
+
   const eventCategories = [
-    { value: 'meetup', label: 'Dog Meetup', icon: '🐕' },
-    { value: 'training', label: 'Training Workshop', icon: '🎓' },
-    { value: 'adoption', label: 'Adoption Fair', icon: '🏠' },
-    { value: 'competition', label: 'Dog Competition', icon: '🏆' },
-    { value: 'social', label: 'Social Event', icon: '🎉' },
-    { value: 'educational', label: 'Educational Workshop', icon: '📚' }
+    { value: 'meetup', label: 'Dog Meetup' },
+    { value: 'training', label: 'Training Workshop' },
+    { value: 'adoption', label: 'Adoption Fair' },
+    { value: 'competition', label: 'Dog Competition' },
+    { value: 'social', label: 'Social Event' },
+    { value: 'educational', label: 'Educational Workshop' }
   ];
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload photos!');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0]);
+    }
   };
 
-  const validateForm = () => {
-    if (!formData.title.trim()) {
-      Alert.alert('Validation Error', 'Event title is required');
-      return false;
-    }
-    if (!formData.event_date) {
-      Alert.alert('Validation Error', 'Event date is required');
-      return false;
-    }
-    if (!formData.location.trim()) {
-      Alert.alert('Validation Error', 'Event location is required');
-      return false;
-    }
-
-    // Validate event date format and that it's in the future
-    const eventDate = new Date(formData.event_date);
-    if (isNaN(eventDate.getTime())) {
-      Alert.alert('Validation Error', 'Please enter a valid date in format: YYYY-MM-DDTHH:MM:SS');
-      return false;
-    }
-    
-    const now = new Date();
-    if (eventDate <= now) {
-      Alert.alert('Validation Error', 'Event date must be in the future');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handlePickImage = async () => {
+  const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      // Request permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload photos!');
-        return;
-      }
-
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [16, 9], // Good aspect ratio for event banners
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setSelectedImage(result.assets[0]);
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
-    }
-  };
-
-  const uploadEventPhoto = async (eventId, imageAsset) => {
-    try {
-      setUploadingPhoto(true);
-
-      // Create form data
-      const formData = new FormData();
-      formData.append('photo', {
-        uri: imageAsset.uri,
-        type: 'image/jpeg',
-        name: 'event_banner.jpg',
-      });
-
-      // Upload to backend
-      const response = await fetch(`https://dogmatch-backend.onrender.com/api/s3/upload/event-photo/${eventId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log('Event photo upload endpoint not available yet - skipping photo upload');
-          return; // Silently skip if endpoint doesn't exist
-        }
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const result = await response.json();
-      console.log('Event photo uploaded successfully:', result);
-      
-    } catch (error) {
-      console.log('Event photo upload failed (optional feature):', error.message);
-      // Don't show error to user as event was created successfully
-      // Photo upload is optional and endpoint might not be deployed yet
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    try {
-      setLoading(true);
-
-      // Prepare data for API
-      const submitData = {
-        title: formData.title.trim(),
-        description: formData.description.trim() || null,
-        category: formData.category,
-        event_date: formData.event_date,
-        location: formData.location.trim(),
-        city: formData.city.trim() || null,
-        state: formData.state.trim() || null,
-        country: formData.country,
-        venue_details: formData.venue_details.trim() || null,
-        contact_email: formData.contact_email.trim() || null,
-        contact_phone: formData.contact_phone.trim() || null,
-        additional_info: formData.additional_info.trim() || null,
-        rules_and_guidelines: formData.rules_and_guidelines.trim() || null,
-        vaccination_required: formData.vaccination_required,
-        requires_approval: formData.requires_approval
-      };
-
-      // Add optional numeric fields
-      if (formData.duration_hours) {
-        submitData.duration_hours = parseFloat(formData.duration_hours);
-      }
-      if (formData.max_participants) {
-        submitData.max_participants = parseInt(formData.max_participants);
-      }
-      if (formData.price) {
-        submitData.price = parseFloat(formData.price);
-      }
-      if (formData.min_age_requirement) {
-        submitData.min_age_requirement = parseInt(formData.min_age_requirement);
-      }
-      if (formData.max_age_requirement) {
-        submitData.max_age_requirement = parseInt(formData.max_age_requirement);
-      }
-      if (formData.special_requirements) {
-        submitData.special_requirements = formData.special_requirements.trim();
-      }
-
-      const response = await apiFetch('/api/events', {
-        method: 'POST',
-        token: accessToken,
-        body: submitData
-      });
+      // Create the event
+      const event = await dispatch(createEvent(values)).unwrap();
 
       // Upload photo if one was selected
-      if (selectedImage && response.event && response.event.id) {
-        await uploadEventPhoto(response.event.id, selectedImage);
+      if (selectedImage && event.id) {
+        try {
+          await dispatch(uploadEventPhoto({
+            eventId: event.id,
+            photoData: {
+              uri: selectedImage.uri,
+              type: 'image/jpeg',
+              name: 'event_photo.jpg',
+            }
+          })).unwrap();
+        } catch (photoError) {
+          console.log('Photo upload failed:', photoError);
+        }
       }
 
       Alert.alert(
-        'Success!', 
-        'Event created successfully!',
+        'Success!',
+        `${values.title} has been created successfully!`,
         [
           {
             text: 'OK',
@@ -253,14 +125,36 @@ const CreateEventScreen = ({ navigation }) => {
 
     } catch (error) {
       console.error('Error creating event:', error);
-      Alert.alert(
-        'Error', 
-        error.message || 'Failed to create event. Please try again.'
-      );
+      setSnackbarVisible(true);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
+
+  const renderSelectField = (label, field, options, values, setFieldValue, errors, touched) => (
+    <View style={styles.selectField}>
+      <Text variant="bodyLarge" style={styles.selectLabel}>{label}</Text>
+      <View style={styles.optionsContainer}>
+        {options.map((option) => (
+          <Chip
+            key={option.value}
+            mode={values[field] === option.value ? "flat" : "outlined"}
+            selected={values[field] === option.value}
+            onPress={() => setFieldValue(field, option.value)}
+            style={styles.optionChip}
+            textStyle={styles.optionChipText}
+          >
+            {option.label}
+          </Chip>
+        ))}
+      </View>
+      {touched[field] && errors[field] && (
+        <HelperText type="error" visible={true}>
+          {errors[field]}
+        </HelperText>
+      )}
+    </View>
+  );
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
@@ -271,20 +165,32 @@ const CreateEventScreen = ({ navigation }) => {
   }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Modern Header */}
-        <Animated.View style={[styles.header, { paddingTop: insets.top + Spacing.md }, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-          <View style={styles.headerContent}>
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>Create New Event</Text>
-              <Text style={styles.subtitle}>Fill in the details to create your event</Text>
+        <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
+          <Surface style={styles.headerSurface} elevation={2}>
+            <View style={styles.headerContent}>
+              <IconButton
+                icon="arrow-left"
+                size={24}
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              />
+              <View style={styles.titleContainer}>
+                <Text variant="headlineMedium" style={styles.title}>
+                  Create New Event
+                </Text>
+                <Text variant="bodyMedium" style={styles.subtitle}>
+                  Fill in the details to create your event
+                </Text>
+              </View>
             </View>
-          </View>
+          </Surface>
         </Animated.View>
 
         <ScrollView
@@ -293,268 +199,373 @@ const CreateEventScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Animated.View style={[styles.formContainer, formAnimatedStyle]} entering={FadeIn.delay(200).duration(600)}>
-            {/* Basic Information */}
-            <AnimatedCard variant="elevated" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Basic Information</Text>
-              
-              <AnimatedInput
-                label="Event Title"
-                placeholder="Enter event title"
-                value={formData.title}
-                onChangeText={(value) => handleInputChange('title', value)}
-                maxLength={200}
-              />
-
-              <AnimatedInput
-                label="Description"
-                placeholder="Describe your event..."
-                value={formData.description}
-                onChangeText={(value) => handleInputChange('description', value)}
-                multiline={true}
-                numberOfLines={4}
-                maxLength={2000}
-              />
-
-              <View style={styles.categorySection}>
-                <Text style={styles.categoryLabel}>Category</Text>
-                <View style={styles.categoryGrid}>
-                  {eventCategories.map((category) => (
-                    <TouchableOpacity
-                      key={category.value}
-                      style={[
-                        styles.categoryButton,
-                        formData.category === category.value && styles.categoryButtonSelected
-                      ]}
-                      onPress={() => handleInputChange('category', category.value)}
-                    >
-                      <Text style={styles.categoryIcon}>{category.icon}</Text>
-                      <Text style={[
-                        styles.categoryText,
-                        formData.category === category.value && styles.categoryTextSelected
-                      ]}>
-                        {category.label}
+          <Formik
+            initialValues={{
+              title: '',
+              description: '',
+              category: 'meetup',
+              event_date: '',
+              start_time: '',
+              end_time: '',
+              location: '',
+              capacity: '',
+              price: '0',
+              requirements: '',
+              contact_email: '',
+              contact_phone: '',
+              website: '',
+              is_public: true,
+              requires_approval: false
+            }}
+            validationSchema={createEventSchema}
+            onSubmit={handleSubmit}
+          >
+            {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue, isSubmitting }) => (
+              <Animated.View style={[styles.formContainer, formAnimatedStyle]} entering={FadeIn.delay(200).duration(600)}>
+                {/* Event Photo */}
+                <Card style={styles.sectionCard} mode="elevated">
+                  <Card.Content>
+                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                      Event Photo
+                    </Text>
+                    
+                    <View style={styles.photoSection}>
+                      {selectedImage ? (
+                        <View style={styles.photoContainer}>
+                          <Image
+                            source={{ uri: selectedImage.uri }}
+                            style={styles.eventPhoto}
+                          />
+                          <Button
+                            mode="outlined"
+                            onPress={pickImage}
+                            style={styles.changePhotoButton}
+                            icon="camera"
+                          >
+                            Change Photo
+                          </Button>
+                        </View>
+                      ) : (
+                        <Button
+                          mode="outlined"
+                          onPress={pickImage}
+                          style={styles.photoPlaceholder}
+                          icon="camera"
+                        >
+                          Add Event Photo
+                        </Button>
+                      )}
+                      <Text variant="bodySmall" style={styles.photoHelpText}>
+                        Optional: Add a banner photo for your event
                       </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </AnimatedCard>
+                    </View>
+                  </Card.Content>
+                </Card>
 
-            {/* Event Photo */}
-            <AnimatedCard variant="elevated" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Event Banner Photo</Text>
-              
-              <View style={styles.photoSection}>
-                {selectedImage ? (
-                  <View style={styles.photoContainer}>
-                    <Image
-                      source={{ uri: selectedImage.uri }}
-                      style={styles.eventPhoto}
+                {/* Basic Information */}
+                <Card style={styles.sectionCard} mode="elevated">
+                  <Card.Content>
+                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                      Basic Information
+                    </Text>
+                    
+                    <TextInput
+                      label="Event Title"
+                      placeholder="Enter event title"
+                      value={values.title}
+                      onChangeText={handleChange('title')}
+                      onBlur={handleBlur('title')}
+                      error={touched.title && errors.title}
+                      mode="outlined"
+                      style={styles.input}
                     />
-                    <TouchableOpacity
-                      style={styles.changePhotoButton}
-                      onPress={handlePickImage}
-                    >
-                      <Text style={styles.changePhotoText}>📷</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.photoPlaceholder}
-                    onPress={handlePickImage}
-                  >
-                    <Text style={styles.photoIcon}>📸</Text>
-                    <Text style={styles.photoText}>Add Banner Photo</Text>
-                    <Text style={styles.photoSubtext}>Optional: Add a banner image for your event</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </AnimatedCard>
+                    <HelperText type="error" visible={touched.title && errors.title}>
+                      {errors.title}
+                    </HelperText>
 
-            {/* Date & Time */}
-            <AnimatedCard variant="elevated" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Date & Time</Text>
-              
-              <AnimatedInput
-                label="Event Date & Time"
-                placeholder="2024-12-25T14:00:00"
-                value={formData.event_date}
-                onChangeText={(value) => handleInputChange('event_date', value)}
-              />
-              <Text style={styles.helpText}>
-                Format: YYYY-MM-DDTHH:MM:SS (e.g., 2024-12-25T14:00:00)
-              </Text>
+                    <TextInput
+                      label="Description"
+                      placeholder="Describe your event..."
+                      value={values.description}
+                      onChangeText={handleChange('description')}
+                      onBlur={handleBlur('description')}
+                      error={touched.description && errors.description}
+                      mode="outlined"
+                      multiline={true}
+                      numberOfLines={4}
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.description && errors.description}>
+                      {errors.description}
+                    </HelperText>
 
-              <AnimatedInput
-                label="Duration (hours)"
-                placeholder="2.5"
-                value={formData.duration_hours}
-                onChangeText={(value) => handleInputChange('duration_hours', value)}
-                keyboardType="numeric"
-              />
-            </AnimatedCard>
+                    {renderSelectField('Category', 'category', eventCategories, values, setFieldValue, errors, touched)}
+                  </Card.Content>
+                </Card>
 
-            {/* Location */}
-            <AnimatedCard variant="elevated" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Location</Text>
-              
-              <AnimatedInput
-                label="Address/Venue"
-                placeholder="Enter full address or venue name"
-                value={formData.location}
-                onChangeText={(value) => handleInputChange('location', value)}
-                maxLength={300}
-              />
+                {/* Date & Time */}
+                <Card style={styles.sectionCard} mode="elevated">
+                  <Card.Content>
+                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                      Date & Time
+                    </Text>
+                    
+                    <TextInput
+                      label="Event Date"
+                      placeholder="YYYY-MM-DD"
+                      value={values.event_date}
+                      onChangeText={handleChange('event_date')}
+                      onBlur={handleBlur('event_date')}
+                      error={touched.event_date && errors.event_date}
+                      mode="outlined"
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.event_date && errors.event_date}>
+                      {errors.event_date}
+                    </HelperText>
 
-              <View style={styles.rowContainer}>
-                <View style={styles.halfWidth}>
-                  <AnimatedInput
-                    label="City"
-                    placeholder="Mérida"
-                    value={formData.city}
-                    onChangeText={(value) => handleInputChange('city', value)}
-                    maxLength={100}
-                  />
-                </View>
-                <View style={styles.halfWidth}>
-                  <AnimatedInput
-                    label="State"
-                    placeholder="Yucatán"
-                    value={formData.state}
-                    onChangeText={(value) => handleInputChange('state', value)}
-                    maxLength={100}
-                  />
-                </View>
-              </View>
+                    <View style={styles.timeRow}>
+                      <View style={styles.halfWidth}>
+                        <TextInput
+                          label="Start Time"
+                          placeholder="HH:MM"
+                          value={values.start_time}
+                          onChangeText={handleChange('start_time')}
+                          onBlur={handleBlur('start_time')}
+                          error={touched.start_time && errors.start_time}
+                          mode="outlined"
+                          style={styles.input}
+                        />
+                        <HelperText type="error" visible={touched.start_time && errors.start_time}>
+                          {errors.start_time}
+                        </HelperText>
+                      </View>
+                      <View style={styles.halfWidth}>
+                        <TextInput
+                          label="End Time"
+                          placeholder="HH:MM"
+                          value={values.end_time}
+                          onChangeText={handleChange('end_time')}
+                          onBlur={handleBlur('end_time')}
+                          error={touched.end_time && errors.end_time}
+                          mode="outlined"
+                          style={styles.input}
+                        />
+                        <HelperText type="error" visible={touched.end_time && errors.end_time}>
+                          {errors.end_time}
+                        </HelperText>
+                      </View>
+                    </View>
+                  </Card.Content>
+                </Card>
 
-              <AnimatedInput
-                label="Venue Details"
-                placeholder="Additional venue information..."
-                value={formData.venue_details}
-                onChangeText={(value) => handleInputChange('venue_details', value)}
-                multiline={true}
-                numberOfLines={3}
-                maxLength={500}
-              />
-            </AnimatedCard>
+                {/* Location & Capacity */}
+                <Card style={styles.sectionCard} mode="elevated">
+                  <Card.Content>
+                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                      Location & Capacity
+                    </Text>
+                    
+                    <TextInput
+                      label="Location"
+                      placeholder="Enter event location"
+                      value={values.location}
+                      onChangeText={handleChange('location')}
+                      onBlur={handleBlur('location')}
+                      error={touched.location && errors.location}
+                      mode="outlined"
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.location && errors.location}>
+                      {errors.location}
+                    </HelperText>
 
-            {/* Event Details */}
-            <AnimatedCard variant="elevated" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Event Details</Text>
-              
-              <View style={styles.rowContainer}>
-                <View style={styles.halfWidth}>
-                  <AnimatedInput
-                    label="Max Participants"
-                    placeholder="50"
-                    value={formData.max_participants}
-                    onChangeText={(value) => handleInputChange('max_participants', value)}
-                    keyboardType="numeric"
-                  />
-                </View>
-                <View style={styles.halfWidth}>
-                  <AnimatedInput
-                    label="Price"
-                    placeholder="0"
-                    value={formData.price}
-                    onChangeText={(value) => handleInputChange('price', value)}
-                    keyboardType="numeric"
-                  />
-                </View>
-              </View>
+                    <TextInput
+                      label="Capacity"
+                      placeholder="Maximum number of participants"
+                      value={values.capacity}
+                      onChangeText={handleChange('capacity')}
+                      onBlur={handleBlur('capacity')}
+                      error={touched.capacity && errors.capacity}
+                      mode="outlined"
+                      keyboardType="numeric"
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.capacity && errors.capacity}>
+                      {errors.capacity}
+                    </HelperText>
 
-              <View style={styles.rowContainer}>
-                <View style={styles.halfWidth}>
-                  <AnimatedInput
-                    label="Min Age Requirement"
-                    placeholder="1"
-                    value={formData.min_age_requirement}
-                    onChangeText={(value) => handleInputChange('min_age_requirement', value)}
-                    keyboardType="numeric"
-                  />
-                </View>
-                <View style={styles.halfWidth}>
-                  <AnimatedInput
-                    label="Max Age Requirement"
-                    placeholder="15"
-                    value={formData.max_age_requirement}
-                    onChangeText={(value) => handleInputChange('max_age_requirement', value)}
-                    keyboardType="numeric"
-                  />
-                </View>
-              </View>
+                    <TextInput
+                      label="Price (MXN)"
+                      placeholder="0"
+                      value={values.price}
+                      onChangeText={handleChange('price')}
+                      onBlur={handleBlur('price')}
+                      error={touched.price && errors.price}
+                      mode="outlined"
+                      keyboardType="numeric"
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.price && errors.price}>
+                      {errors.price}
+                    </HelperText>
+                  </Card.Content>
+                </Card>
 
-              <AnimatedInput
-                label="Special Requirements"
-                placeholder="Any special requirements for participants..."
-                value={formData.special_requirements}
-                onChangeText={(value) => handleInputChange('special_requirements', value)}
-                multiline={true}
-                numberOfLines={3}
-                maxLength={500}
-              />
-            </AnimatedCard>
+                {/* Contact Information */}
+                <Card style={styles.sectionCard} mode="elevated">
+                  <Card.Content>
+                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                      Contact Information
+                    </Text>
+                    
+                    <TextInput
+                      label="Contact Email"
+                      placeholder="your@email.com"
+                      value={values.contact_email}
+                      onChangeText={handleChange('contact_email')}
+                      onBlur={handleBlur('contact_email')}
+                      error={touched.contact_email && errors.contact_email}
+                      mode="outlined"
+                      keyboardType="email-address"
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.contact_email && errors.contact_email}>
+                      {errors.contact_email}
+                    </HelperText>
 
-            {/* Contact Information */}
-            <AnimatedCard variant="elevated" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Contact Information</Text>
-              
-              <AnimatedInput
-                label="Contact Email"
-                placeholder="your@email.com"
-                value={formData.contact_email}
-                onChangeText={(value) => handleInputChange('contact_email', value)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+                    <TextInput
+                      label="Contact Phone"
+                      placeholder="+52 123 456 7890"
+                      value={values.contact_phone}
+                      onChangeText={handleChange('contact_phone')}
+                      onBlur={handleBlur('contact_phone')}
+                      error={touched.contact_phone && errors.contact_phone}
+                      mode="outlined"
+                      keyboardType="phone-pad"
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.contact_phone && errors.contact_phone}>
+                      {errors.contact_phone}
+                    </HelperText>
 
-              <AnimatedInput
-                label="Contact Phone"
-                placeholder="+52 999 123 4567"
-                value={formData.contact_phone}
-                onChangeText={(value) => handleInputChange('contact_phone', value)}
-                keyboardType="phone-pad"
-              />
-            </AnimatedCard>
+                    <TextInput
+                      label="Website (Optional)"
+                      placeholder="https://example.com"
+                      value={values.website}
+                      onChangeText={handleChange('website')}
+                      onBlur={handleBlur('website')}
+                      error={touched.website && errors.website}
+                      mode="outlined"
+                      keyboardType="url"
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.website && errors.website}>
+                      {errors.website}
+                    </HelperText>
+                  </Card.Content>
+                </Card>
 
-            {/* Additional Information */}
-            <AnimatedCard variant="elevated" style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Additional Information</Text>
-              
-              <AnimatedInput
-                label="Additional Info"
-                placeholder="Any additional information for participants..."
-                value={formData.additional_info}
-                onChangeText={(value) => handleInputChange('additional_info', value)}
-                multiline={true}
-                numberOfLines={4}
-                maxLength={1000}
-              />
+                {/* Additional Information */}
+                <Card style={styles.sectionCard} mode="elevated">
+                  <Card.Content>
+                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                      Additional Information
+                    </Text>
+                    
+                    <TextInput
+                      label="Requirements"
+                      placeholder="Any special requirements for participants..."
+                      value={values.requirements}
+                      onChangeText={handleChange('requirements')}
+                      onBlur={handleBlur('requirements')}
+                      error={touched.requirements && errors.requirements}
+                      mode="outlined"
+                      multiline={true}
+                      numberOfLines={3}
+                      style={styles.input}
+                    />
+                    <HelperText type="error" visible={touched.requirements && errors.requirements}>
+                      {errors.requirements}
+                    </HelperText>
 
-              <AnimatedInput
-                label="Rules & Guidelines"
-                placeholder="Event rules and guidelines..."
-                value={formData.rules_and_guidelines}
-                onChangeText={(value) => handleInputChange('rules_and_guidelines', value)}
-                multiline={true}
-                numberOfLines={4}
-                maxLength={1000}
-              />
-            </AnimatedCard>
+                    <View style={styles.radioGroup}>
+                      <Text variant="bodyLarge" style={styles.radioLabel}>Public Event</Text>
+                      <View style={styles.radioOptions}>
+                        <View style={styles.radioOption}>
+                          <RadioButton
+                            value="true"
+                            status={values.is_public === true ? 'checked' : 'unchecked'}
+                            onPress={() => setFieldValue('is_public', true)}
+                          />
+                          <Text variant="bodyMedium">Yes</Text>
+                        </View>
+                        <View style={styles.radioOption}>
+                          <RadioButton
+                            value="false"
+                            status={values.is_public === false ? 'checked' : 'unchecked'}
+                            onPress={() => setFieldValue('is_public', false)}
+                          />
+                          <Text variant="bodyMedium">No</Text>
+                        </View>
+                      </View>
+                    </View>
 
-            {/* Submit Button */}
-            <AnimatedButton
-              title={loading ? 'Creating Event...' : 'Create Event'}
-              onPress={handleSubmit}
-              loading={loading}
-              disabled={loading}
-              size="large"
-              style={styles.submitButton}
-            />
-          </Animated.View>
+                    <View style={styles.radioGroup}>
+                      <Text variant="bodyLarge" style={styles.radioLabel}>Requires Approval</Text>
+                      <View style={styles.radioOptions}>
+                        <View style={styles.radioOption}>
+                          <RadioButton
+                            value="true"
+                            status={values.requires_approval === true ? 'checked' : 'unchecked'}
+                            onPress={() => setFieldValue('requires_approval', true)}
+                          />
+                          <Text variant="bodyMedium">Yes</Text>
+                        </View>
+                        <View style={styles.radioOption}>
+                          <RadioButton
+                            value="false"
+                            status={values.requires_approval === false ? 'checked' : 'unchecked'}
+                            onPress={() => setFieldValue('requires_approval', false)}
+                          />
+                          <Text variant="bodyMedium">No</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </Card.Content>
+                </Card>
+
+                {/* Submit Button */}
+                <Button
+                  mode="contained"
+                  onPress={handleSubmit}
+                  loading={isSubmitting}
+                  disabled={isSubmitting}
+                  style={styles.submitButton}
+                  icon="plus"
+                >
+                  {isSubmitting ? 'Creating Event...' : 'Create Event'}
+                </Button>
+              </Animated.View>
+            )}
+          </Formik>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Snackbar for errors */}
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={4000}
+          action={{
+            label: 'Dismiss',
+            onPress: () => setSnackbarVisible(false),
+          }}
+        >
+          {error || 'Something went wrong'}
+        </Snackbar>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -571,16 +582,22 @@ const styles = StyleSheet.create({
   
   header: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingVertical: Spacing.md,
+  },
+  
+  headerSurface: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     backgroundColor: Colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[100],
   },
   
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+  },
+  
+  backButton: {
+    marginRight: Spacing.lg,
   },
   
   titleContainer: {
@@ -588,15 +605,12 @@ const styles = StyleSheet.create({
   },
   
   title: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
+    marginBottom: -Spacing.xs,
   },
   
   subtitle: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
-    marginTop: Spacing.xs,
   },
   
   scrollView: {
@@ -616,8 +630,6 @@ const styles = StyleSheet.create({
   },
   
   sectionTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
     color: Colors.text.primary,
     marginBottom: Spacing.lg,
     paddingBottom: Spacing.sm,
@@ -625,53 +637,8 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.neutral[200],
   },
   
-  categorySection: {
-    marginTop: Spacing.lg,
-  },
-  
-  categoryLabel: {
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.medium,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-  },
-  
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  
-  categoryButton: {
-    width: '48%',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 2,
-    borderColor: Colors.neutral[300],
-    backgroundColor: Colors.background.primary,
-    alignItems: 'center',
+  input: {
     marginBottom: Spacing.sm,
-  },
-  
-  categoryButtonSelected: {
-    borderColor: Colors.primary[500],
-    backgroundColor: Colors.primary[50],
-  },
-  
-  categoryIcon: {
-    fontSize: Typography.fontSize.xl,
-    marginBottom: Spacing.xs,
-  },
-  
-  categoryText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.medium,
-    color: Colors.text.primary,
-    textAlign: 'center',
-  },
-  
-  categoryTextSelected: {
-    color: Colors.primary[600],
   },
   
   photoSection: {
@@ -685,70 +652,77 @@ const styles = StyleSheet.create({
   
   eventPhoto: {
     width: 200,
-    height: 112, // 16:9 aspect ratio
-    borderRadius: BorderRadius.lg,
+    height: 112,
+    borderRadius: BorderRadius.md,
     marginBottom: Spacing.md,
   },
   
   changePhotoButton: {
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.primary[500],
-    borderRadius: BorderRadius.full,
-  },
-  
-  changePhotoText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.inverse,
-    fontWeight: Typography.fontWeight.medium,
   },
   
   photoPlaceholder: {
     width: 200,
     height: 112,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.neutral[200],
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.neutral[300],
-    borderStyle: 'dashed',
     marginBottom: Spacing.md,
   },
   
-  photoIcon: {
-    fontSize: Typography.fontSize['2xl'],
-    marginBottom: Spacing.sm,
-  },
-  
-  photoText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.medium,
-    color: Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: Spacing.xs,
-  },
-  
-  photoSubtext: {
-    fontSize: Typography.fontSize.xs,
+  photoHelpText: {
     color: Colors.text.tertiary,
     textAlign: 'center',
   },
   
-  helpText: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.text.tertiary,
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  
-  rowContainer: {
+  timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: Spacing.md,
   },
   
   halfWidth: {
-    flex: 0.48,
+    flex: 1,
+  },
+  
+  selectField: {
+    marginBottom: Spacing.lg,
+  },
+  
+  selectLabel: {
+    color: Colors.text.primary,
+    marginBottom: Spacing.md,
+  },
+  
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  
+  optionChip: {
+    marginBottom: Spacing.sm,
+  },
+  
+  optionChipText: {
+    fontSize: Typography.fontSize.sm,
+  },
+  
+  radioGroup: {
+    marginBottom: Spacing.lg,
+  },
+  
+  radioLabel: {
+    color: Colors.text.primary,
+    marginBottom: Spacing.sm,
+  },
+  
+  radioOptions: {
+    flexDirection: 'row',
+    gap: Spacing.lg,
+  },
+  
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
   
   submitButton: {

@@ -1,154 +1,70 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
-  Text,
   FlatList,
-  TouchableOpacity,
-  Image,
   RefreshControl,
   Alert,
   StyleSheet,
-  SafeAreaView,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../auth/AuthContext';
-import { useSocket } from '../auth/SocketContext';
-import { apiFetch } from '../api/client';
+import { Text, Surface, FAB, List, Badge, Avatar, IconButton } from 'react-native-paper';
+import { useAuth } from '../hooks/useAuth';
+import { useSocket } from '../hooks/useSocket';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchConversations } from '../store/slices/chatsSlice';
 import { useChatService } from '../services/chatService';
+import ChatListItem from '../components/ui/ChatListItem';
+import EmptyState from '../components/ui/EmptyState';
 import { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 
 const ChatsScreen = ({ navigation }) => {
   const { accessToken } = useAuth();
-  const { socket, isConnected, connectionError, reconnect } = useSocket();
+  const { isConnected, connectionError, reconnect, connect } = useSocket();
   const chatService = useChatService();
-  const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { conversations, loading, error } = useAppSelector(state => state.chats);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
+  const hasLoadedRef = useRef(false);
 
   // Fetch conversations from API
-  const fetchConversations = useCallback(async () => {
+  const loadConversations = useCallback(async () => {
     try {
-      setError(null);
-      const response = await apiFetch('/api/messages/conversations', {
-        token: accessToken
-      });
-      
-      if (response.success) {
-        console.log('📋 Loaded conversations:', response.conversations?.length || 0);
-        response.conversations?.forEach(conv => {
-          console.log(`  - Match ${conv.match.id}: ${conv.unread_count} unread messages`);
-        });
-        setConversations(response.conversations || []);
-      } else {
-        setError(response.message || 'Failed to fetch conversations');
-      }
+      await dispatch(fetchConversations());
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      setError('Failed to load conversations');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
-  }, [accessToken]);
+  }, [dispatch]);
 
   // Load conversations on mount and focus
   useFocusEffect(
     useCallback(() => {
-      fetchConversations();
-    }, [fetchConversations])
+      // Only load if not already loading and not already loaded
+      if (!loading && !hasLoadedRef.current) {
+        console.log('🔌 ChatsScreen: Loading conversations');
+        hasLoadedRef.current = true;
+        loadConversations();
+      }
+      
+      // Ensure socket is connected when entering chats
+      if (!isConnected) {
+        console.log('🔌 ChatsScreen: Socket not connected, attempting to connect');
+        connect();
+      }
+    }, [loading, isConnected, loadConversations, connect])
   );
 
-  // Refresh conversations when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      // Small delay to ensure any read operations have completed
-      const timer = setTimeout(() => {
-        fetchConversations();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }, [fetchConversations])
-  );
-
-  // Setup socket listeners for real-time updates
-  useEffect(() => {
-    if (!socket || !isConnected) return;
-
-    const handleNewMessage = (messageData) => {
-      console.log('📱 ChatsScreen received new message:', messageData);
-      
-      // Update conversations list with new message
-      setConversations(prevConversations => {
-        return prevConversations.map(conversation => {
-          if (conversation.match.id === messageData.match_id) {
-            const newUnreadCount = messageData.is_sent_by_me 
-              ? conversation.unread_count 
-              : (conversation.unread_count || 0) + 1;
-            
-            console.log(`📱 Updated unread count for match ${messageData.match_id}: ${newUnreadCount}`);
-            
-            return {
-              ...conversation,
-              last_message: messageData,
-              last_message_at: messageData.sent_at,
-              unread_count: newUnreadCount
-            };
-          }
-          return conversation;
-        });
-      });
-    };
-
-    const handleMessageRead = (readData) => {
-      // Update read status for messages
-      setConversations(prevConversations => {
-        return prevConversations.map(conversation => {
-          if (conversation.match.id === readData.match_id) {
-            return {
-              ...conversation,
-              unread_count: 0 // Reset unread count when messages are read
-            };
-          }
-          return conversation;
-        });
-      });
-    };
-
-    const handleAllMessagesRead = (matchId) => {
-      // Reset unread count to 0 when all messages are marked as read
-      setConversations(prevConversations => {
-        return prevConversations.map(conversation => {
-          if (conversation.match.id === matchId) {
-            return {
-              ...conversation,
-              unread_count: 0
-            };
-          }
-          return conversation;
-        });
-      });
-    };
-
-    // Setup socket listeners
-    console.log('🔌 Setting up socket listeners in ChatsScreen');
-    chatService.chatService.setupSocketListeners(socket, {
-      onNewMessage: handleNewMessage,
-      onMessageRead: handleMessageRead
-    });
-
-    return () => {
-      // Cleanup listeners if needed
-    };
-  }, [socket, isConnected]);
+  // Socket listeners are now handled by Redux middleware
+  // Real-time updates are managed through Redux state
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchConversations();
-  }, [fetchConversations]);
+    hasLoadedRef.current = false; // Reset the ref to allow reloading
+    loadConversations();
+  }, [loadConversations]);
 
   // Handle conversation tap
   const handleConversationPress = (conversation) => {
@@ -199,103 +115,44 @@ const ChatsScreen = ({ navigation }) => {
 
   // Render conversation item
   const renderConversation = ({ item: conversation, index }) => (
-    <Animated.View
-      entering={FadeInDown.delay(index * 100).duration(600)}
-      style={styles.conversationItem}
-    >
-      <TouchableOpacity
-        style={styles.conversationTouchable}
+    <Animated.View entering={FadeInDown.delay(index * 100).duration(600)}>
+      <ChatListItem
+        conversation={conversation}
         onPress={() => handleConversationPress(conversation)}
-        activeOpacity={0.7}
-      >
-        {/* User Avatar */}
-        <View style={styles.avatarContainer}>
-          <Image
-            source={{
-              uri: conversation.match.other_dog?.owner?.profile_photo_url || 
-                   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
-            }}
-            style={styles.avatar}
-            defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
-          />
-          {conversation.unread_count > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>
-                {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Conversation Info */}
-        <View style={styles.conversationInfo}>
-          <View style={styles.conversationHeader}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {conversation.match.other_dog?.owner?.full_name || 'Unknown User'}
-            </Text>
-            <Text style={styles.timestamp}>
-              {formatTimestamp(conversation.updated_at)}
-            </Text>
-          </View>
-          
-          <View style={styles.conversationPreview}>
-            <Text 
-              style={[
-                styles.lastMessage,
-                conversation.unread_count > 0 && styles.unreadMessage
-              ]} 
-              numberOfLines={1}
-            >
-              {formatLastMessage(conversation.last_message)}
-            </Text>
-            {conversation.unread_count > 0 && (
-              <View style={styles.unreadDot} />
-            )}
-          </View>
-          
-          <Text style={styles.dogName} numberOfLines={1}>
-            🐕 {conversation.other_dog?.name} & {conversation.match?.dog_one?.name}
-          </Text>
-        </View>
-      </TouchableOpacity>
+        style={styles.conversationItem}
+      />
     </Animated.View>
   );
 
   // Render empty state
   const renderEmptyState = () => (
-    <Animated.View 
-      entering={FadeIn.duration(800)}
-      style={styles.emptyState}
-    >
-      <Text style={styles.emptyStateIcon}>💬</Text>
-      <Text style={styles.emptyStateTitle}>No conversations yet</Text>
-      <Text style={styles.emptyStateSubtitle}>
-        Start swiping to find matches and begin chatting!
-      </Text>
+    <Animated.View entering={FadeIn.duration(800)} style={styles.emptyState}>
+      <EmptyState
+        icon="message-outline"
+        title="No conversations yet"
+        description="Start swiping to find matches and begin chatting!"
+        actionLabel="Start Swiping"
+        onAction={() => navigation.navigate('Discover')}
+      />
     </Animated.View>
   );
 
   // Render error state
   const renderErrorState = () => (
-    <Animated.View 
-      entering={FadeIn.duration(800)}
-      style={styles.errorState}
-    >
-      <Text style={styles.errorStateIcon}>⚠️</Text>
-      <Text style={styles.errorStateTitle}>Failed to load conversations</Text>
-      <Text style={styles.errorStateSubtitle}>{error}</Text>
-      <TouchableOpacity 
-        style={styles.retryButton}
-        onPress={fetchConversations}
-      >
-        <Text style={styles.retryButtonText}>Try Again</Text>
-      </TouchableOpacity>
+    <Animated.View entering={FadeIn.duration(800)} style={styles.errorState}>
+      <EmptyState
+        icon="alert-circle"
+        title="Failed to load conversations"
+        description={error}
+        actionLabel="Try Again"
+        onAction={fetchConversations}
+      />
     </Animated.View>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Chats</Text>
@@ -314,21 +171,35 @@ const ChatsScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chats</Text>
-        <View style={styles.headerRight}>
-          {!isConnected && (
-            <View style={styles.connectionStatus}>
-              <View style={styles.offlineDot} />
-              <Text style={styles.connectionText}>Offline</Text>
-            </View>
-          )}
+      <Surface style={styles.header} elevation={2}>
+        <View style={styles.headerContent}>
+          <Text variant="headlineMedium" style={styles.headerTitle}>Chats</Text>
+          <View style={styles.headerRight}>
+            {!isConnected && (
+              <View style={styles.connectionStatus}>
+                <Avatar.Icon icon="wifi-off" size={20} style={styles.offlineIcon} />
+                <Text variant="bodySmall" style={styles.connectionText}>Offline</Text>
+                <IconButton
+                  icon="wifi"
+                  size={20}
+                  onPress={connect}
+                  style={styles.connectButton}
+                />
+              </View>
+            )}
+            <IconButton
+              icon="refresh"
+              size={24}
+              onPress={onRefresh}
+              style={styles.refreshButton}
+            />
+          </View>
         </View>
-      </View>
+      </Surface>
 
       {/* Content */}
       {error ? (
@@ -362,18 +233,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+  },
+  offlineIcon: {
+    backgroundColor: '#EF4444',
+  },
+  refreshButton: {
+    margin: 0,
   },
   headerTitle: {
     fontSize: 28,
@@ -383,6 +263,9 @@ const styles = StyleSheet.create({
   connectionStatus: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  connectButton: {
+    marginLeft: 8,
   },
   offlineDot: {
     width: 8,

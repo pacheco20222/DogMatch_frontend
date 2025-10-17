@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
-  Text,
   FlatList,
-  TouchableOpacity,
-  Image,
   RefreshControl,
   Alert,
   StyleSheet,
@@ -13,8 +10,22 @@ import {
   Dimensions
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../auth/AuthContext';
-import { apiFetch } from '../api/client';
+import { 
+  Text, 
+  Surface, 
+  Card, 
+  Avatar, 
+  Chip, 
+  Button, 
+  IconButton, 
+  ActivityIndicator,
+  Snackbar,
+  Portal
+} from 'react-native-paper';
+import { useAuth } from '../hooks/useAuth';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchPendingSwipes, respondToSwipe } from '../store/slices/matchesSlice';
+import EmptyState from '../components/ui/EmptyState';
 import { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Animated, { 
   useSharedValue, 
@@ -28,54 +39,48 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const PendingSwipesScreen = ({ navigation }) => {
   const { accessToken } = useAuth();
-  const [pendingSwipes, setPendingSwipes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { pendingSwipes, loading, error } = useAppSelector(state => state.matches);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
   const [respondingTo, setRespondingTo] = useState(null);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
   const cardsOpacity = useSharedValue(0);
 
   // Fetch pending swipes from API
-  const fetchPendingSwipes = useCallback(async () => {
+  const loadPendingSwipes = useCallback(async () => {
     try {
-      setError(null);
-      const response = await apiFetch('/api/matches/pending', {
-        token: accessToken
-      });
-      
-      if (response.success) {
-        setPendingSwipes(response.pending_swipes || []);
-      } else {
-        setError(response.message || 'Failed to fetch pending swipes');
-      }
+      await dispatch(fetchPendingSwipes());
     } catch (error) {
       console.error('Error fetching pending swipes:', error);
-      setError('Failed to load pending swipes');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
-  }, [accessToken]);
+  }, [dispatch]);
 
   // Load pending swipes on mount and focus
   useFocusEffect(
     useCallback(() => {
-      fetchPendingSwipes();
+      loadPendingSwipes();
       
       // Animate header and cards
       headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
       cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
-    }, [fetchPendingSwipes])
+    }, [loadPendingSwipes])
   );
+
+  // Show error snackbar when error occurs
+  useEffect(() => {
+    if (error) {
+      setSnackbarVisible(true);
+    }
+  }, [error]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchPendingSwipes();
-  }, [fetchPendingSwipes]);
+    loadPendingSwipes();
+  }, [loadPendingSwipes]);
 
   // Handle swipe response
   const handleSwipeResponse = async (matchId, action) => {
@@ -84,18 +89,14 @@ const PendingSwipesScreen = ({ navigation }) => {
     setRespondingTo(matchId);
     
     try {
-      const response = await apiFetch(`/api/matches/${matchId}/respond`, {
-        method: 'POST',
-        token: accessToken,
-        body: { action }
-      });
+      const response = await dispatch(respondToSwipe({ matchId, action }));
       
-      if (response.success) {
+      if (response.payload?.success) {
         // Show success message
-        if (response.is_mutual_match) {
+        if (response.payload.is_mutual_match) {
           Alert.alert(
             '🎉 It\'s a Match!',
-            response.message,
+            response.payload.message,
             [
               {
                 text: 'Start Chatting',
@@ -103,9 +104,9 @@ const PendingSwipesScreen = ({ navigation }) => {
                   // Navigate to chat
                   navigation.navigate('ChatConversation', {
                     matchId: matchId,
-                    otherUser: response.match.other_user,
-                    otherDog: response.match.other_dog,
-                    match: response.match
+                    otherUser: response.payload.match.other_user,
+                    otherDog: response.payload.match.other_dog,
+                    match: response.payload.match
                   });
                 }
               },
@@ -113,13 +114,10 @@ const PendingSwipesScreen = ({ navigation }) => {
             ]
           );
         } else {
-          Alert.alert('Success', response.message);
+          Alert.alert('Success', response.payload.message);
         }
-        
-        // Remove from pending list
-        setPendingSwipes(prev => prev.filter(swipe => swipe.id !== matchId));
       } else {
-        Alert.alert('Error', response.message || 'Failed to respond to swipe');
+        Alert.alert('Error', response.payload?.message || 'Failed to respond to swipe');
       }
     } catch (error) {
       console.error('Error responding to swipe:', error);
@@ -158,9 +156,8 @@ const PendingSwipesScreen = ({ navigation }) => {
         entering={FadeInUp.delay(index * 100).duration(600)}
         style={styles.swipeCard}
       >
-        {/* Dog Photo */}
-        <View style={styles.imageContainer}>
-          <Image
+        <Card mode="elevated" style={styles.card}>
+          <Card.Cover
             source={{ 
               uri: otherDog.photos && otherDog.photos.length > 0 
                 ? (otherDog.photos[0].url.startsWith('http') 
@@ -169,83 +166,91 @@ const PendingSwipesScreen = ({ navigation }) => {
                 : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face'
             }}
             style={styles.dogImage}
-            resizeMode="cover"
-            defaultSource={{ uri: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face' }}
           />
-          <View style={styles.imageGradient} />
           
-          {/* Swipe Action Badge */}
-          <View style={styles.swipeActionBadge}>
-            <Text style={styles.swipeActionText}>
-              {swipe.other_dog_action === 'like' ? '❤️ Liked' : '⭐ Super Liked'}
-            </Text>
-          </View>
-        </View>
+          <Card.Content style={styles.cardContent}>
+            {/* Swipe Action Badge */}
+            <Chip 
+              icon={swipe.other_dog_action === 'like' ? 'heart' : 'star'}
+              mode="flat"
+              style={styles.swipeActionChip}
+            >
+              {swipe.other_dog_action === 'like' ? 'Liked' : 'Super Liked'}
+            </Chip>
 
-        {/* Dog Info */}
-        <View style={styles.dogInfo}>
-          <View style={styles.nameAgeContainer}>
-            <Text style={styles.dogName}>{otherDog.name}</Text>
-            <View style={styles.ageBadge}>
-              <Text style={styles.dogAge}>{otherDog.age} years</Text>
-            </View>
-          </View>
-          
-          <View style={styles.breedContainer}>
-            <Text style={styles.dogBreed}>{otherDog.breed}</Text>
-          </View>
-          
-          <Text style={styles.dogDescription} numberOfLines={2}>
-            {otherDog.description}
-          </Text>
-          
-          {/* Owner Info */}
-          <View style={styles.ownerInfo}>
-            <Image
-              source={{
-                uri: otherOwner?.profile_photo_url || 
-                     'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
-              }}
-              style={styles.ownerAvatar}
-              defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
-            />
-            <View style={styles.ownerDetails}>
-              <Text style={styles.ownerName}>
-                {otherOwner?.first_name} {otherOwner?.last_name}
+            {/* Dog Info */}
+            <View style={styles.dogInfo}>
+              <View style={styles.nameAgeContainer}>
+                <Text variant="headlineSmall" style={styles.dogName}>
+                  {otherDog.name}
+                </Text>
+                <Chip mode="outlined" compact style={styles.ageChip}>
+                  {otherDog.age} years
+                </Chip>
+              </View>
+              
+              <Text variant="bodyMedium" style={styles.dogBreed}>
+                {otherDog.breed}
               </Text>
-              <Text style={styles.swipeTime}>
-                {formatTimestamp(swipe.created_at)}
+              
+              <Text variant="bodySmall" style={styles.dogDescription} numberOfLines={2}>
+                {otherDog.description}
               </Text>
+              
+              {/* Owner Info */}
+              <View style={styles.ownerInfo}>
+                <Avatar.Image
+                  size={40}
+                  source={{
+                    uri: otherOwner?.profile_photo_url || 
+                         'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
+                  }}
+                />
+                <View style={styles.ownerDetails}>
+                  <Text variant="bodyMedium" style={styles.ownerName}>
+                    {otherOwner?.first_name} {otherOwner?.last_name}
+                  </Text>
+                  <Text variant="bodySmall" style={styles.swipeTime}>
+                    {formatTimestamp(swipe.created_at)}
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.passButton]}
-            onPress={() => handleSwipeResponse(swipe.id, 'pass')}
-            disabled={isResponding}
-          >
-            <Text style={styles.passButtonText}>✕</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.actionButton, styles.likeButton]}
-            onPress={() => handleSwipeResponse(swipe.id, 'like')}
-            disabled={isResponding}
-          >
-            <Text style={styles.likeButtonText}>❤️</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.actionButton, styles.superLikeButton]}
-            onPress={() => handleSwipeResponse(swipe.id, 'super_like')}
-            disabled={isResponding}
-          >
-            <Text style={styles.superLikeButtonText}>⭐</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+              <Button
+                mode="outlined"
+                onPress={() => handleSwipeResponse(swipe.id, 'pass')}
+                disabled={isResponding}
+                style={styles.passButton}
+                icon="close"
+              >
+                Pass
+              </Button>
+              
+              <Button
+                mode="contained"
+                onPress={() => handleSwipeResponse(swipe.id, 'like')}
+                disabled={isResponding}
+                style={styles.likeButton}
+                icon="heart"
+              >
+                Like
+              </Button>
+              
+              <Button
+                mode="contained-tonal"
+                onPress={() => handleSwipeResponse(swipe.id, 'super_like')}
+                disabled={isResponding}
+                style={styles.superLikeButton}
+                icon="star"
+              >
+                Super Like
+              </Button>
+            </View>
+          </Card.Content>
+        </Card>
       </Animated.View>
     );
   };
@@ -294,46 +299,49 @@ const PendingSwipesScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <Animated.View style={[styles.header, animatedHeaderStyle]}>
-          <TouchableOpacity 
-            style={styles.backButton}
+        <Surface style={[styles.header, animatedHeaderStyle]} elevation={2}>
+          <IconButton 
+            icon="arrow-left"
             onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Pending Swipes</Text>
+            style={styles.backButton}
+          />
+          <Text variant="headlineMedium" style={styles.headerTitle}>Pending Swipes</Text>
           <View style={styles.headerSpacer} />
-        </Animated.View>
+        </Surface>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading pending swipes...</Text>
+          <ActivityIndicator size="large" />
+          <Text variant="bodyLarge" style={styles.loadingText}>Loading pending swipes...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
-      <Animated.View style={[styles.header, animatedHeaderStyle]}>
-        <TouchableOpacity 
-          style={styles.backButton}
+      <Surface style={[styles.header, animatedHeaderStyle]} elevation={2}>
+        <IconButton 
+          icon="arrow-left"
           onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pending Swipes</Text>
+          style={styles.backButton}
+        />
+        <Text variant="headlineMedium" style={styles.headerTitle}>Pending Swipes</Text>
         <View style={styles.headerSpacer} />
-      </Animated.View>
+      </Surface>
 
       {/* Content */}
-      {error ? (
-        renderErrorState()
-      ) : pendingSwipes.length === 0 ? (
-        renderEmptyState()
+      {pendingSwipes.length === 0 ? (
+        <EmptyState
+          icon="heart-outline"
+          title="No pending swipes!"
+          subtitle="All caught up! Check back later for new swipes."
+          actionText="Go to Discover"
+          onActionPress={() => navigation.navigate('Discover')}
+        />
       ) : (
         <Animated.View style={[styles.content, animatedCardsStyle]}>
           <FlatList
@@ -353,6 +361,23 @@ const PendingSwipesScreen = ({ navigation }) => {
           />
         </Animated.View>
       )}
+
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={4000}
+          action={{
+            label: 'Retry',
+            onPress: () => {
+              setSnackbarVisible(false);
+              loadPendingSwipes();
+            },
+          }}
+        >
+          {error || 'Failed to load pending swipes'}
+        </Snackbar>
+      </Portal>
     </SafeAreaView>
   );
 };

@@ -1,15 +1,25 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
-  Text, 
   ScrollView, 
-  TouchableOpacity, 
-  Image, 
   StyleSheet,
   RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import {
+  Text,
+  Card,
+  Surface,
+  FAB,
+  Chip,
+  Button,
+  Avatar,
+  ActivityIndicator,
+  Snackbar,
+  Portal,
+  Badge,
+} from 'react-native-paper';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,20 +29,19 @@ import Animated, {
   SlideInUp,
   Layout,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchEvents, clearError } from '../store/slices/eventsSlice';
+import { useAuth } from '../hooks/useAuth';
 import { canCreateEvents } from '../utils/permissions';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedCard from '../components/AnimatedCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import EmptyState from '../components/ui/EmptyState';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const EventsScreen = ({ navigation }) => {
-  const { user, accessToken } = useContext(AuthContext);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const { events, loading, error } = useAppSelector(state => state.events);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   // Check if user can create events (admin or shelter only)
   const userCanCreateEvents = canCreateEvents(user);
@@ -41,32 +50,21 @@ const EventsScreen = ({ navigation }) => {
   const headerOpacity = useSharedValue(0);
   const cardsOpacity = useSharedValue(0);
 
-  const fetchEvents = async (isRefresh = false) => {
+  const loadEvents = async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
-      } else {
-        setLoading(true);
       }
-      setError('');
-      
-      const response = await apiFetch('/api/events', {
-        method: 'GET',
-        token: accessToken
-      });
-      
-      setEvents(response.events || []);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-      setError(error.message || 'Failed to load events');
+      await dispatch(fetchEvents()).unwrap();
+    } catch (e) {
+      setSnackbarVisible(true);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchEvents();
+    loadEvents();
     // Animate header and cards
     headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
     cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
@@ -75,9 +73,16 @@ const EventsScreen = ({ navigation }) => {
   // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      fetchEvents();
+      loadEvents();
     }, [])
   );
+
+  // Clear error when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
 
   const formatEventDate = (dateString) => {
     try {
@@ -116,14 +121,14 @@ const EventsScreen = ({ navigation }) => {
 
   const getCategoryIcon = (category) => {
     const iconMap = {
-      'meetup': '🐕',
-      'training': '🎓',
-      'adoption': '🏠',
-      'competition': '🏆',
-      'social': '🎉',
-      'educational': '📚'
+      'meetup': 'dog',
+      'training': 'school',
+      'adoption': 'home',
+      'competition': 'trophy',
+      'social': 'party-popper',
+      'educational': 'book-open'
     };
-    return iconMap[category] || '📅';
+    return iconMap[category] || 'calendar';
   };
 
   const getCategoryColor = (category) => {
@@ -144,96 +149,142 @@ const EventsScreen = ({ navigation }) => {
       entering={FadeIn.delay(index * 100).duration(600)}
       layout={Layout.springify()}
     >
-      <AnimatedCard
-        variant="elevated"
+      <Card 
+        mode="elevated" 
         style={styles.eventCard}
         onPress={() => navigation.navigate('RegisterEvent', { eventId: event.id })}
       >
-        {/* Event Header */}
-        <View style={styles.eventHeader}>
-          <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(event.category) }]}>
-            <Text style={styles.categoryEmoji}>{getCategoryIcon(event.category)}</Text>
-          </View>
-          
-          <View style={styles.eventInfo}>
-            <Text style={styles.eventTitle}>{event.title}</Text>
-            <Text style={styles.eventCategory}>{getCategoryDisplayName(event.category)}</Text>
-            <Text style={styles.eventOrganizer}>
-              by {event.organizer?.full_name || event.organizer?.username || 'Unknown'}
-            </Text>
-          </View>
-          
-          <View style={[
-            styles.priceBadge,
-            { backgroundColor: event.price > 0 ? Colors.warning[100] : Colors.success[100] }
-          ]}>
-            <Text style={[
-              styles.priceText,
-              { color: event.price > 0 ? Colors.warning[700] : Colors.success[700] }
-            ]}>
-              {formatPrice(event.price, event.currency)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Event Description */}
-        {event.description && (
-          <Text style={styles.eventDescription} numberOfLines={2}>
-            {event.description}
-          </Text>
+        {/* Event Photo */}
+        {event.photo_url && (
+          <Card.Cover 
+            source={{ 
+              uri: event.photo_url.startsWith('http') 
+                ? event.photo_url 
+                : `https://dogmatch-backend.onrender.com${event.photo_url}`
+            }} 
+            style={styles.eventPhoto}
+          />
         )}
 
-        {/* Event Details */}
-        <View style={styles.eventDetails}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>📅</Text>
-            <Text style={styles.detailText}>{formatEventDate(event.event_date)}</Text>
+        <Card.Content style={styles.cardContent}>
+          {/* Event Header */}
+          <View style={styles.eventHeader}>
+            <Avatar.Icon
+              size={48}
+              icon={getCategoryIcon(event.category)}
+              style={[styles.categoryAvatar, { backgroundColor: getCategoryColor(event.category) }]}
+            />
+            
+            <View style={styles.eventInfo}>
+              <Text variant="titleLarge" style={styles.eventTitle}>
+                {event.title}
+              </Text>
+              <Chip 
+                mode="outlined" 
+                compact 
+                icon={getCategoryIcon(event.category)}
+                style={styles.categoryChip}
+                textStyle={styles.categoryChipText}
+              >
+                {getCategoryDisplayName(event.category)}
+              </Chip>
+              <Text variant="bodySmall" style={styles.eventOrganizer}>
+                by {event.organizer?.full_name || event.organizer?.username || 'Unknown'}
+              </Text>
+            </View>
+            
+            <Chip 
+              mode="outlined" 
+              compact 
+              style={[
+                styles.priceChip,
+                { backgroundColor: event.price > 0 ? Colors.warning[50] : Colors.success[50] }
+              ]}
+              textStyle={[
+                styles.priceChipText,
+                { color: event.price > 0 ? Colors.warning[700] : Colors.success[700] }
+              ]}
+            >
+              {formatPrice(event.price, event.currency)}
+            </Chip>
           </View>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>📍</Text>
-            <Text style={styles.detailText} numberOfLines={1}>{event.location}</Text>
-          </View>
-          
-          {event.max_participants && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailIcon}>👥</Text>
-              <Text style={styles.detailText}>
-                {event.current_participants}/{event.max_participants} participants
+
+          {/* Event Description */}
+          {event.description && (
+            <View style={styles.descriptionContainer}>
+              <Text variant="bodyMedium" style={styles.eventDescription} numberOfLines={2}>
+                {event.description}
               </Text>
             </View>
           )}
-        </View>
 
-        {/* Event Status */}
-        <View style={styles.eventFooter}>
-          <View style={[
-            styles.statusBadge,
-            { 
-              backgroundColor: event.is_registered 
-                ? Colors.primary[100] 
-                : (event.is_registration_open ? Colors.success[100] : Colors.error[100])
-            }
-          ]}>
-            <Text style={[
-              styles.statusText,
-              { 
-                color: event.is_registered 
-                  ? Colors.primary[700] 
-                  : (event.is_registration_open ? Colors.success[700] : Colors.error[700])
-              }
-            ]}>
-              {event.is_registered ? 'Registered' : (event.is_registration_open ? 'Registration Open' : 'Registration Closed')}
-            </Text>
-          </View>
-          
-          {event.is_full && !event.is_registered && (
-            <View style={styles.fullBadge}>
-              <Text style={styles.fullText}>FULL</Text>
+          {/* Event Details */}
+          <View style={styles.eventDetails}>
+            <View style={styles.detailRow}>
+              <Avatar.Icon size={24} icon="calendar" style={styles.detailIcon} />
+              <Text variant="bodySmall" style={styles.detailText}>
+                {formatEventDate(event.event_date)}
+              </Text>
             </View>
-          )}
-        </View>
-      </AnimatedCard>
+            
+            <View style={styles.detailRow}>
+              <Avatar.Icon size={24} icon="map-marker" style={styles.detailIcon} />
+              <Text variant="bodySmall" style={styles.detailText} numberOfLines={1}>
+                {event.location}
+              </Text>
+            </View>
+            
+            {event.max_participants && (
+              <View style={styles.detailRow}>
+                <Avatar.Icon size={24} icon="account-group" style={styles.detailIcon} />
+                <Text variant="bodySmall" style={styles.detailText}>
+                  {event.current_participants}/{event.max_participants} participants
+                </Text>
+                {event.is_full && (
+                  <Badge style={styles.fullBadge}>FULL</Badge>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Event Actions */}
+          <View style={styles.eventActions}>
+            <Chip 
+              mode="outlined" 
+              compact 
+              icon={event.is_registered ? "check-circle" : (event.is_registration_open ? "calendar-plus" : "calendar-remove")}
+              style={[
+                styles.statusChip,
+                { 
+                  backgroundColor: event.is_registered 
+                    ? Colors.primary[50] 
+                    : (event.is_registration_open ? Colors.success[50] : Colors.error[50])
+                }
+              ]}
+              textStyle={[
+                styles.statusChipText,
+                { 
+                  color: event.is_registered 
+                    ? Colors.primary[700] 
+                    : (event.is_registration_open ? Colors.success[700] : Colors.error[700])
+                }
+              ]}
+            >
+              {event.is_registered ? 'Registered' : (event.is_registration_open ? 'Registration Open' : 'Registration Closed')}
+            </Chip>
+            
+            <Button
+              mode="outlined"
+              onPress={() => navigation.navigate('RegisterEvent', { eventId: event.id })}
+              icon="arrow-right"
+              style={styles.viewButton}
+              compact
+            >
+              View Details
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
     </Animated.View>
   );
 
@@ -245,32 +296,46 @@ const EventsScreen = ({ navigation }) => {
     opacity: cardsOpacity.value,
   }));
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" text="Loading events..." />
+          <ActivityIndicator size="large" color={Colors.primary[500]} />
+          <Text variant="bodyLarge" style={styles.loadingText}>
+            Loading events...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Modern Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Events</Text>
-          <Text style={styles.subtitle}>Join community events and meetups</Text>
-        </View>
-        {userCanCreateEvents && (
-          <AnimatedButton
-            title="Create Event"
-            onPress={() => navigation.navigate('CreateEvent')}
-            size="medium"
-            style={styles.createButton}
-          />
-        )}
+        <Surface style={styles.headerSurface} elevation={2}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text variant="headlineMedium" style={styles.title}>
+                Events
+              </Text>
+              <Text variant="bodyMedium" style={styles.subtitle}>
+                Join community events and meetups
+              </Text>
+            </View>
+            {userCanCreateEvents && (
+              <Button
+                mode="contained"
+                onPress={() => navigation.navigate('CreateEvent')}
+                icon="plus"
+                style={styles.createButton}
+                compact
+              >
+                Create Event
+              </Button>
+            )}
+          </View>
+        </Surface>
       </Animated.View>
 
       <ScrollView
@@ -280,7 +345,7 @@ const EventsScreen = ({ navigation }) => {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => fetchEvents(true)}
+            onRefresh={() => loadEvents(true)}
             colors={[Colors.primary[500]]}
             tintColor={Colors.primary[500]}
           />
@@ -288,50 +353,35 @@ const EventsScreen = ({ navigation }) => {
       >
         {error ? (
           <Animated.View entering={FadeIn.duration(600)}>
-            <AnimatedCard variant="outlined" style={styles.errorCard}>
-              <View style={styles.errorContent}>
-                <Text style={styles.errorEmoji}>😔</Text>
-                <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <AnimatedButton
-                  title="Try Again"
-                  onPress={() => fetchEvents()}
-                  variant="outline"
-                  size="medium"
-                  style={styles.retryButton}
-                />
-              </View>
-            </AnimatedCard>
+            <EmptyState
+              icon="alert-circle"
+              title="Oops! Something went wrong"
+              subtitle={error}
+              action={{
+                label: "Try Again",
+                onPress: () => loadEvents()
+              }}
+            />
           </Animated.View>
         ) : events.length === 0 ? (
           <Animated.View entering={FadeIn.duration(600)}>
-            <AnimatedCard variant="outlined" style={styles.emptyCard}>
-              <View style={styles.emptyContent}>
-                <View style={styles.emptyIcon}>
-                  <Text style={styles.emptyEmoji}>📅</Text>
-                </View>
-                <Text style={styles.emptyTitle}>No events available</Text>
-                <Text style={styles.emptySubtitle}>
-                  {userCanCreateEvents 
-                    ? 'Create your first event to get started!'
-                    : 'Check back soon for upcoming events in your area.'
-                  }
-                </Text>
-                {userCanCreateEvents && (
-                  <AnimatedButton
-                    title="Create Event"
-                    onPress={() => navigation.navigate('CreateEvent')}
-                    size="large"
-                    style={styles.createEventButton}
-                  />
-                )}
-              </View>
-            </AnimatedCard>
+            <EmptyState
+              icon="calendar"
+              title="No events available"
+              subtitle={userCanCreateEvents 
+                ? 'Create your first event to get started!'
+                : 'Check back soon for upcoming events in your area.'
+              }
+              action={userCanCreateEvents ? {
+                label: "Create Event",
+                onPress: () => navigation.navigate('CreateEvent')
+              } : undefined}
+            />
           </Animated.View>
         ) : (
           <Animated.View style={[styles.eventsContainer, cardsAnimatedStyle]}>
             <View style={styles.eventsHeader}>
-              <Text style={styles.eventsCount}>
+              <Text variant="titleMedium" style={styles.eventsCount}>
                 {events.length} event{events.length !== 1 ? 's' : ''} available
               </Text>
             </View>
@@ -339,6 +389,31 @@ const EventsScreen = ({ navigation }) => {
           </Animated.View>
         )}
       </ScrollView>
+
+      {/* FAB for quick create */}
+      {userCanCreateEvents && (
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          onPress={() => navigation.navigate('CreateEvent')}
+          label="Create Event"
+        />
+      )}
+
+      {/* Snackbar for errors */}
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={4000}
+          action={{
+            label: 'Dismiss',
+            onPress: () => setSnackbarVisible(false),
+          }}
+        >
+          {error || 'Something went wrong'}
+        </Snackbar>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -353,37 +428,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: Spacing.md,
+  },
+  
+  loadingText: {
+    color: Colors.text.secondary,
   },
   
   header: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
+  },
+  
+  headerSurface: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     backgroundColor: Colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[100],
   },
   
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
   },
   
   title: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
+    marginBottom: -Spacing.xs,
   },
   
   subtitle: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
-    marginTop: -Spacing.xs,
   },
   
   createButton: {
-    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
   },
   
   scrollView: {
@@ -392,6 +471,7 @@ const styles = StyleSheet.create({
   
   scrollContent: {
     padding: Spacing.lg,
+    paddingBottom: 100, // Space for FAB
   },
   
   eventsContainer: {
@@ -403,75 +483,73 @@ const styles = StyleSheet.create({
   },
   
   eventsCount: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
     color: Colors.text.primary,
   },
   
   eventCard: {
     marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+  },
+  
+  eventPhoto: {
+    height: 200,
+  },
+  
+  cardContent: {
+    padding: Spacing.md,
   },
   
   eventHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: Spacing.md,
+    gap: Spacing.md,
   },
   
-  categoryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: BorderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  
-  categoryEmoji: {
-    fontSize: Typography.fontSize.xl,
+  categoryAvatar: {
+    backgroundColor: Colors.primary[500],
   },
   
   eventInfo: {
     flex: 1,
-    marginRight: Spacing.sm,
   },
   
   eventTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
+    marginBottom: Spacing.sm,
+  },
+  
+  categoryChip: {
+    backgroundColor: Colors.primary[50],
+    borderColor: Colors.primary[200],
     marginBottom: Spacing.xs,
   },
   
-  eventCategory: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.medium,
-    color: Colors.primary[600],
-    marginBottom: Spacing.xs,
+  categoryChipText: {
+    color: Colors.primary[700],
+    fontSize: Typography.fontSize.xs,
   },
   
   eventOrganizer: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.tertiary,
   },
   
-  priceBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    alignSelf: 'flex-start',
+  priceChip: {
+    borderColor: Colors.warning[200],
   },
   
-  priceText: {
-    fontSize: Typography.fontSize.sm,
+  priceChipText: {
+    fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.semibold,
   },
   
-  eventDescription: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
+  descriptionContainer: {
     marginBottom: Spacing.md,
+  },
+  
+  eventDescription: {
+    color: Colors.text.secondary,
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
   },
   
   eventDetails: {
@@ -482,125 +560,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.sm,
+    gap: Spacing.sm,
   },
   
   detailIcon: {
-    fontSize: Typography.fontSize.sm,
-    marginRight: Spacing.sm,
-    width: 20,
+    backgroundColor: Colors.neutral[100],
   },
   
   detailText: {
-    fontSize: Typography.fontSize.sm,
     color: Colors.text.secondary,
     flex: 1,
   },
   
-  eventFooter: {
+  fullBadge: {
+    backgroundColor: Colors.error[500],
+    color: Colors.background.primary,
+  },
+  
+  eventActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.sm,
   },
   
-  statusBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+  statusChip: {
+    borderColor: Colors.primary[200],
   },
   
-  statusText: {
+  statusChipText: {
     fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.semibold,
   },
   
-  fullBadge: {
-    backgroundColor: Colors.error[100],
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+  viewButton: {
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   
-  fullText: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.error[700],
-  },
-  
-  errorCard: {
-    marginVertical: Spacing.lg,
-  },
-  
-  errorContent: {
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  
-  errorEmoji: {
-    fontSize: Typography.fontSize['4xl'],
-    marginBottom: Spacing.lg,
-  },
-  
-  errorTitle: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  
-  errorText: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-  },
-  
-  retryButton: {
-    paddingHorizontal: Spacing.xl,
-  },
-  
-  emptyCard: {
-    marginVertical: Spacing.lg,
-  },
-  
-  emptyContent: {
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  
-  emptyIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  
-  emptyEmoji: {
-    fontSize: 64,
-  },
-  
-  emptyTitle: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-    textAlign: 'center',
-  },
-  
-  emptySubtitle: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-  },
-  
-  createEventButton: {
-    paddingHorizontal: Spacing.xl,
+  fab: {
+    position: 'absolute',
+    margin: Spacing.lg,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.primary[500],
   },
 });
 

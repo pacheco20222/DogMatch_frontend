@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { Alert } from 'react-native';
+import config from '../config';
 
 const SocketContext = createContext();
 
@@ -22,8 +23,8 @@ export const SocketProvider = ({ children }) => {
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // Backend URL - use local URL for development
-  const SOCKET_URL = 'http://192.168.1.69:5002';
+  // Backend URL - use config for easy management
+  const SOCKET_URL = config.SOCKET_URL;
 
   useEffect(() => {
     console.log('🔌 SocketContext useEffect triggered:', { isAuthenticated, hasAccessToken: !!accessToken });

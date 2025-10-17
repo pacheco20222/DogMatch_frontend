@@ -1,14 +1,23 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
-  Text, 
   ScrollView, 
-  TouchableOpacity, 
-  Image, 
   Alert,
   StyleSheet
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { 
+  Text, 
+  Surface, 
+  Card, 
+  Avatar, 
+  Chip, 
+  Button, 
+  IconButton, 
+  ActivityIndicator,
+  Snackbar,
+  Portal
+} from 'react-native-paper';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,50 +26,47 @@ import Animated, {
   FadeIn,
   SlideInUp,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedCard from '../components/AnimatedCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../hooks/useAuth';
+import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { fetchEvents, registerForEvent, unregisterFromEvent } from '../store/slices/eventsSlice';
+import EmptyState from '../components/ui/EmptyState';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const RegisterEventsScreen = ({ route, navigation }) => {
   const { eventId } = route.params;
-  const { user, accessToken } = useContext(AuthContext);
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const dispatch = useAppDispatch();
+  const { events, loading, error } = useAppSelector(state => state.events);
   const [registering, setRegistering] = useState(false);
-  const [error, setError] = useState('');
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  
+  const event = events?.find(e => e.id === eventId);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
 
-  const fetchEventDetails = async () => {
+  const loadEventDetails = async () => {
     try {
-      setLoading(true);
-      setError('');
-      
-      const response = await apiFetch(`/api/events/${eventId}`, {
-        method: 'GET',
-        token: accessToken
-      });
-      
-      setEvent(response.event);
+      await dispatch(fetchEvents());
     } catch (error) {
       console.error('Error fetching event details:', error);
-      setError(error.message || 'Failed to load event details');
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEventDetails();
+    loadEventDetails();
     // Animate header and content
     headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
     contentOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
   }, [eventId]);
+
+  // Show error snackbar when error occurs
+  useEffect(() => {
+    if (error) {
+      setSnackbarVisible(true);
+    }
+  }, [error]);
 
   const formatEventDate = (dateString) => {
     try {
@@ -127,27 +133,33 @@ const RegisterEventsScreen = ({ route, navigation }) => {
     try {
       setRegistering(true);
 
-      const response = await apiFetch(`/api/events/${eventId}/register`, {
-        method: 'POST',
-        token: accessToken,
-        body: {
+      const response = await dispatch(registerForEvent({
+        eventId,
+        registrationData: {
           notes: '',
           special_requests: '',
           emergency_contact_name: '',
           emergency_contact_phone: ''
         }
-      });
+      }));
 
-      Alert.alert(
-        'Success!', 
-        response.message || 'Successfully registered for the event!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
+      if (response.payload?.success) {
+        Alert.alert(
+          'Success!', 
+          response.payload.message || 'Successfully registered for the event!',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Registration Failed', 
+          response.payload?.message || 'Failed to register for the event. Please try again.'
+        );
+      }
 
     } catch (error) {
       console.error('Error registering for event:', error);
@@ -178,21 +190,25 @@ const RegisterEventsScreen = ({ route, navigation }) => {
             try {
               setRegistering(true);
 
-              await apiFetch(`/api/events/${eventId}/unregister`, {
-                method: 'DELETE',
-                token: accessToken
-              });
+              const response = await dispatch(unregisterFromEvent(eventId));
 
-              Alert.alert(
-                'Success!', 
-                'Successfully unregistered from the event.',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => navigation.goBack()
-                  }
-                ]
-              );
+              if (response.payload?.success) {
+                Alert.alert(
+                  'Success!', 
+                  'Successfully unregistered from the event.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => navigation.goBack()
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  'Unregistration Failed', 
+                  response.payload?.message || 'Failed to unregister from the event. Please try again.'
+                );
+              }
 
             } catch (error) {
               console.error('Error unregistering from event:', error);
@@ -219,9 +235,12 @@ const RegisterEventsScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" text="Loading event details..." />
+          <ActivityIndicator size="large" />
+          <Text variant="bodyLarge" style={styles.loadingText}>
+            Loading event details...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -229,30 +248,21 @@ const RegisterEventsScreen = ({ route, navigation }) => {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Animated.View style={styles.errorContainer} entering={FadeIn.duration(600)}>
-          <AnimatedCard variant="outlined" style={styles.errorCard}>
-            <View style={styles.errorContent}>
-              <Text style={styles.errorEmoji}>😔</Text>
-              <Text style={styles.errorTitle}>Error loading event details</Text>
-              <Text style={styles.errorText}>{error}</Text>
-              <AnimatedButton
-                title="Try Again"
-                onPress={fetchEventDetails}
-                variant="outline"
-                size="medium"
-                style={styles.retryButton}
-              />
-            </View>
-          </AnimatedCard>
-        </Animated.View>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <EmptyState
+          icon="alert-circle"
+          title="Error Loading Event"
+          subtitle={error}
+          actionText="Try Again"
+          onActionPress={loadEventDetails}
+        />
       </SafeAreaView>
     );
   }
 
   if (!event) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.notFoundContainer}>
           <Text style={styles.notFoundText}>Event not found</Text>
         </View>
@@ -261,7 +271,7 @@ const RegisterEventsScreen = ({ route, navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Modern Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
         <View style={styles.headerContent}>

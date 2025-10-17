@@ -1,7 +1,6 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
@@ -9,6 +8,8 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, TextInput, Button, Card, Surface, HelperText, Snackbar } from 'react-native-paper';
+import { Formik } from 'formik';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,18 +18,14 @@ import Animated, {
   FadeIn,
   SlideInUp,
 } from 'react-native-reanimated';
-import { AuthContext } from '../auth/AuthContext';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedInput from '../components/AnimatedInput';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../hooks/useAuth';
+import { loginSchema } from '../validation/authSchemas';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const LoginScreen = ({ navigation }) => {
-  const { login } = useContext(AuthContext);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { login, loading, error, clearError } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   const logoScale = useSharedValue(0);
   const formOpacity = useSharedValue(0);
@@ -38,21 +35,16 @@ const LoginScreen = ({ navigation }) => {
     formOpacity.value = withDelay(300, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    
+  const handleLogin = async (values, { setSubmitting, setFieldError }) => {
     try {
-      await login({ email: email.trim(), password });
-    } catch (e) {
-      setError(e.message || 'Login failed. Please try again.');
+      await login(values);
+      // Navigation will be handled automatically by AuthNavigator
+    } catch (error) {
+      console.error('Login error:', error);
+      setFieldError('general', error.message || 'Login failed. Please try again.');
+      setSnackbarVisible(true);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -65,7 +57,7 @@ const LoginScreen = ({ navigation }) => {
   }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -76,71 +68,146 @@ const LoginScreen = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Logo Section */}
-          <Animated.View style={[styles.logoSection, logoAnimatedStyle]} entering={FadeIn.duration(800)}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoEmoji}>🐕</Text>
-              <Text style={styles.logoText}>DogMatch</Text>
-              <Text style={styles.tagline}>Find your perfect furry friend</Text>
-            </View>
+          <Animated.View style={[styles.logoContainer, logoAnimatedStyle]} entering={FadeIn.duration(600)}>
+            <Image
+              source={require('../assets/icons/paw.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text variant="displayMedium" style={styles.title}>
+              Welcome Back!
+            </Text>
+            <Text variant="bodyLarge" style={styles.subtitle}>
+              Sign in to continue your dog matching journey
+            </Text>
           </Animated.View>
 
-          {/* Form Section */}
-          <Animated.View style={[styles.formSection, formAnimatedStyle]} entering={SlideInUp.delay(400).duration(600)}>
-            <View style={styles.formContainer}>
-              <Text style={styles.welcomeText}>Welcome back!</Text>
-              <Text style={styles.subtitleText}>Sign in to continue your journey</Text>
+          {/* Login Form */}
+          <Animated.View style={[styles.formContainer, formAnimatedStyle]} entering={SlideInUp.duration(600)}>
+            <Card mode="elevated" style={styles.formCard}>
+              <Card.Content style={styles.formContent}>
+                <Formik
+                  initialValues={{
+                    email: '',
+                    password: '',
+                    twoFactorCode: '',
+                  }}
+                  validationSchema={loginSchema}
+                  onSubmit={handleLogin}
+                >
+                  {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
+                    <>
+                      <TextInput
+                        label="Email"
+                        value={values.email}
+                        onChangeText={handleChange('email')}
+                        onBlur={handleBlur('email')}
+                        mode="outlined"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        error={touched.email && !!errors.email}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="email" />}
+                      />
+                      <HelperText type="error" visible={touched.email && !!errors.email}>
+                        {errors.email}
+                      </HelperText>
 
-              {error ? (
-                <Animated.View style={styles.errorContainer} entering={FadeIn.duration(300)}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </Animated.View>
-              ) : null}
+                      <TextInput
+                        label="Password"
+                        value={values.password}
+                        onChangeText={handleChange('password')}
+                        onBlur={handleBlur('password')}
+                        mode="outlined"
+                        secureTextEntry={!showPassword}
+                        error={touched.password && !!errors.password}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="lock" />}
+                        right={
+                          <TextInput.Icon
+                            icon={showPassword ? 'eye-off' : 'eye'}
+                            onPress={() => setShowPassword(!showPassword)}
+                          />
+                        }
+                      />
+                      <HelperText type="error" visible={touched.password && !!errors.password}>
+                        {errors.password}
+                      </HelperText>
 
-              <AnimatedInput
-                label="Email"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                error={error && !email.trim() ? 'Email is required' : ''}
-              />
+                      <TextInput
+                        label="2FA Code (Optional)"
+                        value={values.twoFactorCode}
+                        onChangeText={handleChange('twoFactorCode')}
+                        onBlur={handleBlur('twoFactorCode')}
+                        mode="outlined"
+                        keyboardType="numeric"
+                        maxLength={6}
+                        error={touched.twoFactorCode && !!errors.twoFactorCode}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="shield-key" />}
+                      />
+                      <HelperText type="error" visible={touched.twoFactorCode && !!errors.twoFactorCode}>
+                        {errors.twoFactorCode}
+                      </HelperText>
 
-              <AnimatedInput
-                label="Password"
-                placeholder="Enter your password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-                error={error && !password.trim() ? 'Password is required' : ''}
-              />
+                      <HelperText type="error" visible={!!errors.general}>
+                        {errors.general}
+                      </HelperText>
 
-              <AnimatedButton
-                title={loading ? 'Signing in...' : 'Sign In'}
-                onPress={handleLogin}
-                loading={loading}
-                disabled={loading}
-                size="large"
-                style={styles.loginButton}
-              />
+                      <Button
+                        mode="contained"
+                        onPress={handleSubmit}
+                        loading={isSubmitting || loading}
+                        disabled={isSubmitting || loading}
+                        style={styles.loginButton}
+                        contentStyle={styles.buttonContent}
+                      >
+                        {isSubmitting || loading ? 'Signing In...' : 'Sign In'}
+                      </Button>
+                    </>
+                  )}
+                </Formik>
+              </Card.Content>
+            </Card>
 
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <AnimatedButton
-                title="Create Account"
+            {/* Navigation Links */}
+            <View style={styles.navigationContainer}>
+              <Button
+                mode="text"
                 onPress={() => navigation.navigate('Register')}
-                variant="outline"
-                size="large"
-                style={styles.registerButton}
-              />
+                style={styles.navigationButton}
+              >
+                Don't have an account? Sign Up
+              </Button>
+              
+              <Button
+                mode="text"
+                onPress={() => {
+                  // TODO: Implement forgot password
+                  console.log('Forgot password pressed');
+                }}
+                style={styles.navigationButton}
+              >
+                Forgot Password?
+              </Button>
             </View>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={4000}
+        action={{
+          label: 'Dismiss',
+          onPress: () => setSnackbarVisible(false),
+        }}
+      >
+        {error || 'An error occurred'}
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -150,117 +217,61 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.primary,
   },
-  
   keyboardAvoidingView: {
     flex: 1,
   },
-  
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.lg,
+    padding: Spacing.lg,
+    justifyContent: 'center',
   },
-  
-  logoSection: {
-    alignItems: 'center',
-    paddingTop: Spacing['3xl'],
-    paddingBottom: Spacing.xl,
-  },
-  
   logoContainer: {
     alignItems: 'center',
+    marginBottom: Spacing.xl,
   },
-  
-  logoEmoji: {
-    fontSize: 64,
-    marginBottom: Spacing.md,
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: Spacing.lg,
   },
-  
-  logoText: {
-    fontSize: Typography.fontSize['4xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.primary[500],
-    marginBottom: Spacing.sm,
-    letterSpacing: 1,
-  },
-  
-  tagline: {
-    fontSize: Typography.fontSize.lg,
-    color: Colors.text.secondary,
+  title: {
     textAlign: 'center',
-    fontWeight: Typography.fontWeight.medium,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginBottom: Spacing.sm,
   },
-  
-  formSection: {
+  subtitle: {
+    textAlign: 'center',
+    color: Colors.text.secondary,
+    lineHeight: 24,
+  },
+  formContainer: {
     flex: 1,
     justifyContent: 'center',
   },
-  
-  formContainer: {
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius['2xl'],
-    padding: Spacing.xl,
-    ...Shadows.lg,
-    borderWidth: 1,
-    borderColor: Colors.neutral[100],
+  formCard: {
+    marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.lg,
   },
-  
-  welcomeText: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    textAlign: 'center',
+  formContent: {
+    padding: Spacing.lg,
+  },
+  input: {
     marginBottom: Spacing.sm,
   },
-  
-  subtitleText: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  
-  errorContainer: {
-    backgroundColor: Colors.error[50],
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.error[200],
-  },
-  
-  errorText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.error[600],
-    textAlign: 'center',
-    fontWeight: Typography.fontWeight.medium,
-  },
-  
   loginButton: {
     marginTop: Spacing.lg,
-    marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.md,
   },
-  
-  divider: {
-    flexDirection: 'row',
+  buttonContent: {
+    paddingVertical: Spacing.sm,
+  },
+  navigationContainer: {
     alignItems: 'center',
-    marginVertical: Spacing.lg,
+    gap: Spacing.sm,
   },
-  
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.neutral[300],
-  },
-  
-  dividerText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.tertiary,
-    marginHorizontal: Spacing.md,
-    fontWeight: Typography.fontWeight.medium,
-  },
-  
-  registerButton: {
-    marginTop: Spacing.sm,
+  navigationButton: {
+    minWidth: 200,
   },
 });
 

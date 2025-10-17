@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, TextInput, Button, Card, Surface, HelperText, Snackbar, SegmentedButtons } from 'react-native-paper';
+import { Formik } from 'formik';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,26 +18,15 @@ import Animated, {
   FadeIn,
   SlideInUp,
 } from 'react-native-reanimated';
-import { apiFetch } from '../api/client';
-import AnimatedButton from '../components/AnimatedButton';
-import AnimatedInput from '../components/AnimatedInput';
+import { useAuth } from '../hooks/useAuth';
+import { registerSchema } from '../validation/authSchemas';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const RegisterScreen = ({ navigation }) => {
-  const [formData, setFormData] = useState({
-    email: '',
-    first_name: '',
-    last_name: '',
-    username: '',
-    phone_number: '',
-    country: '',
-    city: '',
-    state: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { register, loading, error, clearError } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   const logoScale = useSharedValue(0);
   const formOpacity = useSharedValue(0);
@@ -46,77 +36,16 @@ const RegisterScreen = ({ navigation }) => {
     formOpacity.value = withDelay(300, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (error) setError('');
-  };
-
-  const validateForm = () => {
-    const { email, first_name, last_name, username, password, confirmPassword } = formData;
-    
-    if (!email.trim() || !first_name.trim() || !last_name.trim() || !username.trim() || !password.trim()) {
-      setError('Please fill in all required fields');
-      return false;
-    }
-    
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return false;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return false;
-    }
-    
-    return true;
-  };
-
-  const handleRegister = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
-    setError('');
-    
+  const handleRegister = async (values, { setSubmitting, setFieldError }) => {
     try {
-      const { confirmPassword, ...registrationData } = formData;
-      const data = await apiFetch('/api/auth/register', {
-        method: 'POST',
-        body: {
-          ...registrationData,
-          phone: formData.phone_number,
-          user_type: 'owner'
-        }
-      });
-
-      if (data.user) {
-        Alert.alert(
-          'Registration Successful!',
-          'Your account has been created successfully. Please log in to continue.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Login')
-            }
-          ]
-        );
-      } else {
-        setError(
-          data.messages
-            ? Object.values(data.messages).flat().join('\n')
-            : data.message || 'Registration failed. Please try again.'
-        );
-      }
+      await register(values);
+      // Navigation will be handled automatically by AuthNavigator
     } catch (error) {
-      setError('An error occurred. Please try again.');
+      console.error('Registration error:', error);
+      setFieldError('general', error.message || 'Registration failed. Please try again.');
+      setSnackbarVisible(true);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -129,7 +58,7 @@ const RegisterScreen = ({ navigation }) => {
   }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -139,154 +68,220 @@ const RegisterScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header Section */}
-          <Animated.View style={[styles.headerSection, logoAnimatedStyle]} entering={FadeIn.duration(800)}>
-            <View style={styles.headerContainer}>
-              <Text style={styles.logoEmoji}>🐕</Text>
-              <Text style={styles.logoText}>Join DogMatch</Text>
-              <Text style={styles.tagline}>Start your journey to find the perfect match</Text>
-            </View>
+          {/* Logo Section */}
+          <Animated.View style={[styles.logoContainer, logoAnimatedStyle]} entering={FadeIn.duration(600)}>
+            <Image
+              source={require('../assets/icons/paw.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text variant="displayMedium" style={styles.title}>
+              Join DogMatch!
+            </Text>
+            <Text variant="bodyLarge" style={styles.subtitle}>
+              Create your account and start matching with amazing dogs
+            </Text>
           </Animated.View>
 
-          {/* Form Section */}
-          <Animated.View style={[styles.formSection, formAnimatedStyle]} entering={SlideInUp.delay(400).duration(600)}>
-            <View style={styles.formContainer}>
-              <Text style={styles.welcomeText}>Create Your Account</Text>
-              <Text style={styles.subtitleText}>Fill in your details to get started</Text>
+          {/* Registration Form */}
+          <Animated.View style={[styles.formContainer, formAnimatedStyle]} entering={SlideInUp.duration(600)}>
+            <Card mode="elevated" style={styles.formCard}>
+              <Card.Content style={styles.formContent}>
+                <Formik
+                  initialValues={{
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    username: '',
+                    full_name: '',
+                    phone: '',
+                    location: '',
+                    user_type: 'owner',
+                  }}
+                  validationSchema={registerSchema}
+                  onSubmit={handleRegister}
+                >
+                  {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting, setFieldValue }) => (
+                    <>
+                      <TextInput
+                        label="Email"
+                        value={values.email}
+                        onChangeText={handleChange('email')}
+                        onBlur={handleBlur('email')}
+                        mode="outlined"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        error={touched.email && !!errors.email}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="email" />}
+                      />
+                      <HelperText type="error" visible={touched.email && !!errors.email}>
+                        {errors.email}
+                      </HelperText>
 
-              {error ? (
-                <Animated.View style={styles.errorContainer} entering={FadeIn.duration(300)}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </Animated.View>
-              ) : null}
+                      <TextInput
+                        label="Username"
+                        value={values.username}
+                        onChangeText={handleChange('username')}
+                        onBlur={handleBlur('username')}
+                        mode="outlined"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        error={touched.username && !!errors.username}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="account" />}
+                      />
+                      <HelperText type="error" visible={touched.username && !!errors.username}>
+                        {errors.username}
+                      </HelperText>
 
-              {/* Personal Information */}
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>Personal Information</Text>
-                
-                <View style={styles.rowContainer}>
-                  <View style={styles.halfWidth}>
-                    <AnimatedInput
-                      label="First Name"
-                      placeholder="Enter first name"
-                      value={formData.first_name}
-                      onChangeText={(value) => handleInputChange('first_name', value)}
-                    />
-                  </View>
-                  <View style={styles.halfWidth}>
-                    <AnimatedInput
-                      label="Last Name"
-                      placeholder="Enter last name"
-                      value={formData.last_name}
-                      onChangeText={(value) => handleInputChange('last_name', value)}
-                    />
-                  </View>
-                </View>
+                      <TextInput
+                        label="Full Name"
+                        value={values.full_name}
+                        onChangeText={handleChange('full_name')}
+                        onBlur={handleBlur('full_name')}
+                        mode="outlined"
+                        autoCapitalize="words"
+                        error={touched.full_name && !!errors.full_name}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="account-circle" />}
+                      />
+                      <HelperText type="error" visible={touched.full_name && !!errors.full_name}>
+                        {errors.full_name}
+                      </HelperText>
 
-                <AnimatedInput
-                  label="Username"
-                  placeholder="Choose a username"
-                  value={formData.username}
-                  onChangeText={(value) => handleInputChange('username', value)}
-                  autoCapitalize="none"
-                />
+                      <TextInput
+                        label="Phone Number (Optional)"
+                        value={values.phone}
+                        onChangeText={handleChange('phone')}
+                        onBlur={handleBlur('phone')}
+                        mode="outlined"
+                        keyboardType="phone-pad"
+                        error={touched.phone && !!errors.phone}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="phone" />}
+                      />
+                      <HelperText type="error" visible={touched.phone && !!errors.phone}>
+                        {errors.phone}
+                      </HelperText>
 
-                <AnimatedInput
-                  label="Email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChangeText={(value) => handleInputChange('email', value)}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
+                      <TextInput
+                        label="Location"
+                        value={values.location}
+                        onChangeText={handleChange('location')}
+                        onBlur={handleBlur('location')}
+                        mode="outlined"
+                        autoCapitalize="words"
+                        error={touched.location && !!errors.location}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="map-marker" />}
+                      />
+                      <HelperText type="error" visible={touched.location && !!errors.location}>
+                        {errors.location}
+                      </HelperText>
 
-                <AnimatedInput
-                  label="Phone Number"
-                  placeholder="Enter phone number"
-                  value={formData.phone_number}
-                  onChangeText={(value) => handleInputChange('phone_number', value)}
-                  keyboardType="phone-pad"
-                />
-              </View>
+                      <Text variant="labelLarge" style={styles.sectionLabel}>
+                        Account Type
+                      </Text>
+                      <SegmentedButtons
+                        value={values.user_type}
+                        onValueChange={(value) => setFieldValue('user_type', value)}
+                        buttons={[
+                          { value: 'owner', label: 'Dog Owner' },
+                          { value: 'shelter', label: 'Shelter' },
+                        ]}
+                        style={styles.segmentedButtons}
+                      />
 
-              {/* Location Information */}
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>Location</Text>
-                
-                <View style={styles.rowContainer}>
-                  <View style={styles.halfWidth}>
-                    <AnimatedInput
-                      label="City"
-                      placeholder="Enter city"
-                      value={formData.city}
-                      onChangeText={(value) => handleInputChange('city', value)}
-                    />
-                  </View>
-                  <View style={styles.halfWidth}>
-                    <AnimatedInput
-                      label="State"
-                      placeholder="Enter state"
-                      value={formData.state}
-                      onChangeText={(value) => handleInputChange('state', value)}
-                    />
-                  </View>
-                </View>
+                      <TextInput
+                        label="Password"
+                        value={values.password}
+                        onChangeText={handleChange('password')}
+                        onBlur={handleBlur('password')}
+                        mode="outlined"
+                        secureTextEntry={!showPassword}
+                        error={touched.password && !!errors.password}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="lock" />}
+                        right={
+                          <TextInput.Icon
+                            icon={showPassword ? 'eye-off' : 'eye'}
+                            onPress={() => setShowPassword(!showPassword)}
+                          />
+                        }
+                      />
+                      <HelperText type="error" visible={touched.password && !!errors.password}>
+                        {errors.password}
+                      </HelperText>
 
-                <AnimatedInput
-                  label="Country"
-                  placeholder="Enter country"
-                  value={formData.country}
-                  onChangeText={(value) => handleInputChange('country', value)}
-                />
-              </View>
+                      <TextInput
+                        label="Confirm Password"
+                        value={values.confirmPassword}
+                        onChangeText={handleChange('confirmPassword')}
+                        onBlur={handleBlur('confirmPassword')}
+                        mode="outlined"
+                        secureTextEntry={!showConfirmPassword}
+                        error={touched.confirmPassword && !!errors.confirmPassword}
+                        style={styles.input}
+                        left={<TextInput.Icon icon="lock-check" />}
+                        right={
+                          <TextInput.Icon
+                            icon={showConfirmPassword ? 'eye-off' : 'eye'}
+                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                          />
+                        }
+                      />
+                      <HelperText type="error" visible={touched.confirmPassword && !!errors.confirmPassword}>
+                        {errors.confirmPassword}
+                      </HelperText>
 
-              {/* Security */}
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>Security</Text>
-                
-                <AnimatedInput
-                  label="Password"
-                  placeholder="Create a password"
-                  value={formData.password}
-                  onChangeText={(value) => handleInputChange('password', value)}
-                  secureTextEntry={true}
-                />
+                      <HelperText type="error" visible={!!errors.general}>
+                        {errors.general}
+                      </HelperText>
 
-                <AnimatedInput
-                  label="Confirm Password"
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChangeText={(value) => handleInputChange('confirmPassword', value)}
-                  secureTextEntry={true}
-                />
-              </View>
+                      <Button
+                        mode="contained"
+                        onPress={handleSubmit}
+                        loading={isSubmitting || loading}
+                        disabled={isSubmitting || loading}
+                        style={styles.registerButton}
+                        contentStyle={styles.buttonContent}
+                      >
+                        {isSubmitting || loading ? 'Creating Account...' : 'Create Account'}
+                      </Button>
+                    </>
+                  )}
+                </Formik>
+              </Card.Content>
+            </Card>
 
-              <AnimatedButton
-                title={loading ? 'Creating Account...' : 'Create Account'}
-                onPress={handleRegister}
-                loading={loading}
-                disabled={loading}
-                size="large"
-                style={styles.registerButton}
-              />
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <AnimatedButton
-                title="Already have an account? Sign In"
+            {/* Navigation Links */}
+            <View style={styles.navigationContainer}>
+              <Button
+                mode="text"
                 onPress={() => navigation.navigate('Login')}
-                variant="outline"
-                size="large"
-                style={styles.loginButton}
-              />
+                style={styles.navigationButton}
+              >
+                Already have an account? Sign In
+              </Button>
             </View>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={4000}
+        action={{
+          label: 'Dismiss',
+          onPress: () => setSnackbarVisible(false),
+        }}
+      >
+        {error || 'An error occurred'}
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -296,140 +291,70 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.primary,
   },
-  
   keyboardAvoidingView: {
     flex: 1,
   },
-  
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.lg,
-  },
-  
-  headerSection: {
-    alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.lg,
-  },
-  
-  headerContainer: {
-    alignItems: 'center',
-  },
-  
-  logoEmoji: {
-    fontSize: 48,
-    marginBottom: Spacing.sm,
-  },
-  
-  logoText: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.primary[500],
-    marginBottom: Spacing.xs,
-    letterSpacing: 1,
-  },
-  
-  tagline: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    fontWeight: Typography.fontWeight.medium,
-  },
-  
-  formSection: {
-    flex: 1,
-    paddingBottom: Spacing.xl,
-  },
-  
-  formContainer: {
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius['2xl'],
     padding: Spacing.lg,
-    ...Shadows.lg,
-    borderWidth: 1,
-    borderColor: Colors.neutral[100],
+    justifyContent: 'center',
   },
-  
-  welcomeText: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: Spacing.lg,
+  },
+  title: {
     textAlign: 'center',
+    fontWeight: '700',
+    color: Colors.text.primary,
     marginBottom: Spacing.sm,
   },
-  
-  subtitleText: {
-    fontSize: Typography.fontSize.base,
+  subtitle: {
+    textAlign: 'center',
     color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
+    lineHeight: 24,
   },
-  
-  sectionContainer: {
-    marginBottom: Spacing.xl,
+  formContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
-  
-  sectionTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-    paddingBottom: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[200],
-  },
-  
-  rowContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  
-  halfWidth: {
-    flex: 0.48,
-  },
-  
-  errorContainer: {
-    backgroundColor: Colors.error[50],
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+  formCard: {
     marginBottom: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.error[200],
+    borderRadius: BorderRadius.lg,
   },
-  
-  errorText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.error[600],
-    textAlign: 'center',
-    fontWeight: Typography.fontWeight.medium,
+  formContent: {
+    padding: Spacing.lg,
   },
-  
+  input: {
+    marginBottom: Spacing.sm,
+  },
+  sectionLabel: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+    color: Colors.text.primary,
+    fontWeight: '600',
+  },
+  segmentedButtons: {
+    marginBottom: Spacing.lg,
+  },
   registerButton: {
     marginTop: Spacing.lg,
-    marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.md,
   },
-  
-  divider: {
-    flexDirection: 'row',
+  buttonContent: {
+    paddingVertical: Spacing.sm,
+  },
+  navigationContainer: {
     alignItems: 'center',
-    marginVertical: Spacing.lg,
+    gap: Spacing.sm,
   },
-  
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.neutral[300],
-  },
-  
-  dividerText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.tertiary,
-    marginHorizontal: Spacing.md,
-    fontWeight: Typography.fontWeight.medium,
-  },
-  
-  loginButton: {
-    marginTop: Spacing.sm,
+  navigationButton: {
+    minWidth: 200,
   },
 });
 
