@@ -17,6 +17,7 @@ import { fetchConversations } from '../store/slices/chatsSlice';
 import { useChatService } from '../services/chatService';
 import ChatListItem from '../components/ui/ChatListItem';
 import EmptyState from '../components/ui/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 
@@ -28,6 +29,7 @@ const ChatsScreen = ({ navigation }) => {
   const { conversations, loading, error } = useAppSelector(state => state.chats);
   const [refreshing, setRefreshing] = useState(false);
   const hasLoadedRef = useRef(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // Fetch conversations from API
   const loadConversations = useCallback(async () => {
@@ -45,7 +47,12 @@ const ChatsScreen = ({ navigation }) => {
       if (!loading && !hasLoadedRef.current) {
         console.log('🔌 ChatsScreen: Loading conversations');
         hasLoadedRef.current = true;
-        loadConversations();
+        loadConversations().finally(() => {
+          setIsInitializing(false);
+        });
+      } else if (hasLoadedRef.current) {
+        // If already loaded, just set initializing to false
+        setIsInitializing(false);
       }
       
       // Ensure socket is connected when entering chats
@@ -63,7 +70,10 @@ const ChatsScreen = ({ navigation }) => {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     hasLoadedRef.current = false; // Reset the ref to allow reloading
-    loadConversations();
+    setIsInitializing(true); // Reset initialization state
+    loadConversations().finally(() => {
+      setIsInitializing(false);
+    });
   }, [loadConversations]);
 
   // Handle conversation tap
@@ -150,20 +160,15 @@ const ChatsScreen = ({ navigation }) => {
     </Animated.View>
   );
 
-  if (loading) {
+  if (loading || isInitializing) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Chats</Text>
-          {!isConnected && (
-            <View style={styles.connectionStatus}>
-              <View style={styles.offlineDot} />
-              <Text style={styles.connectionText}>Offline</Text>
-            </View>
-          )}
         </View>
         <View style={styles.loadingContainer}>
+          <LoadingSpinner size="large" />
           <Text style={styles.loadingText}>Loading conversations...</Text>
         </View>
       </SafeAreaView>
