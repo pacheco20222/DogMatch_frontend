@@ -1,19 +1,25 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
+  Text,
   ScrollView, 
-  StyleSheet,
-  RefreshControl
+  RefreshControl,
+  TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text, Surface, FAB, Chip, Avatar } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Heart, Dog, Calendar, Plus, Sparkles, Activity } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withDelay,
+  withRepeat,
+  withSequence,
   FadeIn,
-  SlideInUp,
+  FadeInDown,
+  SlideInRight,
 } from 'react-native-reanimated';
 import { useAuth } from '../hooks/useAuth';
 import { getUserTypeDisplayName, getUserTypeColor } from '../utils/permissions';
@@ -22,12 +28,12 @@ import { fetchMatches } from '../store/slices/matchesSlice';
 import { fetchMyDogs } from '../store/slices/dogsSlice';
 import { fetchEvents } from '../store/slices/eventsSlice';
 import { selectDashboardStats } from '../store/selectors';
-import AnimatedButton from '../components/AnimatedButton';
-import StatCard from '../components/ui/StatCard';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { useTheme } from '../theme/ThemeContext';
+import { GlassCard, GlassButton, GradientText } from '../components/glass';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const dispatch = useAppDispatch();
   const stats = useAppSelector(selectDashboardStats);
   const { loading: matchesLoading } = useAppSelector(state => state.matches);
@@ -38,8 +44,7 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Animation values
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity = useSharedValue(0);
+  const sparkleRotate = useSharedValue(0);
 
   const loading = matchesLoading || dogsLoading || eventsLoading;
 
@@ -49,7 +54,6 @@ const HomeScreen = ({ navigation }) => {
         setRefreshing(true);
       }
 
-      // Fetch user's stats using Redux async thunks
       await Promise.all([
         dispatch(fetchMatches({ status: 'matched' })),
         dispatch(fetchMyDogs()),
@@ -64,9 +68,17 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchStats();
-    // Animate header and cards
-    headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
-    cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
+    
+    // Sparkle rotation animation
+    sparkleRotate.value = withRepeat(
+      withSequence(
+        withSpring(15, { damping: 10 }),
+        withSpring(-15, { damping: 10 }),
+        withSpring(0, { damping: 10 })
+      ),
+      -1,
+      false
+    );
   }, []);
 
   const getGreeting = () => {
@@ -76,260 +88,231 @@ const HomeScreen = ({ navigation }) => {
     return 'Good evening';
   };
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
+  const getUserName = () => {
+    return user?.full_name?.split(' ')[0] || user?.username || 'User';
+  };
+
+  const getUserTypeStyle = () => {
+    const type = user?.user_type;
+    switch (type) {
+      case 'owner':
+        return 'bg-primary-500/20 border-primary-500';
+      case 'shelter':
+        return 'bg-accent-500/20 border-accent-500';
+      case 'admin':
+        return 'bg-warning-500/20 border-warning-500';
+      default:
+        return 'bg-primary-500/20 border-primary-500';
+    }
+  };
+
+  const getUserTypeTextColor = () => {
+    const type = user?.user_type;
+    switch (type) {
+      case 'owner':
+        return 'text-primary-500';
+      case 'shelter':
+        return 'text-accent-500';
+      case 'admin':
+        return 'text-warning-500';
+      default:
+        return 'text-primary-500';
+    }
+  };
+
+  const sparkleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${sparkleRotate.value}deg` }],
   }));
 
-  const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardsOpacity.value,
-  }));
+  const statCards = [
+    {
+      title: 'Matches',
+      value: stats.matches,
+      icon: Heart,
+      color: 'primary',
+      bgColor: isDark ? 'bg-primary-500/20' : 'bg-primary-100',
+      textColor: 'text-primary-500',
+      onPress: () => navigation.navigate('Discover', { screen: 'Matches' }),
+    },
+    {
+      title: 'Dogs',
+      value: stats.dogs,
+      icon: Dog,
+      color: 'secondary',
+      bgColor: isDark ? 'bg-secondary-500/20' : 'bg-secondary-100',
+      textColor: 'text-secondary-500',
+      onPress: () => navigation.navigate('MyDogs'),
+    },
+    {
+      title: 'Events',
+      value: stats.events,
+      icon: Calendar,
+      color: 'success',
+      bgColor: isDark ? 'bg-accent-500/20' : 'bg-accent-100',
+      textColor: 'text-accent-500',
+      onPress: () => navigation.navigate('Events'),
+    },
+  ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + Spacing.xl }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchStats(true)}
-            colors={[Colors.primary[500]]}
-            tintColor={Colors.primary[500]}
-          />
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
         }
-      >
-        {/* Welcome Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-          <View style={styles.welcomeSection}>
-            <Text variant="displaySmall" style={styles.greeting}>{getGreeting()}!</Text>
-            <Text variant="headlineMedium" style={styles.userName}>
-              {user?.first_name || user?.username || 'User'}
-            </Text>
-            <Chip 
-              style={[styles.roleBadge, { backgroundColor: getUserTypeColor(user?.user_type) }]}
-              textStyle={styles.roleText}
-            >
-              {getUserTypeDisplayName(user?.user_type)}
-            </Chip>
-          </View>
-        </Animated.View>
+        className="absolute top-0 left-0 right-0 h-80"
+      />
 
-        {/* Stats Cards */}
-        <Animated.View style={[styles.statsContainer, cardsAnimatedStyle]} entering={FadeIn.delay(200).duration(600)}>
-          <Text variant="headlineSmall" style={styles.sectionTitle}>Your Activity</Text>
-          <View style={styles.statsGrid}>
-            <StatCard
-              title="Matches"
-              value={stats.matches}
-              icon="heart"
-              color="primary"
-              onPress={() => navigation.navigate('Matches')}
+      <SafeAreaView className="flex-1" edges={['top']}>
+        <ScrollView
+          className="flex-1 px-6"
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchStats(true)}
+              colors={['#6366F1']}
+              tintColor="#6366F1"
             />
-            <StatCard
-              title="Dogs"
-              value={stats.dogs}
-              icon="dog"
-              color="secondary"
-              onPress={() => navigation.navigate('MyDogs')}
-            />
-            <StatCard
-              title="Events"
-              value={stats.events}
-              icon="calendar"
-              color="success"
-              onPress={() => navigation.navigate('Events')}
-            />
-          </View>
-        </Animated.View>
-
-        {/* Quick Actions */}
-        <Animated.View style={[styles.actionsContainer, cardsAnimatedStyle]} entering={FadeIn.delay(400).duration(600)}>
-          <Text variant="headlineSmall" style={styles.sectionTitle}>Quick Actions</Text>
-          <Surface style={styles.actionsCard} elevation={2}>
-            <AnimatedButton
-              title="Add New Dog"
-              onPress={() => navigation.navigate('AddDog')}
-              size="large"
-              style={styles.actionButton}
-            />
-            
-            <AnimatedButton
-              title="Start Swiping"
-              onPress={() => navigation.navigate('Discover')}
-              variant="outline"
-              size="large"
-              style={styles.actionButton}
-            />
-            
-            <AnimatedButton
-              title="Browse Events"
-              onPress={() => navigation.navigate('Events')}
-              variant="outline"
-              size="large"
-              style={styles.actionButton}
-            />
-          </Surface>
-        </Animated.View>
-
-        {/* Recent Activity */}
-        <Animated.View style={[styles.activityContainer, cardsAnimatedStyle]} entering={FadeIn.delay(600).duration(600)}>
-          <Text variant="headlineSmall" style={styles.sectionTitle}>Recent Activity</Text>
-          <Surface style={styles.activityCard} elevation={1}>
-            <View style={styles.activityItem}>
-              <Avatar.Icon icon="party-popper" size={40} style={styles.activityIcon} />
-              <View style={styles.activityContent}>
-                <Text variant="titleMedium" style={styles.activityTitle}>Welcome to DogMatch!</Text>
-                <Text variant="bodyMedium" style={styles.activityDescription}>
-                  Start by adding your first dog profile to begin matching.
+          }
+        >
+          {/* Welcome Header */}
+          <Animated.View entering={FadeIn.duration(600)} className="mb-8">
+            <View className="flex-row items-center justify-between mb-2">
+              <View>
+                <Text className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {getGreeting()}!
                 </Text>
+                <GradientText
+                  colors={['#6366F1', '#EC4899', '#14B8A6']}
+                  className="text-4xl font-bold mt-1"
+                >
+                  {getUserName()}
+                </GradientText>
               </View>
+              
+              <Animated.View style={sparkleAnimatedStyle}>
+                <View className={`w-12 h-12 rounded-full items-center justify-center ${
+                  isDark ? 'bg-primary-500/20' : 'bg-primary-100'
+                }`}>
+                  <Sparkles size={24} className="text-primary-500" />
+                </View>
+              </Animated.View>
             </View>
-          </Surface>
-        </Animated.View>
-      </ScrollView>
-    </SafeAreaView>
+
+            <View className={`mt-3 px-3 py-1.5 rounded-full border-2 self-start ${getUserTypeStyle()}`}>
+              <Text className={`text-sm font-semibold ${getUserTypeTextColor()}`}>
+                {getUserTypeDisplayName(user?.user_type)}
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* Stats Cards */}
+          <Animated.View entering={FadeInDown.delay(200).duration(600)} className="mb-8">
+            <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Your Activity
+            </Text>
+            
+            <View className="flex-row justify-between">
+              {statCards.map((stat, index) => (
+                <Animated.View 
+                  key={stat.title}
+                  entering={SlideInRight.delay(300 + index * 100).duration(500)}
+                  className="flex-1 mx-1"
+                >
+                  <TouchableOpacity onPress={stat.onPress} activeOpacity={0.8}>
+                    <GlassCard className="p-5">
+                      <View className="items-center">
+                        <View className={`w-14 h-14 rounded-2xl ${stat.bgColor} items-center justify-center mb-3`}>
+                          <stat.icon size={28} className={stat.textColor} />
+                        </View>
+                        <Text className={`text-3xl font-bold ${stat.textColor} mb-1`}>
+                          {stat.value}
+                        </Text>
+                        <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {stat.title}
+                        </Text>
+                      </View>
+                    </GlassCard>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </View>
+          </Animated.View>
+
+          {/* Quick Actions */}
+          <Animated.View entering={FadeInDown.delay(400).duration(600)} className="mb-8">
+            <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Quick Actions
+            </Text>
+            
+            <GlassCard className="p-5">
+              <GlassButton
+                variant="primary"
+                size="lg"
+                icon={Plus}
+                onPress={() => navigation.navigate('MyDogs', { screen: 'AddDog' })}
+                className="w-full mb-3"
+              >
+                Add New Dog
+              </GlassButton>
+
+              <GlassButton
+                variant="ghost"
+                size="lg"
+                icon={Heart}
+                onPress={() => navigation.navigate('Discover')}
+                className="w-full mb-3"
+              >
+                Start Swiping
+              </GlassButton>
+
+              <GlassButton
+                variant="ghost"
+                size="lg"
+                icon={Calendar}
+                onPress={() => navigation.navigate('Events')}
+                className="w-full"
+              >
+                Browse Events
+              </GlassButton>
+            </GlassCard>
+          </Animated.View>
+
+          {/* Recent Activity */}
+          <Animated.View entering={FadeInDown.delay(600).duration(600)}>
+            <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Recent Activity
+            </Text>
+            
+            <GlassCard className="p-6">
+              <View className="flex-row items-start">
+                <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${
+                  isDark ? 'bg-accent-500/20' : 'bg-accent-100'
+                }`}>
+                  <Activity size={24} className="text-accent-500" />
+                </View>
+                
+                <View className="flex-1">
+                  <Text className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    Welcome to DogMatch!
+                  </Text>
+                  <Text className={`text-sm leading-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Start by adding your first dog profile to begin matching with amazing dogs in your area.
+                  </Text>
+                </View>
+              </View>
+            </GlassCard>
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  scrollView: {
-    flex: 1,
-  },
-  
-  scrollContent: {
-    padding: Spacing.lg,
-  },
-  
-  header: {
-    marginBottom: Spacing.xl,
-  },
-  
-  welcomeSection: {
-    alignItems: 'flex-start',
-  },
-  
-  greeting: {
-    fontSize: Typography.fontSize.lg,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.xs,
-  },
-  
-  userName: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  
-  roleBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-  },
-  
-  roleText: {
-    color: Colors.text.inverse,
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  
-  statsContainer: {
-    marginBottom: Spacing.xl,
-  },
-  
-  sectionTitle: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.lg,
-  },
-  
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  
-  statCard: {
-    flex: 1,
-    marginHorizontal: Spacing.xs,
-  },
-  
-  statContent: {
-    alignItems: 'center',
-    padding: Spacing.lg,
-  },
-  
-  statNumber: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.primary[500],
-    marginBottom: Spacing.xs,
-  },
-  
-  statLabel: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    fontWeight: Typography.fontWeight.medium,
-    marginBottom: Spacing.sm,
-  },
-  
-  statIcon: {
-    fontSize: Typography.fontSize.xl,
-  },
-  
-  actionsContainer: {
-    marginBottom: Spacing.xl,
-  },
-  
-  actionsCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  actionButton: {
-    marginBottom: Spacing.md,
-  },
-  
-  activityContainer: {
-    marginBottom: Spacing.xl,
-  },
-  
-  activityCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.lg,
-  },
-  
-  activityIcon: {
-    fontSize: Typography.fontSize.xl,
-    marginRight: Spacing.md,
-  },
-  
-  activityContent: {
-    flex: 1,
-  },
-  
-  activityTitle: {
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
-  },
-  
-  activityDescription: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-  },
-});
 
 export default HomeScreen;

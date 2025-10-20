@@ -1,8 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Image } from 'react-native';
+import { View, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Home, Dog, Heart, MessageCircle, Calendar, User } from 'lucide-react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 // Import your screens
 import HomeScreen from '../screens/HomeScreen.jsx';
@@ -17,6 +20,7 @@ import MatchesScreen from '../screens/MatchesScreen.jsx';
 import ChatsScreen from '../screens/ChatsScreen.jsx';
 import ChatConversationScreen from '../screens/ChatConversationScreen.jsx';
 import PendingSwipesScreen from '../screens/PendingSwipesScreen.jsx';
+import SettingsScreen from '../screens/SettingsScreen.jsx';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -63,26 +67,62 @@ function ChatsStack() {
   );
 }
 
+// Create a stack navigator for Profile tab
+function ProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+    </Stack.Navigator>
+  );
+}
+
 export default function AppNavigator() {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E5E7EB',
-          borderTopWidth: 1,
-          paddingBottom: insets.bottom + 5,
-          paddingTop: 5,
-          height: 60 + insets.bottom,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          paddingTop: 12,
+          height: insets.bottom > 0 ? 75 + insets.bottom : 75,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          elevation: 0,
         },
-        tabBarActiveTintColor: '#4F8EF7',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarBackground: () => (
+          <BlurView
+            intensity={80}
+            tint={isDark ? 'dark' : 'light'}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              overflow: 'hidden',
+              backgroundColor: isDark ? 'rgba(15, 23, 42, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+              borderTopWidth: 1,
+              borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            }}
+          />
+        ),
+        tabBarActiveTintColor: '#6366F1',
+        tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#6B7280',
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: -4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
       }}
     >
@@ -90,11 +130,14 @@ export default function AppNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Image
-              source={require('../assets/icons/home.png')}
-              style={{ width: size, height: size, tintColor: color }}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
+              padding: 8,
+              borderRadius: 12,
+            }}>
+              <Home size={24} color={color} />
+            </View>
           ),
         }}
       />
@@ -102,11 +145,14 @@ export default function AppNavigator() {
         name="MyDogs"
         component={MyDogsStack}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Image
-              source={require('../assets/icons/paw.png')}
-              style={{ width: size, height: size, tintColor: color }}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
+              padding: 8,
+              borderRadius: 12,
+            }}>
+              <Dog size={24} color={color} />
+            </View>
           ),
         }}
       />
@@ -114,11 +160,14 @@ export default function AppNavigator() {
         name="Discover"
         component={DiscoverStack}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Image
-              source={require('../assets/icons/heart.png')}
-              style={{ width: size, height: size, tintColor: color }}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
+              padding: 8,
+              borderRadius: 12,
+            }}>
+              <Heart size={24} color={color} fill={focused ? color : 'none'} />
+            </View>
           ),
         }}
       />
@@ -126,11 +175,14 @@ export default function AppNavigator() {
         name="Chats"
         component={ChatsStack}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Image
-              source={require('../assets/icons/chat.png')}
-              style={{ width: size, height: size, tintColor: color }}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
+              padding: 8,
+              borderRadius: 12,
+            }}>
+              <MessageCircle size={24} color={color} />
+            </View>
           ),
         }}
       />
@@ -138,23 +190,29 @@ export default function AppNavigator() {
         name="Events"
         component={EventsStack}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Image
-              source={require('../assets/icons/calendar.png')}
-              style={{ width: size, height: size, tintColor: color }}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
+              padding: 8,
+              borderRadius: 12,
+            }}>
+              <Calendar size={24} color={color} />
+            </View>
           ),
         }}
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStack}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Image
-              source={require('../assets/icons/user.png')}
-              style={{ width: size, height: size, tintColor: color }}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
+              padding: 8,
+              borderRadius: 12,
+            }}>
+              <User size={24} color={color} />
+            </View>
           ),
         }}
       />

@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { List, Avatar, Badge, Text } from 'react-native-paper';
-import { useTheme } from 'react-native-paper';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { useTheme } from '../../theme/ThemeContext';
+import { GlassCard } from '../glass';
 
 const ChatListItem = React.memo(({ 
   conversation, 
   onPress,
   style 
 }) => {
-  const theme = useTheme();
+  const { isDark } = useTheme();
 
   const formatTime = (dateString) => {
     if (!dateString) return '';
@@ -56,89 +57,79 @@ const ChatListItem = React.memo(({
   const isOnline = conversation.match?.other_dog?.owner?.is_online || false;
   const lastMessage = conversation.last_message;
   const otherUser = conversation.match?.other_dog?.owner;
+  const unreadCount = getUnreadCount();
+  const hasUnread = unreadCount > 0;
 
   return (
-    <List.Item
-      title={otherUser?.username || 'Unknown User'}
-      description={getLastMessagePreview(lastMessage)}
-      left={(props) => (
-        <View style={styles.avatarContainer}>
-          <Avatar.Image
-            {...props}
-            size={50}
-            source={{ 
-              uri: otherUser?.profile_photo_url || 'https://via.placeholder.com/50x50?text=U' 
-            }}
-          />
-          {isOnline && (
-            <View style={[styles.onlineIndicator, { backgroundColor: theme.colors.success }]} />
-          )}
-        </View>
-      )}
-      right={(props) => (
-        <View style={styles.rightContainer}>
-          <Text variant="bodySmall" style={styles.timeText}>
-            {formatTime(lastMessage?.created_at)}
-          </Text>
-          {getUnreadCount() > 0 && (
-            <Badge 
-              size={20} 
-              style={[styles.badge, { backgroundColor: theme.colors.primary }]}
-            >
-              {getUnreadCount() > 99 ? '99+' : getUnreadCount()}
-            </Badge>
-          )}
-        </View>
-      )}
+    <TouchableOpacity
       onPress={() => onPress?.(conversation)}
-      style={[styles.listItem, style]}
-      titleStyle={styles.title}
-      descriptionStyle={styles.description}
-      descriptionNumberOfLines={1}
-    />
+      activeOpacity={0.7}
+      className="mb-3 mx-4"
+    >
+      <GlassCard className="p-4">
+        <View className="flex-row items-center">
+          {/* Avatar */}
+          <View className="relative mr-4">
+            <Image
+              source={{ 
+                uri: otherUser?.profile_photo_url || 'https://via.placeholder.com/56x56?text=U' 
+              }}
+              className="w-14 h-14 rounded-full"
+            />
+            {isOnline && (
+              <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+            )}
+          </View>
+
+          {/* Content */}
+          <View className="flex-1">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text 
+                className={`text-base font-semibold ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}
+                numberOfLines={1}
+              >
+                {otherUser?.username || 'Unknown User'}
+              </Text>
+              <Text 
+                className={`text-xs ml-2 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}
+              >
+                {formatTime(lastMessage?.created_at)}
+              </Text>
+            </View>
+            
+            <View className="flex-row items-center justify-between">
+              <Text 
+                className={`text-sm flex-1 ${
+                  hasUnread 
+                    ? (isDark ? 'text-white font-medium' : 'text-gray-900 font-medium')
+                    : (isDark ? 'text-gray-400' : 'text-gray-600')
+                }`}
+                numberOfLines={1}
+              >
+                {getLastMessagePreview(lastMessage)}
+              </Text>
+              
+              {hasUnread && (
+                <Animated.View entering={FadeIn.duration(200)}>
+                  <View className="ml-2 min-w-[22px] h-[22px] rounded-full bg-primary-500 items-center justify-center px-1.5">
+                    <Text className="text-white text-xs font-bold">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                </Animated.View>
+              )}
+            </View>
+          </View>
+        </View>
+      </GlassCard>
+    </TouchableOpacity>
   );
 });
 
 ChatListItem.displayName = 'ChatListItem';
-
-const styles = StyleSheet.create({
-  listItem: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  rightContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    minHeight: 50,
-  },
-  timeText: {
-    color: '#666',
-    marginBottom: 4,
-  },
-  badge: {
-    alignSelf: 'flex-end',
-  },
-  title: {
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  description: {
-    color: '#666',
-    fontSize: 14,
-  },
-});
 
 export default ChatListItem;

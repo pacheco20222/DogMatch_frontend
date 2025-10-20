@@ -2,36 +2,33 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   FlatList, 
-  StyleSheet,
+  Text,
+  TouchableOpacity,
   Alert,
-  RefreshControl
+  RefreshControl,
+  StatusBar,
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { 
-  Text, 
-  Surface, 
-  Card, 
-  Avatar, 
-  Chip, 
-  IconButton, 
-  ActivityIndicator,
-  Snackbar,
-  Portal
-} from 'react-native-paper';
+  Heart, 
+  MessageCircle, 
+  Calendar,
+  ChevronLeft,
+  Sparkles
+} from 'lucide-react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
   FadeIn,
-  SlideInUp,
-  Layout,
+  FadeInDown
 } from 'react-native-reanimated';
 import { useAuth } from '../hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchMatches } from '../store/slices/matchesSlice';
+import { useTheme } from '../theme/ThemeContext';
 import EmptyState from '../components/ui/EmptyState';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { GlassCard } from '../components/glass';
 
 const MatchesScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -40,9 +37,7 @@ const MatchesScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
 
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity = useSharedValue(0);
+  const { isDark } = useTheme();
 
   // Fetch user's matches
   const loadMatches = useCallback(async (isRefresh = false) => {
@@ -61,9 +56,6 @@ const MatchesScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadMatches();
-    // Animate header and cards
-    headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
-    cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
   }, [loadMatches]);
 
   // Show error snackbar when error occurs
@@ -89,311 +81,201 @@ const MatchesScreen = ({ navigation }) => {
 
     return (
       <Animated.View
-        entering={FadeIn.delay(index * 100).duration(600)}
-        layout={Layout.springify()}
+        entering={FadeInDown.delay(index * 50).duration(400)}
+        className="mb-4 mx-4"
       >
-        <Card
-          mode="elevated"
-          style={styles.matchCard}
+        <TouchableOpacity
           onPress={() => handleChatPress(item)}
+          activeOpacity={0.9}
         >
-          <Card.Content style={styles.matchContent}>
-            <View style={styles.matchHeader}>
-              <Avatar.Image
-                size={60}
-                source={{ 
-                  uri: otherDog.photos && otherDog.photos.length > 0 
-                    ? (otherDog.photos[0].url.startsWith('http')
-                        ? otherDog.photos[0].url
-                        : `https://dogmatch-backend.onrender.com${otherDog.photos[0].url}`)
-                    : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop&crop=face'
-                }}
-                style={styles.matchAvatar}
-              />
-              <View style={styles.onlineIndicator} />
-              
-              <View style={styles.matchInfo}>
-                <Text variant="titleMedium" style={styles.matchName}>
-                  {otherDog.name}
-                </Text>
-                <Text variant="bodyMedium" style={styles.ownerName}>
-                  {otherOwner.first_name} {otherOwner.last_name}
-                </Text>
-                <Text variant="bodySmall" style={styles.matchDate}>
-                  Matched {new Date(item.matched_at).toLocaleDateString()}
-                </Text>
+          <GlassCard className="p-4">
+            <View className="flex-row items-center">
+              {/* Dog Avatar */}
+              <View className="relative mr-4">
+                <Image
+                  source={{ 
+                    uri: otherDog.photos && otherDog.photos.length > 0 
+                      ? (otherDog.photos[0].url.startsWith('http')
+                          ? otherDog.photos[0].url
+                          : `https://dogmatch-backend.onrender.com${otherDog.photos[0].url}`)
+                      : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop&crop=face'
+                  }}
+                  className="w-16 h-16 rounded-full"
+                />
+                {/* Match Badge */}
+                <View className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-pink-500 items-center justify-center border-2 border-white">
+                  <Heart size={12} className="text-white" fill="white" />
+                </View>
               </View>
 
-              <View style={styles.matchActions}>
-                <Chip 
-                  icon="heart" 
-                  mode="flat" 
-                  compact
-                  style={styles.matchChip}
-                >
-                  Match
-                </Chip>
-                <IconButton
-                  icon="message"
-                  size={20}
-                  onPress={() => handleChatPress(item)}
-                  style={styles.chatButton}
-                />
+              {/* Match Info */}
+              <View className="flex-1">
+                <Text className={`text-lg font-bold mb-1 ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {otherDog.name}
+                </Text>
+                <Text className={`text-sm mb-1 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  {otherOwner.first_name} {otherOwner.last_name}
+                </Text>
+                <View className="flex-row items-center">
+                  <Calendar size={12} className={isDark ? 'text-gray-500' : 'text-gray-500'} />
+                  <Text className={`text-xs ml-1 ${
+                    isDark ? 'text-gray-500' : 'text-gray-500'
+                  }`}>
+                    Matched {new Date(item.matched_at).toLocaleDateString()}
+                  </Text>
+                </View>
               </View>
+
+              {/* Chat Button */}
+              <TouchableOpacity
+                onPress={() => handleChatPress(item)}
+                className="w-12 h-12 rounded-full bg-primary-500 items-center justify-center"
+                activeOpacity={0.8}
+              >
+                <MessageCircle size={20} className="text-white" />
+              </TouchableOpacity>
             </View>
-          </Card.Content>
-        </Card>
+          </GlassCard>
+        </TouchableOpacity>
       </Animated.View>
     );
   };
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardsOpacity.value,
-  }));
-
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
-          <Text variant="bodyLarge" style={styles.loadingText}>
-            Loading your matches...
-          </Text>
-        </View>
-      </SafeAreaView>
+      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        
+        {/* Gradient Background */}
+        <LinearGradient
+          colors={isDark 
+            ? ['#312E81', '#1E293B', '#0F172A'] 
+            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+          }
+          className="absolute top-0 left-0 right-0 h-64"
+        />
+
+        <SafeAreaView className="flex-1" edges={['top']}>
+          <Animated.View 
+            entering={FadeIn.duration(400)}
+            className="px-6 py-6 flex-row items-center"
+          >
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              className="mr-4"
+            >
+              <View className={`w-10 h-10 rounded-full items-center justify-center ${
+                isDark ? 'bg-white/10' : 'bg-white/70'
+              }`}>
+                <ChevronLeft size={24} className={isDark ? 'text-white' : 'text-gray-900'} />
+              </View>
+            </TouchableOpacity>
+            
+            <View>
+              <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Matches
+              </Text>
+              <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                Loading...
+              </Text>
+            </View>
+          </Animated.View>
+
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#6366F1" />
+            <Text className={`mt-4 text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Loading your matches...
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Modern Header */}
-      <Surface style={[styles.header, headerAnimatedStyle]} elevation={2}>
-        <View style={styles.headerContent}>
-          <Text variant="headlineMedium" style={styles.title}>Your Matches</Text>
-          <Text variant="bodyMedium" style={styles.subtitle}>
-            {matches.length} {matches.length === 1 ? 'match' : 'matches'}
-          </Text>
-        </View>
-      </Surface>
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+        }
+        className="absolute top-0 left-0 right-0 h-64"
+      />
 
-      {matches.length === 0 ? (
-        <EmptyState
-          icon="heart"
-          title="No matches yet!"
-          subtitle="Start swiping in the Discover tab to find your dog's perfect playmate."
-          actionText="Start Discovering"
-          onActionPress={() => navigation.navigate('Discover')}
-        />
-      ) : (
-        <Animated.View style={[styles.matchesContainer, cardsAnimatedStyle]}>
+      <SafeAreaView className="flex-1" edges={['top']}>
+        {/* Header */}
+        <Animated.View 
+          entering={FadeIn.duration(400)}
+          className="px-6 py-6"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center flex-1">
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                className="mr-4"
+              >
+                <View className={`w-10 h-10 rounded-full items-center justify-center ${
+                  isDark ? 'bg-white/10' : 'bg-white/70'
+                }`}>
+                  <ChevronLeft size={24} className={isDark ? 'text-white' : 'text-gray-900'} />
+                </View>
+              </TouchableOpacity>
+              
+              <View>
+                <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Your Matches
+                </Text>
+                <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                  {matches.length} {matches.length === 1 ? 'match' : 'matches'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Sparkles Icon */}
+            {matches.length > 0 && (
+              <View className="w-12 h-12 rounded-full bg-pink-500/20 items-center justify-center">
+                <Sparkles size={24} className="text-pink-500" />
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {matches.length === 0 ? (
+          <EmptyState
+            icon="inbox"
+            title="No matches yet!"
+            description="Start swiping in the Discover tab to find your dog's perfect playmate."
+            actionLabel="Start Discovering"
+            onAction={() => navigation.navigate('Discover')}
+          />
+        ) : (
           <FlatList
             data={matches}
             renderItem={renderMatch}
             keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.matchesList}
+            contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={() => loadMatches(true)}
-                colors={[Colors.primary[500]]}
-                tintColor={Colors.primary[500]}
+                colors={['#6366F1']}
+                tintColor="#6366F1"
               />
             }
           />
-        </Animated.View>
-      )}
-
-      <Portal>
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={4000}
-          action={{
-            label: 'Retry',
-            onPress: () => {
-              setSnackbarVisible(false);
-              loadMatches();
-            },
-          }}
-        >
-          {error || 'Failed to load matches'}
-        </Snackbar>
-      </Portal>
-    </SafeAreaView>
+        )}
+      </SafeAreaView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  loadingText: {
-    marginTop: Spacing.md,
-    color: Colors.text.secondary,
-  },
-  
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[100],
-  },
-  
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  
-  title: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-  },
-  
-  subtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    marginTop: -Spacing.xs,
-  },
-  
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  
-  emptyCard: {
-    width: '100%',
-  },
-  
-  emptyContent: {
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  
-  emptyIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  
-  emptyEmoji: {
-    fontSize: 64,
-  },
-  
-  emptyTitle: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-    textAlign: 'center',
-  },
-  
-  emptySubtitle: {
-    fontSize: Typography.fontSize.base,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-  },
-  
-  discoverButton: {
-    paddingHorizontal: Spacing.xl,
-  },
-  
-  matchesContainer: {
-    flex: 1,
-  },
-  
-  matchesList: {
-    padding: Spacing.lg,
-  },
-  
-  matchCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  matchContent: {
-    padding: Spacing.md,
-  },
-  
-  matchHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  
-  matchAvatar: {
-    marginRight: Spacing.md,
-  },
-  
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.success[500],
-    borderWidth: 2,
-    borderColor: Colors.background.primary,
-  },
-  
-  matchInfo: {
-    flex: 1,
-    marginRight: Spacing.md,
-  },
-  
-  matchName: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
-  },
-  
-  ownerName: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.xs,
-  },
-  
-  matchDate: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.text.tertiary,
-  },
-  
-  matchActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  
-  matchChip: {
-    backgroundColor: Colors.primary[100],
-  },
-  
-  chatButton: {
-    margin: 0,
-  },
-});
 
 export default MatchesScreen;

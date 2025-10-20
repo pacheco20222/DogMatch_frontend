@@ -1,278 +1,214 @@
 import React, { useState } from 'react';
 import {
   View,
-  StyleSheet,
+  Text,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Image,
+  TouchableOpacity,
+  StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, TextInput, Button, Card, Surface, HelperText, Snackbar } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Mail, Lock, Eye, EyeOff, Heart } from 'lucide-react-native';
 import { Formik } from 'formik';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withDelay,
+  withSequence,
+  withRepeat,
   FadeIn,
+  FadeInDown,
   SlideInUp,
 } from 'react-native-reanimated';
 import { useAuth } from '../hooks/useAuth';
 import { loginSchema } from '../validation/authSchemas';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { useTheme } from '../theme/ThemeContext';
+import { GlassCard, GlassInput, GlassButton, GradientText } from '../components/glass';
 
 const LoginScreen = ({ navigation }) => {
-  const { login, loading, error, clearError } = useAuth();
+  const { login, loading } = useAuth();
+  const { isDark } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
-  const logoScale = useSharedValue(0);
-  const formOpacity = useSharedValue(0);
+  const heartBeat = useSharedValue(1);
+  const logoRotate = useSharedValue(0);
 
   React.useEffect(() => {
-    logoScale.value = withSpring(1, { damping: 15, stiffness: 100 });
-    formOpacity.value = withDelay(300, withSpring(1, { damping: 15, stiffness: 100 }));
+    // Heart beat animation
+    heartBeat.value = withRepeat(
+      withSequence(
+        withSpring(1.2, { damping: 10 }),
+        withSpring(1, { damping: 10 })
+      ),
+      -1,
+      false
+    );
+
+    // Logo rotation
+    logoRotate.value = withDelay(
+      200,
+      withSpring(360, { damping: 20, stiffness: 80 })
+    );
   }, []);
 
   const handleLogin = async (values, { setSubmitting, setFieldError }) => {
     try {
-      await login(values);
-      // Navigation will be handled automatically by AuthNavigator
+      await login({ email: values.email, password: values.password });
+      // Navigation handled by AuthNavigator
     } catch (error) {
       console.error('Login error:', error);
-      setFieldError('general', error.message || 'Login failed. Please try again.');
-      setSnackbarVisible(true);
+      Alert.alert('Login Failed', error.message || 'Unable to sign in. Please check your credentials.');
+      setFieldError('general', error.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartBeat.value }],
   }));
 
-  const formAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: formOpacity.value,
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${logoRotate.value}deg` }],
   }));
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Logo Section */}
-          <Animated.View style={[styles.logoContainer, logoAnimatedStyle]} entering={FadeIn.duration(600)}>
-            <Image
-              source={require('../assets/icons/paw.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text variant="displayMedium" style={styles.title}>
-              Welcome Back!
-            </Text>
-            <Text variant="bodyLarge" style={styles.subtitle}>
-              Sign in to continue your dog matching journey
-            </Text>
-          </Animated.View>
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+        }
+        className="absolute top-0 left-0 right-0 bottom-0"
+      />
 
-          {/* Login Form */}
-          <Animated.View style={[styles.formContainer, formAnimatedStyle]} entering={SlideInUp.duration(600)}>
-            <Card mode="elevated" style={styles.formCard}>
-              <Card.Content style={styles.formContent}>
+      <SafeAreaView className="flex-1" edges={['top']}>
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            className="flex-1 px-6"
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Logo & Title */}
+            <Animated.View 
+              entering={FadeIn.duration(600)}
+              className="items-center mb-12"
+            >
+              <Animated.View style={[heartAnimatedStyle, logoAnimatedStyle]} className="mb-6">
+                <View className="w-24 h-24 rounded-full bg-primary-500/20 items-center justify-center">
+                  <Heart size={48} className="text-primary-500" fill="#6366F1" />
+                </View>
+              </Animated.View>
+              
+              <GradientText
+                colors={['#6366F1', '#EC4899', '#14B8A6']}
+                className="text-4xl font-bold mb-2"
+              >
+                Welcome Back!
+              </GradientText>
+              
+              <Text className={`text-base text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Sign in to continue your dog matching journey
+              </Text>
+            </Animated.View>
+
+            {/* Login Form */}
+            <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+              <GlassCard className="p-6 mb-6">
                 <Formik
                   initialValues={{
                     email: '',
                     password: '',
-                    twoFactorCode: '',
                   }}
                   validationSchema={loginSchema}
                   onSubmit={handleLogin}
                 >
                   {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
-                    <>
-                      <TextInput
+                    <View>
+                      <GlassInput
                         label="Email"
                         value={values.email}
                         onChangeText={handleChange('email')}
                         onBlur={handleBlur('email')}
-                        mode="outlined"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
-                        error={touched.email && !!errors.email}
-                        style={styles.input}
-                        left={<TextInput.Icon icon="email" />}
+                        error={touched.email && errors.email}
+                        icon={Mail}
+                        className="mb-4"
                       />
-                      <HelperText type="error" visible={touched.email && !!errors.email}>
-                        {errors.email}
-                      </HelperText>
 
-                      <TextInput
+                      <GlassInput
                         label="Password"
                         value={values.password}
                         onChangeText={handleChange('password')}
                         onBlur={handleBlur('password')}
-                        mode="outlined"
                         secureTextEntry={!showPassword}
-                        error={touched.password && !!errors.password}
-                        style={styles.input}
-                        left={<TextInput.Icon icon="lock" />}
-                        right={
-                          <TextInput.Icon
-                            icon={showPassword ? 'eye-off' : 'eye'}
-                            onPress={() => setShowPassword(!showPassword)}
-                          />
-                        }
+                        error={touched.password && errors.password}
+                        icon={Lock}
+                        rightIcon={showPassword ? EyeOff : Eye}
+                        onRightIconPress={() => setShowPassword(!showPassword)}
+                        className="mb-6"
                       />
-                      <HelperText type="error" visible={touched.password && !!errors.password}>
-                        {errors.password}
-                      </HelperText>
 
-                      <TextInput
-                        label="2FA Code (Optional)"
-                        value={values.twoFactorCode}
-                        onChangeText={handleChange('twoFactorCode')}
-                        onBlur={handleBlur('twoFactorCode')}
-                        mode="outlined"
-                        keyboardType="numeric"
-                        maxLength={6}
-                        error={touched.twoFactorCode && !!errors.twoFactorCode}
-                        style={styles.input}
-                        left={<TextInput.Icon icon="shield-key" />}
-                      />
-                      <HelperText type="error" visible={touched.twoFactorCode && !!errors.twoFactorCode}>
-                        {errors.twoFactorCode}
-                      </HelperText>
+                      {errors.general && (
+                        <Text className="text-error-500 text-sm mb-4 text-center">
+                          {errors.general}
+                        </Text>
+                      )}
 
-                      <HelperText type="error" visible={!!errors.general}>
-                        {errors.general}
-                      </HelperText>
-
-                      <Button
-                        mode="contained"
+                      <GlassButton
+                        variant="primary"
+                        size="lg"
                         onPress={handleSubmit}
                         loading={isSubmitting || loading}
                         disabled={isSubmitting || loading}
-                        style={styles.loginButton}
-                        contentStyle={styles.buttonContent}
+                        className="w-full"
                       >
                         {isSubmitting || loading ? 'Signing In...' : 'Sign In'}
-                      </Button>
-                    </>
+                      </GlassButton>
+                    </View>
                   )}
                 </Formik>
-              </Card.Content>
-            </Card>
+              </GlassCard>
 
-            {/* Navigation Links */}
-            <View style={styles.navigationContainer}>
-              <Button
-                mode="text"
-                onPress={() => navigation.navigate('Register')}
-                style={styles.navigationButton}
-              >
-                Don't have an account? Sign Up
-              </Button>
-              
-              <Button
-                mode="text"
-                onPress={() => {
-                  // TODO: Implement forgot password
-                  console.log('Forgot password pressed');
-                }}
-                style={styles.navigationButton}
-              >
-                Forgot Password?
-              </Button>
-            </View>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              {/* Navigation Links */}
+              <View className="items-center space-y-3">
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Register')}
+                  activeOpacity={0.7}
+                >
+                  <Text className={`text-base ${isDark ? 'text-primary-400' : 'text-primary-600'}`}>
+                    Don't have an account? <Text className="font-semibold">Sign Up</Text>
+                  </Text>
+                </TouchableOpacity>
 
-      {/* Error Snackbar */}
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={4000}
-        action={{
-          label: 'Dismiss',
-          onPress: () => setSnackbarVisible(false),
-        }}
-      >
-        {error || 'An error occurred'}
-      </Snackbar>
-    </SafeAreaView>
+                <TouchableOpacity
+                  onPress={() => Alert.alert('Forgot Password', 'Password reset feature coming soon!')}
+                  activeOpacity={0.7}
+                >
+                  <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Forgot Password?
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: Spacing.lg,
-    justifyContent: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    marginBottom: Spacing.lg,
-  },
-  title: {
-    textAlign: 'center',
-    fontWeight: '700',
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: Colors.text.secondary,
-    lineHeight: 24,
-  },
-  formContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  formCard: {
-    marginBottom: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-  },
-  formContent: {
-    padding: Spacing.lg,
-  },
-  input: {
-    marginBottom: Spacing.sm,
-  },
-  loginButton: {
-    marginTop: Spacing.lg,
-    borderRadius: BorderRadius.md,
-  },
-  buttonContent: {
-    paddingVertical: Spacing.sm,
-  },
-  navigationContainer: {
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  navigationButton: {
-    minWidth: 200,
-  },
-});
 
 export default LoginScreen;

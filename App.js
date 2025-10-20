@@ -3,10 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as ReduxProvider } from 'react-redux';
-import { PaperProvider } from 'react-native-paper';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
-import { paperTheme } from './theme/paperTheme';
+import { ThemeProvider } from './theme/ThemeContext';
 import AuthNavigator from './navigation/AuthNavigator';
 import AuthInitializer from './components/AuthInitializer';
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -15,7 +14,7 @@ export default function App() {
   return (
     <ReduxProvider store={store}>
       <PersistGate loading={<LoadingScreen />} persistor={persistor}>
-        <PaperProvider theme={paperTheme}>
+        <ThemeProvider>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>
               <AuthInitializer>
@@ -25,7 +24,7 @@ export default function App() {
               </AuthInitializer>
             </SafeAreaProvider>
           </GestureHandlerRootView>
-        </PaperProvider>
+        </ThemeProvider>
       </PersistGate>
     </ReduxProvider>
   );

@@ -2,39 +2,45 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, 
   ScrollView, 
-  StyleSheet,
-  RefreshControl
+  Text,
+  TouchableOpacity,
+  RefreshControl,
+  StatusBar,
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  Text,
-  Card,
-  Surface,
-  FAB,
-  Chip,
-  Button,
-  Avatar,
-  ActivityIndicator,
-  Snackbar,
-  Portal,
-  Badge,
-} from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { 
+  Calendar, 
+  MapPin, 
+  Users, 
+  DollarSign, 
+  Plus,
+  ArrowRight,
+  CheckCircle,
+  XCircle,
+  CalendarPlus,
+  Dog,
+  GraduationCap,
+  Home,
+  Trophy,
+  PartyPopper,
+  BookOpen
+} from 'lucide-react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
   FadeIn,
-  SlideInUp,
-  Layout,
+  FadeInDown,
+  SlideInRight
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchEvents, clearError } from '../store/slices/eventsSlice';
 import { useAuth } from '../hooks/useAuth';
 import { canCreateEvents } from '../utils/permissions';
+import { useTheme } from '../theme/ThemeContext';
 import EmptyState from '../components/ui/EmptyState';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { GlassCard, GlassButton, FloatingActionButton } from '../components/glass';
 
 const EventsScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -46,9 +52,7 @@ const EventsScreen = ({ navigation }) => {
   // Check if user can create events (admin or shelter only)
   const userCanCreateEvents = canCreateEvents(user);
 
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity = useSharedValue(0);
+  const { isDark } = useTheme();
 
   const loadEvents = async (isRefresh = false) => {
     try {
@@ -65,9 +69,6 @@ const EventsScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadEvents();
-    // Animate header and cards
-    headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
-    cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
 
   // Refresh when screen comes into focus
@@ -121,490 +122,355 @@ const EventsScreen = ({ navigation }) => {
 
   const getCategoryIcon = (category) => {
     const iconMap = {
-      'meetup': 'dog',
-      'training': 'school',
-      'adoption': 'home',
-      'competition': 'trophy',
-      'social': 'party-popper',
-      'educational': 'book-open'
+      'meetup': Dog,
+      'training': GraduationCap,
+      'adoption': Home,
+      'competition': Trophy,
+      'social': PartyPopper,
+      'educational': BookOpen
     };
-    return iconMap[category] || 'calendar';
+    return iconMap[category] || Calendar;
   };
 
   const getCategoryColor = (category) => {
     const colorMap = {
-      'meetup': Colors.primary[500],
-      'training': Colors.secondary[500],
-      'adoption': Colors.success[500],
-      'competition': Colors.warning[500],
-      'social': Colors.primary[600],
-      'educational': Colors.secondary[600]
+      'meetup': '#6366F1',
+      'training': '#8B5CF6',
+      'adoption': '#10B981',
+      'competition': '#F59E0B',
+      'social': '#EC4899',
+      'educational': '#3B82F6'
     };
-    return colorMap[category] || Colors.primary[500];
+    return colorMap[category] || '#6366F1';
   };
 
-  const renderEventCard = (event, index) => (
-    <Animated.View
-      key={event.id}
-      entering={FadeIn.delay(index * 100).duration(600)}
-      layout={Layout.springify()}
-    >
-      <Card 
-        mode="elevated" 
-        style={styles.eventCard}
-        onPress={() => navigation.navigate('RegisterEvent', { eventId: event.id })}
+  const renderEventCard = (event, index) => {
+    const CategoryIcon = getCategoryIcon(event.category);
+    const categoryColor = getCategoryColor(event.category);
+    
+    return (
+      <Animated.View
+        key={event.id}
+        entering={FadeInDown.delay(index * 100).duration(400)}
+        className="mb-4"
       >
-        {/* Event Photo */}
-        {event.photo_url && (
-          <Card.Cover 
-            source={{ 
-              uri: event.photo_url.startsWith('http') 
-                ? event.photo_url 
-                : `https://dogmatch-backend.onrender.com${event.photo_url}`
-            }} 
-            style={styles.eventPhoto}
-          />
-        )}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('RegisterEvent', { eventId: event.id })}
+          activeOpacity={0.9}
+        >
+          <GlassCard className="overflow-hidden">
+            {/* Event Photo */}
+            {event.photo_url && (
+              <Image
+                source={{ 
+                  uri: event.photo_url.startsWith('http') 
+                    ? event.photo_url 
+                    : `https://dogmatch-backend.onrender.com${event.photo_url}`
+                }} 
+                className="w-full h-48"
+                resizeMode="cover"
+              />
+            )}
 
-        <Card.Content style={styles.cardContent}>
-          {/* Event Header */}
-          <View style={styles.eventHeader}>
-            <Avatar.Icon
-              size={48}
-              icon={getCategoryIcon(event.category)}
-              style={[styles.categoryAvatar, { backgroundColor: getCategoryColor(event.category) }]}
-            />
-            
-            <View style={styles.eventInfo}>
-              <Text variant="titleLarge" style={styles.eventTitle}>
-                {event.title}
-              </Text>
-              <Chip 
-                mode="outlined" 
-                compact 
-                icon={getCategoryIcon(event.category)}
-                style={styles.categoryChip}
-                textStyle={styles.categoryChipText}
-              >
-                {getCategoryDisplayName(event.category)}
-              </Chip>
-              <Text variant="bodySmall" style={styles.eventOrganizer}>
-                by {event.organizer?.full_name || event.organizer?.username || 'Unknown'}
-              </Text>
-            </View>
-            
-            <Chip 
-              mode="outlined" 
-              compact 
-              style={[
-                styles.priceChip,
-                { backgroundColor: event.price > 0 ? Colors.warning[50] : Colors.success[50] }
-              ]}
-              textStyle={[
-                styles.priceChipText,
-                { color: event.price > 0 ? Colors.warning[700] : Colors.success[700] }
-              ]}
-            >
-              {formatPrice(event.price, event.currency)}
-            </Chip>
-          </View>
+            <View className="p-4">
+              {/* Event Header */}
+              <View className="flex-row items-start mb-3">
+                {/* Category Icon */}
+                <View 
+                  className="w-12 h-12 rounded-2xl items-center justify-center mr-3"
+                  style={{ backgroundColor: categoryColor + '20' }}
+                >
+                  <CategoryIcon size={24} color={categoryColor} />
+                </View>
+                
+                {/* Event Info */}
+                <View className="flex-1">
+                  <Text className={`text-lg font-bold mb-1 ${
+                    isDark ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {event.title}
+                  </Text>
+                  
+                  <View 
+                    className="self-start px-2.5 py-1 rounded-full mb-1"
+                    style={{ backgroundColor: categoryColor + '15' }}
+                  >
+                    <Text 
+                      className="text-xs font-semibold"
+                      style={{ color: categoryColor }}
+                    >
+                      {getCategoryDisplayName(event.category)}
+                    </Text>
+                  </View>
+                  
+                  <Text className={`text-xs ${
+                    isDark ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    by {event.organizer?.full_name || event.organizer?.username || 'Unknown'}
+                  </Text>
+                </View>
+                
+                {/* Price Badge */}
+                <View 
+                  className={`px-3 py-1.5 rounded-full ${
+                    event.price > 0 
+                      ? 'bg-yellow-100' 
+                      : 'bg-green-100'
+                  }`}
+                >
+                  <Text className={`text-xs font-bold ${
+                    event.price > 0 
+                      ? 'text-yellow-700' 
+                      : 'text-green-700'
+                  }`}>
+                    {formatPrice(event.price, event.currency)}
+                  </Text>
+                </View>
+              </View>
 
-          {/* Event Description */}
-          {event.description && (
-            <View style={styles.descriptionContainer}>
-              <Text variant="bodyMedium" style={styles.eventDescription} numberOfLines={2}>
-                {event.description}
-              </Text>
-            </View>
-          )}
-
-          {/* Event Details */}
-          <View style={styles.eventDetails}>
-            <View style={styles.detailRow}>
-              <Avatar.Icon size={24} icon="calendar" style={styles.detailIcon} />
-              <Text variant="bodySmall" style={styles.detailText}>
-                {formatEventDate(event.event_date)}
-              </Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <Avatar.Icon size={24} icon="map-marker" style={styles.detailIcon} />
-              <Text variant="bodySmall" style={styles.detailText} numberOfLines={1}>
-                {event.location}
-              </Text>
-            </View>
-            
-            {event.max_participants && (
-              <View style={styles.detailRow}>
-                <Avatar.Icon size={24} icon="account-group" style={styles.detailIcon} />
-                <Text variant="bodySmall" style={styles.detailText}>
-                  {event.current_participants}/{event.max_participants} participants
+              {/* Event Description */}
+              {event.description && (
+                <Text 
+                  className={`text-sm mb-3 leading-5 ${
+                    isDark ? 'text-gray-300' : 'text-gray-700'
+                  }`}
+                  numberOfLines={2}
+                >
+                  {event.description}
                 </Text>
-                {event.is_full && (
-                  <Badge style={styles.fullBadge}>FULL</Badge>
+              )}
+
+              {/* Event Details */}
+              <View className="mb-3 space-y-2">
+                {/* Date */}
+                <View className="flex-row items-center">
+                  <View className={`w-8 h-8 rounded-lg items-center justify-center mr-2.5 ${
+                    isDark ? 'bg-white/5' : 'bg-gray-100'
+                  }`}>
+                    <Calendar size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                  </View>
+                  <Text className={`text-sm flex-1 ${
+                    isDark ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    {formatEventDate(event.event_date)}
+                  </Text>
+                </View>
+                
+                {/* Location */}
+                <View className="flex-row items-center mt-2">
+                  <View className={`w-8 h-8 rounded-lg items-center justify-center mr-2.5 ${
+                    isDark ? 'bg-white/5' : 'bg-gray-100'
+                  }`}>
+                    <MapPin size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                  </View>
+                  <Text 
+                    className={`text-sm flex-1 ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}
+                    numberOfLines={1}
+                  >
+                    {event.location}
+                  </Text>
+                </View>
+                
+                {/* Participants */}
+                {event.max_participants && (
+                  <View className="flex-row items-center mt-2">
+                    <View className={`w-8 h-8 rounded-lg items-center justify-center mr-2.5 ${
+                      isDark ? 'bg-white/5' : 'bg-gray-100'
+                    }`}>
+                      <Users size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    </View>
+                    <Text className={`text-sm flex-1 ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      {event.current_participants}/{event.max_participants} participants
+                    </Text>
+                    {event.is_full && (
+                      <View className="px-2 py-1 rounded-full bg-red-500">
+                        <Text className="text-white text-xs font-bold">FULL</Text>
+                      </View>
+                    )}
+                  </View>
                 )}
               </View>
-            )}
-          </View>
 
-          {/* Event Actions */}
-          <View style={styles.eventActions}>
-            <Chip 
-              mode="outlined" 
-              compact 
-              icon={event.is_registered ? "check-circle" : (event.is_registration_open ? "calendar-plus" : "calendar-remove")}
-              style={[
-                styles.statusChip,
-                { 
-                  backgroundColor: event.is_registered 
-                    ? Colors.primary[50] 
-                    : (event.is_registration_open ? Colors.success[50] : Colors.error[50])
-                }
-              ]}
-              textStyle={[
-                styles.statusChipText,
-                { 
-                  color: event.is_registered 
-                    ? Colors.primary[700] 
-                    : (event.is_registration_open ? Colors.success[700] : Colors.error[700])
-                }
-              ]}
-            >
-              {event.is_registered ? 'Registered' : (event.is_registration_open ? 'Registration Open' : 'Registration Closed')}
-            </Chip>
-            
-            <Button
-              mode="outlined"
-              onPress={() => navigation.navigate('RegisterEvent', { eventId: event.id })}
-              icon="arrow-right"
-              style={styles.viewButton}
-              compact
-            >
-              View Details
-            </Button>
-          </View>
-        </Card.Content>
-      </Card>
-    </Animated.View>
-  );
-
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardsOpacity.value,
-  }));
+              {/* Event Actions */}
+              <View className="flex-row items-center justify-between pt-3 border-t" style={{
+                borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+              }}>
+                {/* Status Badge */}
+                <View className="flex-row items-center">
+                  {event.is_registered ? (
+                    <View className="flex-row items-center px-3 py-1.5 rounded-full bg-primary-500/20">
+                      <CheckCircle size={14} className="text-primary-500" />
+                      <Text className="text-primary-500 text-xs font-semibold ml-1.5">Registered</Text>
+                    </View>
+                  ) : event.is_registration_open ? (
+                    <View className="flex-row items-center px-3 py-1.5 rounded-full bg-green-500/20">
+                      <CalendarPlus size={14} className="text-green-600" />
+                      <Text className="text-green-600 text-xs font-semibold ml-1.5">Open</Text>
+                    </View>
+                  ) : (
+                    <View className="flex-row items-center px-3 py-1.5 rounded-full bg-red-500/20">
+                      <XCircle size={14} className="text-red-500" />
+                      <Text className="text-red-500 text-xs font-semibold ml-1.5">Closed</Text>
+                    </View>
+                  )}
+                </View>
+                
+                {/* View Details Button */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('RegisterEvent', { eventId: event.id })}
+                  className="flex-row items-center px-4 py-2 rounded-full bg-primary-500"
+                  activeOpacity={0.8}
+                >
+                  <Text className="text-white text-sm font-semibold mr-1">Details</Text>
+                  <ArrowRight size={16} className="text-white" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </GlassCard>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary[500]} />
-          <Text variant="bodyLarge" style={styles.loadingText}>
-            Loading events...
-          </Text>
-        </View>
-      </SafeAreaView>
+      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        
+        {/* Gradient Background */}
+        <LinearGradient
+          colors={isDark 
+            ? ['#312E81', '#1E293B', '#0F172A'] 
+            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+          }
+          className="absolute top-0 left-0 right-0 h-64"
+        />
+
+        <SafeAreaView className="flex-1" edges={['top']}>
+          <Animated.View 
+            entering={FadeIn.duration(400)}
+            className="px-6 py-6"
+          >
+            <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Events
+            </Text>
+            <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+              Join community events
+            </Text>
+          </Animated.View>
+
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#6366F1" />
+            <Text className={`mt-4 text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Loading events...
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Modern Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-        <Surface style={styles.headerSurface} elevation={2}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text variant="headlineMedium" style={styles.title}>
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+        }
+        className="absolute top-0 left-0 right-0 h-64"
+      />
+
+      <SafeAreaView className="flex-1" edges={['top']}>
+        {/* Header */}
+        <Animated.View 
+          entering={FadeIn.duration(400)}
+          className="px-6 py-6"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1">
+              <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 Events
               </Text>
-              <Text variant="bodyMedium" style={styles.subtitle}>
+              <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
                 Join community events and meetups
               </Text>
             </View>
+
             {userCanCreateEvents && (
-              <Button
-                mode="contained"
+              <TouchableOpacity
                 onPress={() => navigation.navigate('CreateEvent')}
-                icon="plus"
-                style={styles.createButton}
-                compact
+                className="px-4 py-2.5 rounded-full bg-primary-500 flex-row items-center"
+                activeOpacity={0.8}
               >
-                Create Event
-              </Button>
+                <Plus size={18} className="text-white" />
+                <Text className="text-white text-sm font-semibold ml-1.5">Create</Text>
+              </TouchableOpacity>
             )}
           </View>
-        </Surface>
-      </Animated.View>
+        </Animated.View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadEvents(true)}
-            colors={[Colors.primary[500]]}
-            tintColor={Colors.primary[500]}
-          />
-        }
-      >
-        {error ? (
-          <Animated.View entering={FadeIn.duration(600)}>
+        <ScrollView
+          className="flex-1 px-4"
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadEvents(true)}
+              colors={['#6366F1']}
+              tintColor="#6366F1"
+            />
+          }
+        >
+          {error ? (
             <EmptyState
               icon="alert-circle"
               title="Oops! Something went wrong"
-              subtitle={error}
-              action={{
-                label: "Try Again",
-                onPress: () => loadEvents()
-              }}
+              description={error}
+              actionLabel="Try Again"
+              onAction={() => loadEvents()}
             />
-          </Animated.View>
-        ) : events.length === 0 ? (
-          <Animated.View entering={FadeIn.duration(600)}>
+          ) : events.length === 0 ? (
             <EmptyState
-              icon="calendar"
+              icon="inbox"
               title="No events available"
-              subtitle={userCanCreateEvents 
+              description={userCanCreateEvents 
                 ? 'Create your first event to get started!'
                 : 'Check back soon for upcoming events in your area.'
               }
-              action={userCanCreateEvents ? {
-                label: "Create Event",
-                onPress: () => navigation.navigate('CreateEvent')
-              } : undefined}
+              actionLabel={userCanCreateEvents ? "Create Event" : undefined}
+              onAction={userCanCreateEvents ? () => navigation.navigate('CreateEvent') : undefined}
             />
-          </Animated.View>
-        ) : (
-          <Animated.View style={[styles.eventsContainer, cardsAnimatedStyle]}>
-            <View style={styles.eventsHeader}>
-              <Text variant="titleMedium" style={styles.eventsCount}>
+          ) : (
+            <Animated.View entering={SlideInRight.duration(400)}>
+              <Text className={`text-sm font-semibold mb-4 ${
+                isDark ? 'text-gray-400' : 'text-gray-600'
+              }`}>
                 {events.length} event{events.length !== 1 ? 's' : ''} available
               </Text>
-            </View>
-            {events.map((event, index) => renderEventCard(event, index))}
-          </Animated.View>
+              {events.map((event, index) => renderEventCard(event, index))}
+            </Animated.View>
+          )}
+        </ScrollView>
+
+        {/* FAB for quick create */}
+        {userCanCreateEvents && (
+          <FloatingActionButton
+            icon={Plus}
+            onPress={() => navigation.navigate('CreateEvent')}
+          />
         )}
-      </ScrollView>
-
-      {/* FAB for quick create */}
-      {userCanCreateEvents && (
-        <FAB
-          icon="plus"
-          style={styles.fab}
-          onPress={() => navigation.navigate('CreateEvent')}
-          label="Create Event"
-        />
-      )}
-
-      {/* Snackbar for errors */}
-      <Portal>
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={4000}
-          action={{
-            label: 'Dismiss',
-            onPress: () => setSnackbarVisible(false),
-          }}
-        >
-          {error || 'Something went wrong'}
-        </Snackbar>
-      </Portal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  
-  loadingText: {
-    color: Colors.text.secondary,
-  },
-  
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  
-  headerSurface: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  
-  title: {
-    color: Colors.text.primary,
-    marginBottom: -Spacing.xs,
-  },
-  
-  subtitle: {
-    color: Colors.text.secondary,
-  },
-  
-  createButton: {
-    borderRadius: BorderRadius.md,
-  },
-  
-  scrollView: {
-    flex: 1,
-  },
-  
-  scrollContent: {
-    padding: Spacing.lg,
-    paddingBottom: 100, // Space for FAB
-  },
-  
-  eventsContainer: {
-    flex: 1,
-  },
-  
-  eventsHeader: {
-    marginBottom: Spacing.lg,
-  },
-  
-  eventsCount: {
-    color: Colors.text.primary,
-  },
-  
-  eventCard: {
-    marginBottom: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-  },
-  
-  eventPhoto: {
-    height: 200,
-  },
-  
-  cardContent: {
-    padding: Spacing.md,
-  },
-  
-  eventHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.md,
-    gap: Spacing.md,
-  },
-  
-  categoryAvatar: {
-    backgroundColor: Colors.primary[500],
-  },
-  
-  eventInfo: {
-    flex: 1,
-  },
-  
-  eventTitle: {
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  
-  categoryChip: {
-    backgroundColor: Colors.primary[50],
-    borderColor: Colors.primary[200],
-    marginBottom: Spacing.xs,
-  },
-  
-  categoryChipText: {
-    color: Colors.primary[700],
-    fontSize: Typography.fontSize.xs,
-  },
-  
-  eventOrganizer: {
-    color: Colors.text.tertiary,
-  },
-  
-  priceChip: {
-    borderColor: Colors.warning[200],
-  },
-  
-  priceChipText: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  
-  descriptionContainer: {
-    marginBottom: Spacing.md,
-  },
-  
-  eventDescription: {
-    color: Colors.text.secondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-  },
-  
-  eventDetails: {
-    marginBottom: Spacing.md,
-  },
-  
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  
-  detailIcon: {
-    backgroundColor: Colors.neutral[100],
-  },
-  
-  detailText: {
-    color: Colors.text.secondary,
-    flex: 1,
-  },
-  
-  fullBadge: {
-    backgroundColor: Colors.error[500],
-    color: Colors.background.primary,
-  },
-  
-  eventActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  
-  statusChip: {
-    borderColor: Colors.primary[200],
-  },
-  
-  statusChipText: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  
-  viewButton: {
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-  },
-  
-  fab: {
-    position: 'absolute',
-    margin: Spacing.lg,
-    right: 0,
-    bottom: 0,
-    backgroundColor: Colors.primary[500],
-  },
-});
 
 export default EventsScreen;

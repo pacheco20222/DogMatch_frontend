@@ -3,23 +3,25 @@ import {
   View,
   FlatList,
   RefreshControl,
-  Alert,
-  StyleSheet,
-  StatusBar
+  Text,
+  TouchableOpacity,
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Text, Surface, FAB, List, Badge, Avatar, IconButton } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MessageCircle, RefreshCw, WifiOff, Wifi } from 'lucide-react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchConversations } from '../store/slices/chatsSlice';
 import { useChatService } from '../services/chatService';
+import { useTheme } from '../theme/ThemeContext';
 import ChatListItem from '../components/ui/ChatListItem';
 import EmptyState from '../components/ui/EmptyState';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { FadeIn, FadeInDown } from 'react-native-reanimated';
-import Animated from 'react-native-reanimated';
+import { GlassCard } from '../components/glass';
 
 const ChatsScreen = ({ navigation }) => {
   const { accessToken } = useAuth();
@@ -86,358 +88,168 @@ const ChatsScreen = ({ navigation }) => {
     });
   };
 
-  // Format last message preview
-  const formatLastMessage = (message) => {
-    if (!message) return 'No messages yet';
-    
-    const maxLength = 50;
-    let preview = message.content;
-    
-    if (message.message_type === 'image') {
-      preview = '📷 Photo';
-    } else if (message.message_type === 'location') {
-      preview = '📍 Location';
-    }
-    
-    if (preview.length > maxLength) {
-      preview = preview.substring(0, maxLength) + '...';
-    }
-    
-    return preview;
-  };
-
-  // Format timestamp
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return '';
-    
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now - date) / (1000 * 60 * 60);
-    
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffInHours < 168) { // 7 days
-      return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-  };
 
   // Render conversation item
   const renderConversation = ({ item: conversation, index }) => (
-    <Animated.View entering={FadeInDown.delay(index * 100).duration(600)}>
+    <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
       <ChatListItem
         conversation={conversation}
         onPress={() => handleConversationPress(conversation)}
-        style={styles.conversationItem}
       />
     </Animated.View>
   );
 
   // Render empty state
   const renderEmptyState = () => (
-    <Animated.View entering={FadeIn.duration(800)} style={styles.emptyState}>
-      <EmptyState
-        icon="message-outline"
-        title="No conversations yet"
-        description="Start swiping to find matches and begin chatting!"
-        actionLabel="Start Swiping"
-        onAction={() => navigation.navigate('Discover')}
-      />
-    </Animated.View>
+    <EmptyState
+      icon="message-outline"
+      title="No conversations yet"
+      description="Start swiping to find matches and begin chatting!"
+      actionLabel="Start Swiping"
+      onAction={() => navigation.navigate('Discover')}
+    />
   );
 
   // Render error state
   const renderErrorState = () => (
-    <Animated.View entering={FadeIn.duration(800)} style={styles.errorState}>
-      <EmptyState
-        icon="alert-circle"
-        title="Failed to load conversations"
-        description={error}
-        actionLabel="Try Again"
-        onAction={fetchConversations}
-      />
-    </Animated.View>
+    <EmptyState
+      icon="alert-circle"
+      title="Failed to load conversations"
+      description={error}
+      actionLabel="Try Again"
+      onAction={() => dispatch(fetchConversations())}
+    />
   );
+
+  const { isDark } = useTheme();
 
   if (loading || isInitializing) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Chats</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" />
-          <Text style={styles.loadingText}>Loading conversations...</Text>
-        </View>
-      </SafeAreaView>
+      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        
+        {/* Gradient Background */}
+        <LinearGradient
+          colors={isDark 
+            ? ['#312E81', '#1E293B', '#0F172A'] 
+            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+          }
+          className="absolute top-0 left-0 right-0 h-64"
+        />
+
+        <SafeAreaView className="flex-1" edges={['top']}>
+          {/* Header */}
+          <Animated.View 
+            entering={FadeIn.duration(400)}
+            className="px-6 py-6 flex-row items-center justify-between"
+          >
+            <View>
+              <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Chats
+              </Text>
+              <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                Stay connected
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* Loading State */}
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#6366F1" />
+            <Text className={`mt-4 text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Loading conversations...
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Header */}
-      <Surface style={styles.header} elevation={2}>
-        <View style={styles.headerContent}>
-          <Text variant="headlineMedium" style={styles.headerTitle}>Chats</Text>
-          <View style={styles.headerRight}>
-            {!isConnected && (
-              <View style={styles.connectionStatus}>
-                <Avatar.Icon icon="wifi-off" size={20} style={styles.offlineIcon} />
-                <Text variant="bodySmall" style={styles.connectionText}>Offline</Text>
-                <IconButton
-                  icon="wifi"
-                  size={20}
-                  onPress={connect}
-                  style={styles.connectButton}
-                />
-              </View>
-            )}
-            <IconButton
-              icon="refresh"
-              size={24}
-              onPress={onRefresh}
-              style={styles.refreshButton}
-            />
-          </View>
-        </View>
-      </Surface>
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+        }
+        className="absolute top-0 left-0 right-0 h-64"
+      />
 
-      {/* Content */}
-      {error ? (
-        renderErrorState()
-      ) : conversations.length === 0 ? (
-        renderEmptyState()
-      ) : (
-        <FlatList
-          data={conversations}
-          keyExtractor={(item) => item.match.id.toString()}
-          renderItem={renderConversation}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#4F8EF7"
-              colors={['#4F8EF7']}
-            />
-          }
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </SafeAreaView>
+      <SafeAreaView className="flex-1" edges={['top']}>
+        {/* Header */}
+        <Animated.View 
+          entering={FadeIn.duration(400)}
+          className="px-6 py-6"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1">
+              <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Chats
+              </Text>
+              <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                {conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'}
+              </Text>
+            </View>
+
+            {/* Header Actions */}
+            <View className="flex-row items-center gap-2">
+              {/* Connection Status */}
+              {!isConnected && (
+                <TouchableOpacity
+                  onPress={connect}
+                  className={`px-3 py-2 rounded-full flex-row items-center ${
+                    isDark ? 'bg-red-500/20' : 'bg-red-100'
+                  }`}
+                  activeOpacity={0.7}
+                >
+                  <WifiOff size={16} className="text-red-500" />
+                  <Text className="text-red-500 text-xs font-semibold ml-1.5">Offline</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Refresh Button */}
+              <TouchableOpacity
+                onPress={onRefresh}
+                className={`w-10 h-10 rounded-full items-center justify-center ${
+                  isDark ? 'bg-white/10' : 'bg-white/70'
+                }`}
+                activeOpacity={0.7}
+              >
+                <RefreshCw size={20} className={isDark ? 'text-white' : 'text-gray-900'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Content */}
+        {error ? (
+          renderErrorState()
+        ) : conversations.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <FlatList
+            data={conversations}
+            keyExtractor={(item) => item.match.id.toString()}
+            renderItem={renderConversation}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#6366F1"
+                colors={['#6366F1']}
+              />
+            }
+            contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </SafeAreaView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  offlineIcon: {
-    backgroundColor: '#EF4444',
-  },
-  refreshButton: {
-    margin: 0,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  connectionStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  connectButton: {
-    marginLeft: 8,
-  },
-  offlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    marginRight: 6,
-  },
-  connectionText: {
-    fontSize: 12,
-    color: '#EF4444',
-    fontWeight: '500',
-  },
-  listContainer: {
-    paddingBottom: 20,
-  },
-  conversationItem: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  conversationTouchable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginRight: 16,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F3F4F6',
-  },
-  unreadBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  unreadText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  conversationInfo: {
-    flex: 1,
-  },
-  conversationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    flex: 1,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginLeft: 8,
-  },
-  conversationPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: '#6B7280',
-    flex: 1,
-  },
-  unreadMessage: {
-    color: '#1F2937',
-    fontWeight: '500',
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4F8EF7',
-    marginLeft: 8,
-  },
-  dogName: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyStateSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  errorState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  errorStateIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  errorStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  errorStateSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  retryButton: {
-    backgroundColor: '#4F8EF7',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-});
 
 export default ChatsScreen;

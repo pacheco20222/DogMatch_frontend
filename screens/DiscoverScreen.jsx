@@ -1,64 +1,54 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
+  Text,
   Image, 
   Alert, 
   Dimensions,
-  StyleSheet
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Swiper } from 'rn-swiper-list';
-import {
-  Text,
-  Surface,
-  Chip,
-  IconButton,
-  Button,
-  Avatar,
+  TouchableOpacity,
+  StatusBar,
   ActivityIndicator,
-  Snackbar,
-  Portal,
-  Badge,
-} from 'react-native-paper';
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Swiper } from 'rn-swiper-list';
+import { X, Heart, Star, Users, Zap, Ruler, RotateCcw } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withDelay,
   FadeIn,
+  FadeInDown,
   SlideInUp,
-  interpolate,
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchDiscoverDogs, clearError } from '../store/slices/dogsSlice';
 import { swipeDog, fetchPendingSwipes, clearError as clearMatchesError } from '../store/slices/matchesSlice';
 import { useAuth } from '../hooks/useAuth';
-import EmptyState from '../components/ui/EmptyState';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { useTheme } from '../theme/ThemeContext';
+import { GlassCard, GradientText } from '../components/glass';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CARD_WIDTH = screenWidth - 40;
-const CARD_HEIGHT = screenHeight * 0.6;
+const CARD_HEIGHT = screenHeight * 0.65;
 
 const DiscoverScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const { discoverDogs, discoverLoading, error: dogsError } = useAppSelector(state => state.dogs);
   const { pendingSwipes, pendingLoading, error: matchesError } = useAppSelector(state => state.matches);
   const [swiping, setSwiping] = useState(false);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
   const swiperRef = useRef();
-
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const cardOpacity = useSharedValue(0);
+  const insets = useSafeAreaInsets();
 
   // Load dogs for swiping
   const loadDogs = useCallback(async () => {
     try {
       await dispatch(fetchDiscoverDogs()).unwrap();
     } catch (e) {
-      setSnackbarVisible(true);
+      console.error('Failed to load discover dogs:', e);
     }
   }, [dispatch]);
 
@@ -74,9 +64,6 @@ const DiscoverScreen = ({ navigation }) => {
   useEffect(() => {
     loadDogs();
     loadPendingSwipes();
-    // Animate header and cards
-    headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
-    cardOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
   }, [loadDogs, loadPendingSwipes]);
 
   // Clear errors when component unmounts
@@ -87,7 +74,7 @@ const DiscoverScreen = ({ navigation }) => {
     };
   }, [dispatch]);
 
-  // Handle swipe action
+  // Handle swipe action - PRESERVE THIS EXACTLY
   const handleSwipe = useCallback(async (action, cardIndex) => {
     if (cardIndex >= discoverDogs.length || swiping) return;
     
@@ -128,563 +115,375 @@ const DiscoverScreen = ({ navigation }) => {
     }
   }, [discoverDogs, dispatch, navigation, swiping]);
 
-  // Render individual dog card with modern design
+  // Render individual dog card with glass morphism design
   const renderCard = useCallback((dog) => {
     return (
-      <Animated.View style={styles.card} entering={FadeIn.duration(600)}>
-        {/* Dog Photo with gradient overlay */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ 
-              uri: dog.photos && dog.photos.length > 0 
-                ? (dog.photos[0].url.startsWith('http') 
-                    ? dog.photos[0].url 
-                    : `https://dogmatch-backend.onrender.com${dog.photos[0].url}`)
-                : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face'
-            }}
-            style={styles.dogImage}
-            resizeMode="cover"
-            onError={(error) => {
-              console.log('Image load error:', error);
-            }}
-            defaultSource={{ uri: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face' }}
-          />
-          {/* Gradient overlay for better text readability */}
-          <View style={styles.imageGradient} />
-        </View>
+      <View style={{ width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 24, overflow: 'hidden' }}>
+        {/* Dog Photo */}
+        <Image
+          source={{ 
+            uri: dog.photos && dog.photos.length > 0 
+              ? (dog.photos[0].url.startsWith('http') 
+                  ? dog.photos[0].url 
+                  : `https://dogmatch-backend.onrender.com${dog.photos[0].url}`)
+              : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face'
+          }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
+        
+        {/* Gradient overlay for better text readability */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200 }}
+        />
 
-        {/* Dog Info with Paper components */}
-        <Surface style={styles.dogInfo} elevation={4}>
-          <View style={styles.nameAgeContainer}>
-            <Text variant="headlineSmall" style={styles.dogName}>
-              {dog.name}
-            </Text>
-            <Chip 
-              mode="outlined" 
-              compact 
-              style={styles.ageChip}
-              textStyle={styles.ageChipText}
-            >
-              {dog.age} years
-            </Chip>
-          </View>
-          
-          <View style={styles.breedContainer}>
-            <Text variant="titleMedium" style={styles.dogBreed}>
+        {/* Dog Info - Glass Card at bottom */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
+          <View className="mb-3">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-white text-3xl font-bold flex-1">
+                {dog.name}
+              </Text>
+              <View className={`px-3 py-1 rounded-full ${isDark ? 'bg-accent-500/30' : 'bg-accent-400/30'}`}>
+                <Text className="text-white text-sm font-semibold">
+                  {dog.age} years
+                </Text>
+              </View>
+            </View>
+            
+            <Text className="text-white text-lg mb-2 opacity-90">
               {dog.breed}
             </Text>
+
+            {/* Owner Information */}
+            {dog.owner && (
+              <View className="flex-row items-center mb-2">
+                <Users size={16} className="text-white opacity-80 mr-2" />
+                <Text className="text-white text-sm opacity-80">
+                  {dog.owner.first_name} {dog.owner.last_name}
+                </Text>
+              </View>
+            )}
+            
+            <Text className="text-white text-sm opacity-80 leading-5" numberOfLines={2}>
+              {dog.description}
+            </Text>
           </View>
           
-          {/* Owner Information */}
-          {dog.owner && (
-            <View style={styles.ownerContainer}>
-              <Avatar.Icon 
-                size={24} 
-                icon="account" 
-                style={styles.ownerAvatar}
-              />
-              <Text variant="bodySmall" style={styles.ownerName}>
-                {dog.owner.first_name} {dog.owner.last_name}
+          {/* Traits */}
+          <View className="flex-row space-x-2">
+            <View className={`px-3 py-1.5 rounded-lg flex-row items-center ${isDark ? 'bg-white/20' : 'bg-white/30'}`}>
+              <Ruler size={14} className="text-white mr-1" />
+              <Text className="text-white text-xs font-medium">
+                {dog.size}
               </Text>
             </View>
-          )}
-          
-          <Text variant="bodyMedium" style={styles.dogDescription} numberOfLines={3}>
-            {dog.description}
-          </Text>
-          
-          <View style={styles.traitsContainer}>
-            <View style={styles.traitRow}>
-              <Chip 
-                mode="outlined" 
-                compact 
-                icon="ruler"
-                style={styles.traitChip}
-                textStyle={styles.traitChipText}
-              >
-                {dog.size}
-              </Chip>
-              <Chip 
-                mode="outlined" 
-                compact 
-                icon="lightning-bolt"
-                style={styles.traitChip}
-                textStyle={styles.traitChipText}
-              >
+            <View className={`px-3 py-1.5 rounded-lg flex-row items-center ${isDark ? 'bg-white/20' : 'bg-white/30'}`}>
+              <Zap size={14} className="text-white mr-1" />
+              <Text className="text-white text-xs font-medium">
                 {dog.energy_level || 'Medium'}
-              </Chip>
+              </Text>
             </View>
           </View>
-        </Surface>
-      </Animated.View>
+        </View>
+      </View>
     );
-  }, []);
+  }, [isDark]);
 
-  // Modern overlay components for swipe feedback
+  // Overlay components for swipe feedback - PRESERVE THESE
   const OverlayLabelRight = useCallback(() => (
-    <Animated.View 
-      style={[styles.overlayLabelContainer, styles.likeOverlay]}
-      entering={FadeIn.duration(300)}
-    >
-      <Avatar.Icon 
-        size={48} 
-        icon="heart" 
-        style={styles.overlayIcon}
-      />
-      <Text variant="titleMedium" style={styles.actionText}>LIKE</Text>
-    </Animated.View>
+    <View style={{ 
+      width: 140, 
+      height: 140, 
+      borderRadius: 70, 
+      backgroundColor: 'rgba(99, 102, 241, 0.9)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    }}>
+      <Heart size={56} color="#fff" fill="#fff" />
+      <Text className="text-white text-xl font-bold mt-2">LIKE</Text>
+    </View>
   ), []);
 
   const OverlayLabelLeft = useCallback(() => (
-    <Animated.View 
-      style={[styles.overlayLabelContainer, styles.passOverlay]}
-      entering={FadeIn.duration(300)}
-    >
-      <Avatar.Icon 
-        size={48} 
-        icon="close" 
-        style={styles.overlayIcon}
-      />
-      <Text variant="titleMedium" style={styles.actionText}>PASS</Text>
-    </Animated.View>
+    <View style={{ 
+      width: 140, 
+      height: 140, 
+      borderRadius: 70, 
+      backgroundColor: 'rgba(239, 68, 68, 0.9)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    }}>
+      <X size={56} color="#fff" strokeWidth={3} />
+      <Text className="text-white text-xl font-bold mt-2">PASS</Text>
+    </View>
   ), []);
 
   const OverlayLabelTop = useCallback(() => (
-    <Animated.View 
-      style={[styles.overlayLabelContainer, styles.superLikeOverlay]}
-      entering={FadeIn.duration(300)}
-    >
-      <Avatar.Icon 
-        size={48} 
-        icon="star" 
-        style={styles.overlayIcon}
-      />
-      <Text variant="titleMedium" style={styles.actionText}>SUPER LIKE</Text>
-    </Animated.View>
+    <View style={{ 
+      width: 140, 
+      height: 140, 
+      borderRadius: 70, 
+      backgroundColor: 'rgba(236, 72, 153, 0.9)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    }}>
+      <Star size={56} color="#fff" fill="#fff" />
+      <Text className="text-white text-base font-bold mt-2">SUPER LIKE</Text>
+    </View>
   ), []);
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const cardAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardOpacity.value,
-  }));
-
+  // Loading State
   if (discoverLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary[500]} />
-          <Text variant="bodyLarge" style={styles.loadingText}>
+      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <LinearGradient
+          colors={isDark 
+            ? ['#312E81', '#1E293B', '#0F172A'] 
+            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+          }
+          className="absolute top-0 left-0 right-0 bottom-0"
+        />
+        <SafeAreaView className="flex-1 items-center justify-center" edges={['top']}>
+          <ActivityIndicator size="large" color="#6366F1" />
+          <Text className={`text-base mt-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             Finding perfect matches for you...
           </Text>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     );
   }
 
+  // Empty State
   if (discoverDogs.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <Animated.View style={[styles.emptyContainer, headerAnimatedStyle]} entering={FadeIn.duration(800)}>
-          <EmptyState
-            icon="dog"
-            title="No more dogs to discover!"
-            subtitle="Check back later for new profiles or adjust your preferences."
-            action={{
-              label: "Refresh",
-              onPress: loadDogs
-            }}
-          />
-        </Animated.View>
-      </SafeAreaView>
+      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <LinearGradient
+          colors={isDark 
+            ? ['#312E81', '#1E293B', '#0F172A'] 
+            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+          }
+          className="absolute top-0 left-0 right-0 bottom-0"
+        />
+        <SafeAreaView className="flex-1 items-center justify-center px-6" edges={['top']}>
+          <Animated.View entering={FadeIn.duration(600)} className="items-center">
+            <View className={`w-24 h-24 rounded-full items-center justify-center mb-6 ${
+              isDark ? 'bg-primary-500/20' : 'bg-primary-100'
+            }`}>
+              <Heart size={48} className="text-primary-500" />
+            </View>
+            <Text className={`text-2xl font-bold mb-3 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              No more dogs to discover!
+            </Text>
+            <Text className={`text-base text-center mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Check back later for new profiles or adjust your preferences.
+            </Text>
+            <TouchableOpacity
+              onPress={loadDogs}
+              activeOpacity={0.8}
+              className="px-6 py-3 rounded-xl bg-primary-500"
+            >
+              <Text className="text-white font-semibold">Refresh</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Modern Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-        <Surface style={styles.headerSurface} elevation={2}>
-          <View style={styles.headerContent}>
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+        }
+        className="absolute top-0 left-0 right-0 h-80"
+      />
+
+      <SafeAreaView className="flex-1" edges={['top']}>
+        {/* Header */}
+        <Animated.View entering={FadeIn.duration(600)} className="px-6 py-4">
+          <View className="flex-row items-center justify-between">
             <View>
-              <Text variant="headlineMedium" style={styles.title}>
+              <GradientText
+                colors={['#6366F1', '#EC4899', '#14B8A6']}
+                className="text-3xl font-bold mb-1"
+              >
                 Discover
-              </Text>
-              <Text variant="bodyMedium" style={styles.subtitle}>
+              </GradientText>
+              <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                 Find your perfect match
               </Text>
             </View>
-            <View style={styles.headerButtons}>
+            
+            <View className="flex-row space-x-2">
               {pendingSwipes.length > 0 && (
-                <IconButton
-                  icon="heart-multiple"
-                  size={24}
-                  style={styles.pendingSwipesButton}
+                <TouchableOpacity
                   onPress={() => navigation.navigate('PendingSwipes')}
-                />
+                  activeOpacity={0.7}
+                  className={`w-12 h-12 rounded-full items-center justify-center ${
+                    isDark ? 'bg-secondary-500/20' : 'bg-secondary-100'
+                  }`}
+                >
+                  <Heart size={20} className="text-secondary-500" />
+                  <View className="absolute top-0 right-0 w-5 h-5 rounded-full bg-secondary-500 items-center justify-center">
+                    <Text className="text-white text-xs font-bold">{pendingSwipes.length}</Text>
+                  </View>
+                </TouchableOpacity>
               )}
-              <IconButton
-                icon="heart"
-                size={24}
-                style={styles.matchesButton}
+              <TouchableOpacity
                 onPress={() => navigation.navigate('Matches')}
-              />
+                activeOpacity={0.7}
+                className={`w-12 h-12 rounded-full items-center justify-center ${
+                  isDark ? 'bg-primary-500/20' : 'bg-primary-100'
+                }`}
+              >
+                <Heart size={20} className="text-primary-500" fill="#6366F1" />
+              </TouchableOpacity>
             </View>
           </View>
-        </Surface>
-      </Animated.View>
+        </Animated.View>
 
-      {/* Swiper Container with modern design */}
-      <Animated.View style={[styles.swiperContainer, cardAnimatedStyle]}>
-        <Swiper
-          ref={swiperRef}
-          data={discoverDogs}
-          renderCard={renderCard}
-          cardStyle={styles.swiperCard}
-          overlayLabelContainerStyle={styles.overlayLabelContainerStyle}
-          onSwipeLeft={(cardIndex) => handleSwipe('pass', cardIndex)}
-          onSwipeRight={(cardIndex) => handleSwipe('like', cardIndex)}
-          onSwipeTop={(cardIndex) => handleSwipe('super_like', cardIndex)}
-          onSwipedAll={() => {
-            Alert.alert('No More Dogs!', 'You\'ve seen all available dogs. Check back later for new matches!');
-          }}
-          OverlayLabelLeft={OverlayLabelLeft}
-          OverlayLabelRight={OverlayLabelRight}
-          OverlayLabelTop={OverlayLabelTop}
-          translateXRange={[-screenWidth / 3, 0, screenWidth / 3]}
-          translateYRange={[-screenHeight / 3, 0, screenHeight / 3]}
-          rotateInputRange={[-screenWidth / 3, 0, screenWidth / 3]}
-          rotateOutputRange={[-Math.PI / 20, 0, Math.PI / 20]}
-          inputOverlayLabelRightOpacityRange={[0, screenWidth / 3]}
-          outputOverlayLabelRightOpacityRange={[0, 1]}
-          inputOverlayLabelLeftOpacityRange={[0, -(screenWidth / 3)]}
-          outputOverlayLabelLeftOpacityRange={[0, 1]}
-          inputOverlayLabelTopOpacityRange={[0, -(screenHeight / 3)]}
-          outputOverlayLabelTopOpacityRange={[0, 1]}
-        />
-      </Animated.View>
-
-      {/* Modern Action Buttons */}
-      <Animated.View style={[styles.actionButtons, cardAnimatedStyle]} entering={SlideInUp.delay(600).duration(600)}>
-        <IconButton
-          icon="close"
-          size={32}
-          style={[styles.actionButton, styles.passButton]}
-          onPress={() => swiperRef.current?.swipeLeft()}
-          disabled={swiping}
-        />
-        
-        <IconButton
-          icon="star"
-          size={32}
-          style={[styles.actionButton, styles.superLikeButton]}
-          onPress={() => swiperRef.current?.swipeTop()}
-          disabled={swiping}
-        />
-        
-        <IconButton
-          icon="heart"
-          size={32}
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={() => swiperRef.current?.swipeRight()}
-          disabled={swiping}
-        />
-      </Animated.View>
-
-      {/* Snackbar for errors */}
-      <Portal>
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={4000}
-          action={{
-            label: 'Dismiss',
-            onPress: () => setSnackbarVisible(false),
+        {/* Swiper Container - PRESERVE ALL SWIPER FUNCTIONALITY */}
+        <Animated.View 
+          entering={FadeInDown.delay(200).duration(600)}
+          style={{ 
+            flex: 1, 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            paddingBottom: 20,
           }}
         >
-          {dogsError || matchesError || 'Something went wrong'}
-        </Snackbar>
-      </Portal>
-    </SafeAreaView>
+          <Swiper
+            ref={swiperRef}
+            data={discoverDogs}
+            renderCard={renderCard}
+            cardStyle={{
+              width: CARD_WIDTH,
+              height: CARD_HEIGHT,
+              alignSelf: 'center',
+              borderRadius: 24,
+            }}
+            overlayLabelContainerStyle={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            onSwipeLeft={(cardIndex) => handleSwipe('pass', cardIndex)}
+            onSwipeRight={(cardIndex) => handleSwipe('like', cardIndex)}
+            onSwipeTop={(cardIndex) => handleSwipe('super_like', cardIndex)}
+            onSwipedAll={() => {
+              Alert.alert('No More Dogs!', "You've seen all available dogs. Check back later for new matches!");
+            }}
+            OverlayLabelLeft={OverlayLabelLeft}
+            OverlayLabelRight={OverlayLabelRight}
+            OverlayLabelTop={OverlayLabelTop}
+            translateXRange={[-screenWidth / 3, 0, screenWidth / 3]}
+            translateYRange={[-screenHeight / 3, 0, screenHeight / 3]}
+            rotateInputRange={[-screenWidth / 3, 0, screenWidth / 3]}
+            rotateOutputRange={[-Math.PI / 20, 0, Math.PI / 20]}
+            inputOverlayLabelRightOpacityRange={[0, screenWidth / 3]}
+            outputOverlayLabelRightOpacityRange={[0, 1]}
+            inputOverlayLabelLeftOpacityRange={[0, -(screenWidth / 3)]}
+            outputOverlayLabelLeftOpacityRange={[0, 1]}
+            inputOverlayLabelTopOpacityRange={[0, -(screenHeight / 3)]}
+            outputOverlayLabelTopOpacityRange={[0, 1]}
+          />
+        </Animated.View>
+
+        {/* Action Buttons - Modern Glass Design */}
+        <Animated.View 
+          entering={SlideInUp.delay(400).duration(600)}
+          className="flex-row justify-center items-center px-6 space-x-4"
+          style={{ paddingBottom: insets.bottom + 80, marginTop: 20 }}
+        >
+          {/* Pass Button */}
+          <TouchableOpacity
+            onPress={() => swiperRef.current?.swipeLeft()}
+            disabled={swiping}
+            activeOpacity={0.8}
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+              borderWidth: 2,
+              borderColor: 'rgba(239, 68, 68, 0.4)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+            }}
+          >
+            <X size={28} color="#EF4444" strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          {/* Super Like Button */}
+          <TouchableOpacity
+            onPress={() => swiperRef.current?.swipeTop()}
+            disabled={swiping}
+            activeOpacity={0.8}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: 'rgba(236, 72, 153, 0.9)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              shadowColor: '#EC4899',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.4,
+              shadowRadius: 8,
+            }}
+          >
+            <Star size={24} color="#fff" fill="#fff" />
+          </TouchableOpacity>
+
+          {/* Like Button */}
+          <TouchableOpacity
+            onPress={() => swiperRef.current?.swipeRight()}
+            disabled={swiping}
+            activeOpacity={0.8}
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: 'rgba(99, 102, 241, 0.9)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              shadowColor: '#6366F1',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.4,
+              shadowRadius: 8,
+            }}
+          >
+            <Heart size={28} color="#fff" fill="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
+      </SafeAreaView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  
-  loadingText: {
-    color: Colors.text.secondary,
-  },
-  
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  
-  headerSurface: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  
-  title: {
-    color: Colors.text.primary,
-    marginBottom: -Spacing.xs,
-  },
-  
-  subtitle: {
-    color: Colors.text.secondary,
-  },
-  
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  
-  pendingSwipesButton: {
-    backgroundColor: Colors.secondary[50],
-    borderWidth: 1,
-    borderColor: Colors.secondary[200],
-  },
-  
-  matchesButton: {
-    backgroundColor: Colors.primary[50],
-    borderWidth: 1,
-    borderColor: Colors.primary[200],
-  },
-  
-  swiperContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  
-  swiperCard: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    alignSelf: 'center',
-  },
-  
-  card: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius['2xl'],
-    ...Shadows.xl,
-    overflow: 'hidden',
-  },
-  
-  imageContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  
-  dogImage: {
-    width: '100%',
-    height: '100%',
-  },
-  
-  imageGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  
-  dogInfo: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: Spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    backdropFilter: 'blur(10px)',
-    borderBottomLeftRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
-  },
-  
-  nameAgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  
-  dogName: {
-    color: Colors.text.primary,
-    flex: 1,
-  },
-  
-  ageChip: {
-    backgroundColor: Colors.primary[50],
-    borderColor: Colors.primary[200],
-  },
-  
-  ageChipText: {
-    color: Colors.primary[700],
-    fontSize: Typography.fontSize.xs,
-  },
-  
-  breedContainer: {
-    marginBottom: Spacing.sm,
-  },
-  
-  dogBreed: {
-    color: Colors.text.secondary,
-  },
-  
-  ownerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-    backgroundColor: Colors.primary[50],
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.xs,
-  },
-  
-  ownerAvatar: {
-    backgroundColor: Colors.primary[200],
-  },
-  
-  ownerName: {
-    color: Colors.primary[600],
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  
-  dogDescription: {
-    color: Colors.text.secondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-    marginBottom: Spacing.sm,
-  },
-  
-  traitsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  
-  traitRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flex: 1,
-    gap: Spacing.sm,
-  },
-  
-  traitChip: {
-    backgroundColor: Colors.neutral[50],
-    borderColor: Colors.neutral[200],
-    flex: 1,
-  },
-  
-  traitChipText: {
-    color: Colors.text.primary,
-    fontSize: Typography.fontSize.xs,
-  },
-  
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: Colors.neutral[100],
-    gap: Spacing.lg,
-  },
-  
-  actionButton: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.full,
-    ...Shadows.md,
-  },
-  
-  passButton: {
-    backgroundColor: Colors.background.primary,
-    borderWidth: 2,
-    borderColor: Colors.error[300],
-  },
-  
-  superLikeButton: {
-    backgroundColor: Colors.secondary[500],
-  },
-  
-  likeButton: {
-    backgroundColor: Colors.primary[500],
-  },
-  
-  overlayLabelContainerStyle: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  overlayLabelContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: BorderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadows.lg,
-  },
-  
-  likeOverlay: {
-    backgroundColor: Colors.primary[500],
-  },
-  
-  passOverlay: {
-    backgroundColor: Colors.error[500],
-  },
-  
-  superLikeOverlay: {
-    backgroundColor: Colors.secondary[500],
-  },
-  
-  overlayIcon: {
-    marginBottom: Spacing.sm,
-  },
-  
-  actionText: {
-    color: Colors.text.inverse,
-    fontWeight: Typography.fontWeight.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-});
 
 export default DiscoverScreen;

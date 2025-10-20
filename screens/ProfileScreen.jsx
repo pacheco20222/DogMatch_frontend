@@ -3,39 +3,38 @@ import {
   View, 
   ScrollView, 
   Image,
-  StyleSheet,
-  Alert
+  Text,
+  TouchableOpacity,
+  Alert,
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Text,
-  Card,
-  Surface,
-  Button,
-  Avatar,
-  Chip,
-  IconButton,
-  ActivityIndicator,
-  Snackbar,
-  Portal,
-  Divider,
-  List,
-} from 'react-native-paper';
-import { Formik } from 'formik';
+import { LinearGradient } from 'expo-linear-gradient';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Camera,
+  Edit3,
+  Heart,
+  Settings as SettingsIcon,
+  LogOut,
+  Shield,
+  Home as HomeIcon
+} from 'lucide-react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
   FadeIn,
-  SlideInUp,
+  FadeInDown,
+  SlideInRight
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { uploadProfilePhoto, clearError } from '../store/slices/userSlice';
 import { useAuth } from '../hooks/useAuth';
-import { updateProfileSchema } from '../validation/profileSchemas';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { useTheme } from '../theme/ThemeContext';
+import { GlassCard, GlassButton } from '../components/glass';
 
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -45,15 +44,7 @@ const ProfileScreen = ({ navigation }) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
 
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity = useSharedValue(0);
-
-  React.useEffect(() => {
-    // Animate header and cards
-    headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
-    cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
-  }, []);
+  const { isDark } = useTheme();
 
   // Clear error when component unmounts
   React.useEffect(() => {
@@ -130,7 +121,7 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleSettings = () => {
-    Alert.alert('Coming Soon', 'Settings screen coming soon!');
+    navigation.navigate('Settings');
   };
 
   const getUserTypeDisplay = (userType) => {
@@ -144,389 +135,339 @@ const ProfileScreen = ({ navigation }) => {
 
   const getUserTypeColor = (userType) => {
     const colorMap = {
-      'owner': Colors.primary[500],
-      'admin': Colors.warning[500],
-      'shelter': Colors.success[500]
+      'owner': '#6366F1',
+      'admin': '#F59E0B',
+      'shelter': '#10B981'
     };
-    return colorMap[userType] || Colors.primary[500];
+    return colorMap[userType] || '#6366F1';
   };
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardsOpacity.value,
-  }));
+  const getUserTypeIcon = (userType) => {
+    const iconMap = {
+      'owner': User,
+      'admin': Shield,
+      'shelter': HomeIcon
+    };
+    return iconMap[userType] || User;
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + Spacing.lg }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Modern Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text variant="headlineMedium" style={styles.title}>
-                Profile
-              </Text>
-              <Text variant="bodyMedium" style={styles.subtitle}>
-                Manage your account
-              </Text>
-            </View>
-            <IconButton
-              icon="pencil"
-              size={24}
-              onPress={() => setEditingProfile(!editingProfile)}
-              style={styles.editButton}
-            />
-          </View>
-        </Animated.View>
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+        }
+        className="absolute top-0 left-0 right-0 h-80"
+      />
 
-        {/* Profile Card */}
-        <Animated.View entering={FadeIn.delay(200).duration(600)}>
-          <Card style={styles.profileCard} mode="elevated">
-            <Card.Content>
-              <View style={styles.profileHeader}>
-                <View style={styles.avatarContainer}>
+      <SafeAreaView className="flex-1" edges={['top']}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <Animated.View 
+            entering={FadeIn.duration(400)}
+            className="px-6 py-6"
+          >
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Profile
+                </Text>
+                <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                  Manage your account
+                </Text>
+              </View>
+
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={handleLogout}
+                  className="w-10 h-10 rounded-full items-center justify-center bg-red-500"
+                  activeOpacity={0.7}
+                >
+                  <LogOut size={20} className="text-white" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setEditingProfile(!editingProfile)}
+                  className={`w-10 h-10 rounded-full items-center justify-center ${
+                    isDark ? 'bg-white/10' : 'bg-white/70'
+                  }`}
+                  activeOpacity={0.7}
+                >
+                  <Edit3 size={20} className={isDark ? 'text-white' : 'text-gray-900'} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Profile Card */}
+          <Animated.View entering={FadeInDown.delay(200).duration(400)} className="px-4 mb-3">
+            <GlassCard className="p-5">
+              {/* Avatar and Basic Info */}
+              <View className="items-center mb-4">
+                <View className="relative">
                   {user?.profile_photo_url ? (
-                    <Avatar.Image
-                      size={80}
+                    <Image
                       source={{ 
                         uri: user.profile_photo_url.startsWith('http') 
                           ? user.profile_photo_url 
                           : `https://dogmatch-backend.onrender.com${user.profile_photo_url}`
                       }}
-                      style={styles.avatar}
+                      className="w-24 h-24 rounded-full"
                     />
                   ) : (
-                    <Avatar.Icon 
-                      size={80} 
-                      icon="account" 
-                      style={styles.avatarPlaceholder}
-                    />
+                    <View className={`w-24 h-24 rounded-full items-center justify-center ${
+                      isDark ? 'bg-white/10' : 'bg-gray-200'
+                    }`}>
+                      <User size={40} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    </View>
                   )}
                   
-                  <IconButton
-                    icon="camera"
-                    size={20}
-                    style={styles.changePhotoButton}
+                  {/* Camera Button */}
+                  <TouchableOpacity
                     onPress={handleChangePhoto}
                     disabled={loading}
-                  />
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary-500 items-center justify-center border-2 border-white"
+                    activeOpacity={0.8}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Camera size={16} className="text-white" />
+                    )}
+                  </TouchableOpacity>
                 </View>
-                
-                <View style={styles.userInfo}>
-                  <Text variant="headlineSmall" style={styles.userName}>
-                    {user?.first_name} {user?.last_name}
-                  </Text>
-                  <Text variant="bodyMedium" style={styles.userEmail}>
-                    {user?.email}
-                  </Text>
-                  <Chip 
-                    mode="flat" 
-                    style={[styles.userTypeChip, { backgroundColor: getUserTypeColor(user?.user_type) }]}
-                    textStyle={styles.userTypeText}
+
+                {/* User Name */}
+                <Text className={`text-2xl font-bold mt-4 ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {user?.first_name} {user?.last_name}
+                </Text>
+
+                {/* Email */}
+                <Text className={`text-sm mt-1 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  {user?.email}
+                </Text>
+
+                {/* User Type Badge */}
+                <View 
+                  className="flex-row items-center px-4 py-2 rounded-full mt-3"
+                  style={{ backgroundColor: getUserTypeColor(user?.user_type) + '20' }}
+                >
+                  {React.createElement(getUserTypeIcon(user?.user_type), {
+                    size: 16,
+                    color: getUserTypeColor(user?.user_type)
+                  })}
+                  <Text 
+                    className="text-sm font-semibold ml-2"
+                    style={{ color: getUserTypeColor(user?.user_type) }}
                   >
                     {getUserTypeDisplay(user?.user_type)}
-                  </Chip>
+                  </Text>
                 </View>
               </View>
-              
-              <Divider style={styles.divider} />
-              
-              <View style={styles.profileDetails}>
-                <List.Item
-                  title="Username"
-                  description={user?.username}
-                  left={props => <List.Icon {...props} icon="account" />}
-                />
-                
+
+              {/* Divider */}
+              <View className="h-px mb-3" style={{
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+              }} />
+
+              {/* Profile Details */}
+              <View>
+                {/* Username */}
+                <View className="flex-row items-center">
+                  <View className={`w-10 h-10 rounded-lg items-center justify-center mr-3 ${
+                    isDark ? 'bg-white/5' : 'bg-gray-100'
+                  }`}>
+                    <User size={20} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className={`text-xs ${
+                      isDark ? 'text-gray-500' : 'text-gray-500'
+                    }`}>
+                      Username
+                    </Text>
+                    <Text className={`text-sm font-medium ${
+                      isDark ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {user?.username}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Phone */}
                 {user?.phone && (
-                  <List.Item
-                    title="Phone"
-                    description={user.phone}
-                    left={props => <List.Icon {...props} icon="phone" />}
-                  />
+                  <View className="flex-row items-center mt-2">
+                    <View className={`w-10 h-10 rounded-lg items-center justify-center mr-3 ${
+                      isDark ? 'bg-white/5' : 'bg-gray-100'
+                    }`}>
+                      <Phone size={20} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className={`text-xs ${
+                        isDark ? 'text-gray-500' : 'text-gray-500'
+                      }`}>
+                        Phone
+                      </Text>
+                      <Text className={`text-sm font-medium ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {user.phone}
+                      </Text>
+                    </View>
+                  </View>
                 )}
-                
+
+                {/* Location */}
                 {user?.city && user?.state && (
-                  <List.Item
-                    title="Location"
-                    description={`${user.city}, ${user.state}`}
-                    left={props => <List.Icon {...props} icon="map-marker" />}
-                  />
+                  <View className="flex-row items-center mt-2">
+                    <View className={`w-10 h-10 rounded-lg items-center justify-center mr-3 ${
+                      isDark ? 'bg-white/5' : 'bg-gray-100'
+                    }`}>
+                      <MapPin size={20} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className={`text-xs ${
+                        isDark ? 'text-gray-500' : 'text-gray-500'
+                      }`}>
+                        Location
+                      </Text>
+                      <Text className={`text-sm font-medium ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {user.city}, {user.state}
+                      </Text>
+                    </View>
+                  </View>
                 )}
               </View>
-            </Card.Content>
-          </Card>
-        </Animated.View>
+            </GlassCard>
+          </Animated.View>
 
-        {/* Quick Actions */}
-        <Animated.View style={[styles.actionsContainer, cardsAnimatedStyle]} entering={FadeIn.delay(400).duration(600)}>
-          <Card style={styles.actionsCard} mode="outlined">
-            <Card.Content>
-              <Text variant="titleLarge" style={styles.sectionTitle}>
+          {/* Quick Actions */}
+          <Animated.View entering={FadeInDown.delay(300).duration(400)} className="px-4 mb-3">
+            <GlassCard className="p-5">
+              <Text className={`text-lg font-bold mb-3 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`}>
                 Quick Actions
               </Text>
-              
-              <Button
-                mode="outlined"
-                onPress={handleEditProfile}
-                style={styles.actionButton}
-                icon="pencil"
-              >
-                Edit Profile
-              </Button>
-              
-              <Button
-                mode="outlined"
-                onPress={handleMyMatches}
-                style={styles.actionButton}
-                icon="heart"
-              >
-                My Matches
-              </Button>
-              
-              <Button
-                mode="outlined"
-                onPress={handleSettings}
-                style={styles.actionButton}
-                icon="cog"
-              >
-                Settings
-              </Button>
-            </Card.Content>
-          </Card>
-        </Animated.View>
 
-        {/* Account Management */}
-        <Animated.View style={[styles.accountContainer, cardsAnimatedStyle]} entering={FadeIn.delay(600).duration(600)}>
-          <Card style={styles.accountCard} mode="outlined">
-            <Card.Content>
-              <Text variant="titleLarge" style={styles.sectionTitle}>
+              {/* Edit Profile Button */}
+              <TouchableOpacity
+                onPress={handleEditProfile}
+                className={`flex-row items-center p-3 rounded-2xl mb-2 ${
+                  isDark ? 'bg-white/5' : 'bg-gray-50'
+                }`}
+                activeOpacity={0.7}
+              >
+                <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center mr-3">
+                  <Edit3 size={20} className="text-blue-500" />
+                </View>
+                <Text className={`text-base font-semibold flex-1 ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  Edit Profile
+                </Text>
+              </TouchableOpacity>
+
+              {/* My Matches Button */}
+              <TouchableOpacity
+                onPress={handleMyMatches}
+                className={`flex-row items-center p-3 rounded-2xl mb-2 ${
+                  isDark ? 'bg-white/5' : 'bg-gray-50'
+                }`}
+                activeOpacity={0.7}
+              >
+                <View className="w-10 h-10 rounded-full bg-pink-500/20 items-center justify-center mr-3">
+                  <Heart size={20} className="text-pink-500" />
+                </View>
+                <Text className={`text-base font-semibold flex-1 ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  My Matches
+                </Text>
+              </TouchableOpacity>
+
+              {/* Settings Button */}
+              <TouchableOpacity
+                onPress={handleSettings}
+                className={`flex-row items-center p-3 rounded-2xl ${
+                  isDark ? 'bg-white/5' : 'bg-gray-50'
+                }`}
+                activeOpacity={0.7}
+              >
+                <View className="w-10 h-10 rounded-full bg-gray-500/20 items-center justify-center mr-3">
+                  <SettingsIcon size={20} className="text-gray-500" />
+                </View>
+                <Text className={`text-base font-semibold flex-1 ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  Settings
+                </Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </Animated.View>
+
+          {/* Account Management */}
+          <Animated.View entering={FadeInDown.delay(400).duration(400)} className="px-4 mb-3">
+            <GlassCard className="p-5">
+              <Text className={`text-lg font-bold mb-3 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`}>
                 Account Management
               </Text>
-              
-              <Button
-                mode="outlined"
+
+              {/* Logout Button */}
+              <TouchableOpacity
                 onPress={handleLogout}
-                style={[styles.actionButton, styles.logoutButton]}
-                textColor={Colors.error[600]}
-                icon="logout"
+                className={`flex-row items-center p-3 rounded-2xl ${
+                  isDark ? 'bg-red-500/10' : 'bg-red-50'
+                }`}
+                activeOpacity={0.7}
               >
-                Logout
-              </Button>
-            </Card.Content>
-          </Card>
-        </Animated.View>
+                <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center mr-3">
+                  <LogOut size={20} className="text-red-500" />
+                </View>
+                <Text className="text-base font-semibold flex-1 text-red-500">
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </Animated.View>
 
-        {/* App Info */}
-        <Animated.View style={[styles.infoContainer, cardsAnimatedStyle]} entering={FadeIn.delay(800).duration(600)}>
-          <Card style={styles.infoCard} mode="flat">
-            <Card.Content>
-              <View style={styles.appInfo}>
-                <Text variant="headlineSmall" style={styles.appName}>
-                  DogMatch
-                </Text>
-                <Text variant="bodySmall" style={styles.appVersion}>
-                  Version 1.0.0
-                </Text>
-                <Text variant="bodyMedium" style={styles.appDescription}>
-                  Connect with other dog owners and find the perfect match for your furry friend.
-                </Text>
-              </View>
-            </Card.Content>
-          </Card>
-        </Animated.View>
-      </ScrollView>
-
-      {/* Snackbar for errors */}
-      <Portal>
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={4000}
-          action={{
-            label: 'Dismiss',
-            onPress: () => setSnackbarVisible(false),
-          }}
-        >
-          {error || 'Something went wrong'}
-        </Snackbar>
-      </Portal>
-    </SafeAreaView>
+          {/* App Info */}
+          <Animated.View entering={FadeInDown.delay(500).duration(400)} className="px-4 mb-6">
+            <GlassCard className="p-4 items-center">
+              <Text className="text-2xl font-bold text-primary-500 mb-2">
+                DogMatch
+              </Text>
+              <Text className={`text-xs mb-3 ${
+                isDark ? 'text-gray-500' : 'text-gray-500'
+              }`}>
+                Version 1.0.0
+              </Text>
+              <Text className={`text-sm text-center leading-5 ${
+                isDark ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                Connect with other dog owners and find the perfect match for your furry friend.
+              </Text>
+            </GlassCard>
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  
-  title: {
-    color: Colors.text.primary,
-    marginBottom: -Spacing.xs,
-  },
-  
-  subtitle: {
-    color: Colors.text.secondary,
-  },
-  
-  editButton: {
-    backgroundColor: Colors.primary[50],
-    borderWidth: 1,
-    borderColor: Colors.primary[200],
-  },
-  
-  scrollView: {
-    flex: 1,
-  },
-  
-  scrollContent: {
-    padding: Spacing.lg,
-  },
-  
-  profileCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  
-  avatarContainer: {
-    marginRight: Spacing.lg,
-    position: 'relative',
-  },
-  
-  avatar: {
-    backgroundColor: Colors.neutral[200],
-  },
-  
-  avatarPlaceholder: {
-    backgroundColor: Colors.neutral[200],
-  },
-  
-  changePhotoButton: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: Colors.primary[500],
-    borderWidth: 2,
-    borderColor: Colors.background.primary,
-    ...Shadows.sm,
-  },
-  
-  userInfo: {
-    flex: 1,
-  },
-  
-  userName: {
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
-  },
-  
-  userEmail: {
-    color: Colors.text.secondary,
-    marginBottom: Spacing.sm,
-  },
-  
-  userTypeChip: {
-    alignSelf: 'flex-start',
-  },
-  
-  userTypeText: {
-    color: Colors.text.inverse,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  
-  divider: {
-    marginVertical: Spacing.lg,
-  },
-  
-  profileDetails: {
-    // List.Item handles its own styling
-  },
-  
-  actionsContainer: {
-    marginBottom: Spacing.lg,
-  },
-  
-  actionsCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  sectionTitle: {
-    color: Colors.text.primary,
-    marginBottom: Spacing.lg,
-    paddingBottom: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[200],
-  },
-  
-  actionButton: {
-    marginBottom: Spacing.md,
-  },
-  
-  accountContainer: {
-    marginBottom: Spacing.lg,
-  },
-  
-  accountCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  logoutButton: {
-    borderColor: Colors.error[300],
-  },
-  
-  infoContainer: {
-    marginBottom: Spacing.xl,
-  },
-  
-  infoCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  appInfo: {
-    alignItems: 'center',
-    padding: Spacing.lg,
-  },
-  
-  appName: {
-    color: Colors.primary[500],
-    marginBottom: Spacing.sm,
-  },
-  
-  appVersion: {
-    color: Colors.text.tertiary,
-    marginBottom: Spacing.md,
-  },
-  
-  appDescription: {
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-  },
-});
 
 export default ProfileScreen;

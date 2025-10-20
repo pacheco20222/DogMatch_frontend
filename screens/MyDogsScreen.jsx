@@ -1,54 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
+  Text,
   ScrollView, 
   Image, 
   Alert,
-  StyleSheet,
-  RefreshControl
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import {
-  Text,
-  Card,
-  Surface,
-  FAB,
-  Chip,
-  Menu,
-  IconButton,
-  Button,
-  Avatar,
+  RefreshControl,
+  TouchableOpacity,
+  StatusBar,
   ActivityIndicator,
-  Snackbar,
-  Portal,
-} from 'react-native-paper';
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Dog, Plus, Edit, Trash2, Ruler, User as UserIcon, Calendar, MoreVertical } from 'lucide-react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
   FadeIn,
-  SlideInUp,
+  FadeInDown,
+  SlideInRight,
   Layout,
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchMyDogs, deleteDog, clearError } from '../store/slices/dogsSlice';
 import { useAuth } from '../hooks/useAuth';
-import EmptyState from '../components/ui/EmptyState';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { useTheme } from '../theme/ThemeContext';
+import { GlassCard, FloatingActionButton, GlassButton, GradientText } from '../components/glass';
 
 const MyDogsScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const { myDogs, loading, error } = useAppSelector(state => state.dogs);
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const [menuVisible, setMenuVisible] = useState({});
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const cardsOpacity = useSharedValue(0);
 
   const loadDogs = async (isRefresh = false) => {
     try {
@@ -57,7 +41,7 @@ const MyDogsScreen = ({ navigation }) => {
       }
       await dispatch(fetchMyDogs()).unwrap();
     } catch (e) {
-      setSnackbarVisible(true);
+      console.error('Failed to load dogs:', e);
     } finally {
       setRefreshing(false);
     }
@@ -65,9 +49,6 @@ const MyDogsScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadDogs();
-    // Animate header and cards
-    headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
-    cardsOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
 
   // Refresh when screen comes into focus
@@ -96,7 +77,7 @@ const MyDogsScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await dispatch(deleteDog(dogId)).unwrap();
-              Alert.alert('Success', 'Dog deleted successfully');
+              Alert.alert('Success', `${dogName} was deleted successfully`);
             } catch (e) {
               Alert.alert('Error', e.message || 'Failed to delete dog');
             }
@@ -107,456 +88,268 @@ const MyDogsScreen = ({ navigation }) => {
   };
 
   const handleEditDog = (dog) => {
-    // TODO: Navigate to edit dog screen
     Alert.alert('Coming Soon', 'Edit dog functionality will be added soon!');
   };
 
-  const toggleMenu = (dogId) => {
-    setMenuVisible(prev => ({
-      ...prev,
-      [dogId]: !prev[dogId]
-    }));
+  const getSizeIcon = (size) => {
+    return Ruler;
   };
 
-  const closeMenu = (dogId) => {
-    setMenuVisible(prev => ({
-      ...prev,
-      [dogId]: false
-    }));
+  const getGenderIcon = (gender) => {
+    return UserIcon;
   };
 
   const renderDogCard = (dog, index) => (
     <Animated.View
       key={dog.id}
-      entering={FadeIn.delay(index * 100).duration(600)}
+      entering={FadeInDown.delay(index * 100).duration(600)}
       layout={Layout.springify()}
+      className="mb-4"
     >
-      <Card mode="elevated" style={styles.dogCard}>
-        <Card.Content style={styles.cardContent}>
-          {/* Dog Photo and Basic Info */}
-          <View style={styles.dogHeader}>
-            <View style={styles.photoContainer}>
-              {dog.primary_photo_url ? (
-                <Avatar.Image
-                  size={80}
-                  source={{ 
-                    uri: dog.primary_photo_url.startsWith('http') 
-                      ? dog.primary_photo_url 
-                      : `https://dogmatch-backend.onrender.com${dog.primary_photo_url}`
-                  }}
-                  style={styles.dogPhoto}
-                />
-              ) : (
-                <Avatar.Icon
-                  size={80}
-                  icon="dog"
-                  style={styles.placeholderPhoto}
-                />
-              )}
-            </View>
+      <GlassCard className="p-5">
+        {/* Dog Header with Photo and Info */}
+        <View className="flex-row items-start mb-4">
+          {/* Dog Photo */}
+          <View className={`w-20 h-20 rounded-2xl overflow-hidden mr-4 ${
+            isDark ? 'bg-primary-500/20' : 'bg-primary-100'
+          }`}>
+            {dog.primary_photo_url ? (
+              <Image
+                source={{ 
+                  uri: dog.primary_photo_url.startsWith('http') 
+                    ? dog.primary_photo_url 
+                    : `https://dogmatch-backend.onrender.com${dog.primary_photo_url}`
+                }}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="w-full h-full items-center justify-center">
+                <Dog size={32} className={isDark ? 'text-primary-400' : 'text-primary-600'} />
+              </View>
+            )}
+          </View>
 
-            <View style={styles.dogInfo}>
-              <View style={styles.nameContainer}>
-                <Text variant="titleLarge" style={styles.dogName}>
-                  {dog.name}
+          {/* Dog Info */}
+          <View className="flex-1">
+            <View className="flex-row items-center mb-1">
+              <Text className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} flex-1`}>
+                {dog.name}
+              </Text>
+              <View className={`px-2 py-1 rounded-full ${
+                isDark ? 'bg-accent-500/20' : 'bg-accent-100'
+              }`}>
+                <Text className="text-accent-500 text-xs font-semibold">
+                  {dog.age_string || `${dog.age}y`}
                 </Text>
-                <Chip 
-                  mode="outlined" 
-                  compact 
-                  style={styles.ageChip}
-                  textStyle={styles.ageChipText}
-                >
-                  {dog.age_string}
-                </Chip>
               </View>
-              
-              <Text variant="bodyMedium" style={styles.dogBreed}>
-                {dog.breed}
-              </Text>
-              
-              <View style={styles.detailsRow}>
-                <Chip 
-                  mode="outlined" 
-                  compact 
-                  icon="ruler"
-                  style={styles.detailChip}
-                >
+            </View>
+            
+            <Text className={`text-sm mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {dog.breed}
+            </Text>
+            
+            {/* Size and Gender Pills */}
+            <View className="flex-row space-x-2">
+              <View className={`px-2 py-1 rounded-lg flex-row items-center ${
+                isDark ? 'bg-white/10' : 'bg-gray-100'
+              }`}>
+                <Ruler size={12} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                <Text className={`text-xs ml-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {dog.size}
-                </Chip>
-                <Chip 
-                  mode="outlined" 
-                  compact 
-                  icon="gender-male-female"
-                  style={styles.detailChip}
-                >
+                </Text>
+              </View>
+              <View className={`px-2 py-1 rounded-lg flex-row items-center ${
+                isDark ? 'bg-white/10' : 'bg-gray-100'
+              }`}>
+                <UserIcon size={12} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                <Text className={`text-xs ml-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {dog.gender}
-                </Chip>
+                </Text>
               </View>
             </View>
-
-            {/* Menu Button */}
-            <Menu
-              visible={menuVisible[dog.id] || false}
-              onDismiss={() => closeMenu(dog.id)}
-              anchor={
-                <IconButton
-                  icon="dots-vertical"
-                  size={20}
-                  onPress={() => toggleMenu(dog.id)}
-                />
-              }
-            >
-              <Menu.Item
-                onPress={() => {
-                  closeMenu(dog.id);
-                  handleEditDog(dog);
-                }}
-                title="Edit"
-                leadingIcon="pencil"
-              />
-              <Menu.Item
-                onPress={() => {
-                  closeMenu(dog.id);
-                  handleDeleteDog(dog.id, dog.name);
-                }}
-                title="Delete"
-                leadingIcon="delete"
-                titleStyle={styles.deleteMenuItem}
-              />
-            </Menu>
           </View>
+        </View>
 
-          {/* Description */}
-          {dog.description && (
-            <View style={styles.descriptionContainer}>
-              <Text variant="bodyMedium" style={styles.dogDescription} numberOfLines={2}>
-                {dog.description}
-              </Text>
+        {/* Description */}
+        {dog.description && (
+          <View className="mb-4">
+            <Text className={`text-sm leading-5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              {dog.description}
+            </Text>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View className="flex-row space-x-2">
+          <TouchableOpacity
+            onPress={() => handleEditDog(dog)}
+            activeOpacity={0.7}
+            className="flex-1"
+          >
+            <View className={`py-2.5 px-4 rounded-xl flex-row items-center justify-center ${
+              isDark ? 'bg-primary-500/20' : 'bg-primary-100 border border-primary-200'
+            }`}>
+              <Edit size={16} className="text-primary-500 mr-2" />
+              <Text className="text-primary-500 font-semibold text-sm">Edit</Text>
             </View>
-          )}
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <Button
-              mode="outlined"
-              onPress={() => handleEditDog(dog)}
-              icon="pencil"
-              style={styles.actionButton}
-              compact
-            >
-              Edit
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => handleDeleteDog(dog.id, dog.name)}
-              icon="delete"
-              style={[styles.actionButton, styles.deleteButton]}
-              textColor={Colors.error[600]}
-              compact
-            >
-              Delete
-            </Button>
-          </View>
-        </Card.Content>
-      </Card>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={() => handleDeleteDog(dog.id, dog.name)}
+            activeOpacity={0.7}
+            className="flex-1"
+          >
+            <View className={`py-2.5 px-4 rounded-xl flex-row items-center justify-center ${
+              isDark ? 'bg-error-500/20' : 'bg-red-50 border border-red-200'
+            }`}>
+              <Trash2 size={16} className="text-error-500 mr-2" />
+              <Text className="text-error-500 font-semibold text-sm">Delete</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </GlassCard>
     </Animated.View>
   );
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const cardsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: cardsOpacity.value,
-  }));
-
+  // Loading State
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary[500]} />
-          <Text variant="bodyLarge" style={styles.loadingText}>
+      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <LinearGradient
+          colors={isDark 
+            ? ['#312E81', '#1E293B', '#0F172A'] 
+            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+          }
+          className="absolute top-0 left-0 right-0 bottom-0"
+        />
+        <SafeAreaView className="flex-1 items-center justify-center" edges={['top']}>
+          <ActivityIndicator size="large" color="#6366F1" />
+          <Text className={`text-base mt-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             Loading your dogs...
           </Text>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Modern Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-        <Surface style={styles.headerSurface} elevation={2}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text variant="headlineMedium" style={styles.title}>
-                My Dogs
-              </Text>
-              <Text variant="bodyMedium" style={styles.subtitle}>
-                Manage your dog profiles
-              </Text>
-            </View>
-            <Button
-              mode="contained"
-              onPress={() => navigation.navigate('AddDog')}
-              icon="plus"
-              style={styles.addButton}
-              compact
-            >
-              Add Dog
-            </Button>
-          </View>
-        </Surface>
-      </Animated.View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadDogs(true)}
-            colors={[Colors.primary[500]]}
-            tintColor={Colors.primary[500]}
-          />
-        }
-      >
-        {error ? (
-          <Animated.View entering={FadeIn.duration(600)}>
-            <EmptyState
-              icon="alert-circle"
-              title="Oops! Something went wrong"
-              subtitle={error}
-              action={{
-                label: "Try Again",
-                onPress: () => loadDogs()
-              }}
-            />
-          </Animated.View>
-        ) : myDogs.length === 0 ? (
-          <Animated.View entering={FadeIn.duration(600)}>
-            <EmptyState
-              icon="dog"
-              title="No dogs added yet"
-              subtitle="Add your first dog to start connecting with other dog owners!"
-              action={{
-                label: "Add Your First Dog",
-                onPress: () => navigation.navigate('AddDog')
-              }}
-            />
-          </Animated.View>
-        ) : (
-          <Animated.View style={[styles.dogsContainer, cardsAnimatedStyle]}>
-            <View style={styles.dogsHeader}>
-              <Text variant="titleMedium" style={styles.dogsCount}>
-                {myDogs.length} dog{myDogs.length !== 1 ? 's' : ''}
-              </Text>
-            </View>
-            {myDogs.map((dog, index) => renderDogCard(dog, index))}
-          </Animated.View>
-        )}
-      </ScrollView>
-
-      {/* FAB for quick add */}
-      <FAB
-        icon="plus"
-        style={styles.fab}
+  // Empty State
+  const renderEmptyState = () => (
+    <Animated.View entering={FadeIn.duration(600)} className="items-center justify-center px-6 py-12">
+      <View className={`w-24 h-24 rounded-full items-center justify-center mb-6 ${
+        isDark ? 'bg-primary-500/20' : 'bg-primary-100'
+      }`}>
+        <Dog size={48} className="text-primary-500" />
+      </View>
+      <Text className={`text-2xl font-bold mb-3 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        No dogs added yet
+      </Text>
+      <Text className={`text-base text-center mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        Add your first dog to start connecting with other dog owners!
+      </Text>
+      <GlassButton
+        variant="primary"
+        size="lg"
+        icon={Plus}
         onPress={() => navigation.navigate('AddDog')}
-        label="Add Dog"
+      >
+        Add Your First Dog
+      </GlassButton>
+    </Animated.View>
+  );
+
+  // Error State
+  const renderErrorState = () => (
+    <Animated.View entering={FadeIn.duration(600)} className="items-center justify-center px-6 py-12">
+      <Text className={`text-xl font-bold mb-3 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        Oops! Something went wrong
+      </Text>
+      <Text className={`text-base text-center mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        {error}
+      </Text>
+      <GlassButton
+        variant="primary"
+        size="md"
+        onPress={() => loadDogs()}
+      >
+        Try Again
+      </GlassButton>
+    </Animated.View>
+  );
+
+  return (
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={isDark 
+          ? ['#312E81', '#1E293B', '#0F172A'] 
+          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
+        }
+        className="absolute top-0 left-0 right-0 h-80"
       />
 
-      {/* Snackbar for errors */}
-      <Portal>
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={4000}
-          action={{
-            label: 'Dismiss',
-            onPress: () => setSnackbarVisible(false),
-          }}
+      <SafeAreaView className="flex-1" edges={['top']}>
+        {/* Header */}
+        <Animated.View entering={FadeIn.duration(600)} className="px-6 py-4">
+          <GradientText
+            colors={['#6366F1', '#EC4899', '#14B8A6']}
+            className="text-3xl font-bold mb-1"
+          >
+            My Dogs
+          </GradientText>
+          <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            Manage your dog profiles
+          </Text>
+        </Animated.View>
+
+        <ScrollView
+          className="flex-1 px-6"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadDogs(true)}
+              colors={['#6366F1']}
+              tintColor="#6366F1"
+            />
+          }
         >
-          {error || 'Something went wrong'}
-        </Snackbar>
-      </Portal>
-    </SafeAreaView>
+          {error ? (
+            renderErrorState()
+          ) : myDogs.length === 0 ? (
+            renderEmptyState()
+          ) : (
+            <>
+              {/* Dogs Count */}
+              <Animated.View entering={FadeIn.duration(600)} className="mb-4">
+                <Text className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {myDogs.length} dog{myDogs.length !== 1 ? 's' : ''}
+                </Text>
+              </Animated.View>
+
+              {/* Dogs List */}
+              {myDogs.map((dog, index) => renderDogCard(dog, index))}
+            </>
+          )}
+        </ScrollView>
+
+        {/* Floating Action Button */}
+        {myDogs.length > 0 && (
+          <FloatingActionButton
+            icon={Plus}
+            onPress={() => navigation.navigate('AddDog')}
+            variant="primary"
+            size="md"
+            position="bottom-right"
+          />
+        )}
+      </SafeAreaView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  
-  loadingText: {
-    color: Colors.text.secondary,
-  },
-  
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  
-  headerSurface: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  
-  title: {
-    color: Colors.text.primary,
-    marginBottom: -Spacing.xs,
-  },
-  
-  subtitle: {
-    color: Colors.text.secondary,
-  },
-  
-  addButton: {
-    borderRadius: BorderRadius.md,
-  },
-  
-  scrollView: {
-    flex: 1,
-  },
-  
-  scrollContent: {
-    padding: Spacing.lg,
-    paddingBottom: 100, // Space for FAB
-  },
-  
-  dogsContainer: {
-    flex: 1,
-  },
-  
-  dogsHeader: {
-    marginBottom: Spacing.lg,
-  },
-  
-  dogsCount: {
-    color: Colors.text.primary,
-  },
-  
-  dogCard: {
-    marginBottom: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-  },
-  
-  cardContent: {
-    padding: Spacing.md,
-  },
-  
-  dogHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.md,
-  },
-  
-  photoContainer: {
-    marginRight: Spacing.md,
-  },
-  
-  dogPhoto: {
-    backgroundColor: Colors.neutral[100],
-  },
-  
-  placeholderPhoto: {
-    backgroundColor: Colors.primary[100],
-  },
-  
-  dogInfo: {
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  
-  nameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-    gap: Spacing.sm,
-  },
-  
-  dogName: {
-    color: Colors.text.primary,
-    flex: 1,
-  },
-  
-  ageChip: {
-    backgroundColor: Colors.primary[50],
-    borderColor: Colors.primary[200],
-  },
-  
-  ageChipText: {
-    color: Colors.primary[700],
-    fontSize: Typography.fontSize.xs,
-  },
-  
-  dogBreed: {
-    color: Colors.text.secondary,
-    marginBottom: Spacing.sm,
-  },
-  
-  detailsRow: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-  },
-  
-  detailChip: {
-    backgroundColor: Colors.neutral[50],
-    borderColor: Colors.neutral[200],
-  },
-  
-  descriptionContainer: {
-    marginBottom: Spacing.md,
-  },
-  
-  dogDescription: {
-    color: Colors.text.secondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-  },
-  
-  actionButtons: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    justifyContent: 'flex-end',
-  },
-  
-  actionButton: {
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-  },
-  
-  deleteButton: {
-    borderColor: Colors.error[300],
-  },
-  
-  deleteMenuItem: {
-    color: Colors.error[600],
-  },
-  
-  fab: {
-    position: 'absolute',
-    margin: Spacing.lg,
-    right: 0,
-    bottom: 0,
-    backgroundColor: Colors.primary[500],
-  },
-});
 
 export default MyDogsScreen;
