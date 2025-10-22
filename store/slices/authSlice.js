@@ -45,13 +45,13 @@ export const registerUser = createAsyncThunk(
         email: userData.email,
         password: userData.password,
         username: userData.username,
-        first_name: userData.full_name?.split(' ')[0] || '',
-        last_name: userData.full_name?.split(' ').slice(1).join(' ') || '',
+        first_name: userData.first_name,
+        last_name: userData.last_name,
         phone: userData.phone || null,
         user_type: userData.user_type || 'owner',
-        city: userData.location || null,
-        state: null,
-        country: 'Mexico',
+        city: userData.city,
+        state: userData.state,
+        country: userData.country,
       };
       
       const response = await apiFetch('/api/auth/register', {

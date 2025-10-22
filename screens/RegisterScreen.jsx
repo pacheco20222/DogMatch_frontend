@@ -121,9 +121,12 @@ const RegisterScreen = ({ navigation }) => {
                     password: '',
                     confirmPassword: '',
                     username: '',
-                    full_name: '',
+                    first_name: '',
+                    last_name: '',
                     phone: '',
-                    location: '',
+                    city: '',
+                    state: '',
+                    country: '',
                     user_type: 'owner',
                   }}
                   validationSchema={registerSchema}
@@ -157,12 +160,23 @@ const RegisterScreen = ({ navigation }) => {
                       />
 
                       <GlassInput
-                        label="Full Name"
-                        value={values.full_name}
-                        onChangeText={handleChange('full_name')}
-                        onBlur={handleBlur('full_name')}
+                        label="First Name"
+                        value={values.first_name}
+                        onChangeText={handleChange('first_name')}
+                        onBlur={handleBlur('first_name')}
                         autoCapitalize="words"
-                        error={touched.full_name && errors.full_name}
+                        error={touched.first_name && errors.first_name}
+                        icon={User}
+                        className="mb-4"
+                      />
+
+                      <GlassInput
+                        label="Last Name"
+                        value={values.last_name}
+                        onChangeText={handleChange('last_name')}
+                        onBlur={handleBlur('last_name')}
+                        autoCapitalize="words"
+                        error={touched.last_name && errors.last_name}
                         icon={Users}
                         className="mb-4"
                       />
@@ -179,12 +193,34 @@ const RegisterScreen = ({ navigation }) => {
                       />
 
                       <GlassInput
-                        label="Location"
-                        value={values.location}
-                        onChangeText={handleChange('location')}
-                        onBlur={handleBlur('location')}
+                        label="City"
+                        value={values.city}
+                        onChangeText={handleChange('city')}
+                        onBlur={handleBlur('city')}
                         autoCapitalize="words"
-                        error={touched.location && errors.location}
+                        error={touched.city && errors.city}
+                        icon={MapPin}
+                        className="mb-4"
+                      />
+
+                      <GlassInput
+                        label="State"
+                        value={values.state}
+                        onChangeText={handleChange('state')}
+                        onBlur={handleBlur('state')}
+                        autoCapitalize="words"
+                        error={touched.state && errors.state}
+                        icon={MapPin}
+                        className="mb-4"
+                      />
+
+                      <GlassInput
+                        label="Country"
+                        value={values.country}
+                        onChangeText={handleChange('country')}
+                        onBlur={handleBlur('country')}
+                        autoCapitalize="words"
+                        error={touched.country && errors.country}
                         icon={MapPin}
                         className="mb-4"
                       />

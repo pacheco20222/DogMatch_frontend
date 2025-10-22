@@ -38,18 +38,31 @@ export const registerSchema = Yup.object().shape({
     .max(20, 'Username must be less than 20 characters')
     .matches(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores')
     .required('Username is required'),
-  full_name: Yup.string()
-    .min(2, 'Full name must be at least 2 characters')
-    .max(50, 'Full name must be less than 50 characters')
-    .matches(/^[a-zA-Z\s]+$/, 'Full name can only contain letters and spaces')
-    .required('Full name is required'),
+  first_name: Yup.string()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name must be less than 50 characters')
+    .matches(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces')
+    .required('First name is required'),
+  last_name: Yup.string()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name must be less than 50 characters')
+    .matches(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces')
+    .required('Last name is required'),
   phone: Yup.string()
     .matches(/^[0-9+\-\s()]*$/, 'Please enter a valid phone number')
     .nullable(),
-  location: Yup.string()
-    .min(2, 'Location must be at least 2 characters')
-    .max(100, 'Location must be less than 100 characters')
-    .required('Location is required'),
+  city: Yup.string()
+    .min(2, 'City must be at least 2 characters')
+    .max(100, 'City must be less than 100 characters')
+    .required('City is required'),
+  state: Yup.string()
+    .min(2, 'State must be at least 2 characters')
+    .max(100, 'State must be less than 100 characters')
+    .required('State is required'),
+  country: Yup.string()
+    .min(2, 'Country must be at least 2 characters')
+    .max(100, 'Country must be less than 100 characters')
+    .required('Country is required'),
   user_type: Yup.string()
     .oneOf(['owner', 'shelter', 'admin'], 'Invalid user type')
     .default('owner'),
