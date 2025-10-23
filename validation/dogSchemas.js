@@ -11,10 +11,14 @@ export const createDogSchema = Yup.object().shape({
     .min(2, 'Breed must be at least 2 characters')
     .max(50, 'Breed must be less than 50 characters')
     .required('Breed is required'),
-  age: Yup.number()
+  age_years: Yup.number()
     .min(0, 'Age must be 0 or greater')
     .max(30, 'Age must be less than 30 years')
     .required('Age is required'),
+  weight: Yup.number()
+    .min(0.1, 'Weight must be greater than 0')
+    .max(200, 'Weight must be less than 200 kg')
+    .nullable(),
   gender: Yup.string()
     .oneOf(['male', 'female'], 'Gender must be male or female')
     .required('Gender is required'),
@@ -24,6 +28,9 @@ export const createDogSchema = Yup.object().shape({
   energy_level: Yup.string()
     .oneOf(['low', 'medium', 'high'], 'Energy level must be low, medium, or high')
     .required('Energy level is required'),
+  personality: Yup.string()
+    .max(200, 'Personality traits must be less than 200 characters')
+    .nullable(),
   description: Yup.string()
     .min(10, 'Description must be at least 10 characters')
     .max(500, 'Description must be less than 500 characters')
@@ -39,7 +46,7 @@ export const createDogSchema = Yup.object().shape({
     .required('Please specify if dog is good with cats'),
   is_vaccinated: Yup.boolean()
     .required('Please specify vaccination status'),
-  is_spayed_neutered: Yup.boolean()
+  is_neutered: Yup.boolean()
     .required('Please specify spay/neuter status'),
   special_needs: Yup.string()
     .max(200, 'Special needs description must be less than 200 characters')
@@ -82,7 +89,7 @@ export const updateDogSchema = Yup.object().shape({
   good_with_cats: Yup.string()
     .oneOf(['yes', 'no', 'not_sure'], 'Please select an option'),
   is_vaccinated: Yup.boolean(),
-  is_spayed_neutered: Yup.boolean(),
+  is_neutered: Yup.boolean(),
   special_needs: Yup.string()
     .max(200, 'Special needs description must be less than 200 characters')
     .nullable(),
@@ -145,7 +152,7 @@ export const dogSearchSchema = Yup.object().shape({
     .nullable(),
   is_vaccinated: Yup.boolean()
     .nullable(),
-  is_spayed_neutered: Yup.boolean()
+  is_neutered: Yup.boolean()
     .nullable(),
   location: Yup.string()
     .max(100, 'Location filter must be less than 100 characters')

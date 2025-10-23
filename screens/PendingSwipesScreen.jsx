@@ -48,9 +48,11 @@ const PendingSwipesScreen = ({ navigation }) => {
   // Fetch pending swipes from API
   const loadPendingSwipes = useCallback(async () => {
     try {
-      await dispatch(fetchPendingSwipes());
+      console.log('🔄 Loading pending swipes...');
+      const result = await dispatch(fetchPendingSwipes());
+      console.log('✅ Pending swipes result:', result);
     } catch (error) {
-      console.error('Error fetching pending swipes:', error);
+      console.error('❌ Error fetching pending swipes:', error);
     }
   }, [dispatch]);
 
@@ -83,12 +85,13 @@ const PendingSwipesScreen = ({ navigation }) => {
     try {
       const response = await dispatch(respondToSwipe({ matchId, action }));
       
-      if (response.payload?.success) {
+      // Check if the response was successful (payload.result contains the backend response)
+      if (response.payload?.result?.message) {
         // Show success message
-        if (response.payload.is_mutual_match) {
+        if (response.payload.result.is_mutual_match) {
           Alert.alert(
             '🎉 It\'s a Match!',
-            response.payload.message,
+            response.payload.result.message,
             [
               {
                 text: 'Start Chatting',
@@ -96,9 +99,9 @@ const PendingSwipesScreen = ({ navigation }) => {
                   // Navigate to chat
                   navigation.navigate('ChatConversation', {
                     matchId: matchId,
-                    otherUser: response.payload.match.other_user,
-                    otherDog: response.payload.match.other_dog,
-                    match: response.payload.match
+                    otherUser: response.payload.result.match.other_user,
+                    otherDog: response.payload.result.match.other_dog,
+                    match: response.payload.result.match
                   });
                 }
               },
@@ -106,10 +109,13 @@ const PendingSwipesScreen = ({ navigation }) => {
             ]
           );
         } else {
-          Alert.alert('Success', response.payload.message);
+          Alert.alert('Success', response.payload.result.message);
         }
+        
+        // Refresh the pending swipes list
+        await loadPendingSwipes();
       } else {
-        Alert.alert('Error', response.payload?.message || 'Failed to respond to swipe');
+        Alert.alert('Error', response.error || response.payload?.message || 'Failed to respond to swipe');
       }
     } catch (error) {
       console.error('Error responding to swipe:', error);
@@ -153,11 +159,11 @@ const PendingSwipesScreen = ({ navigation }) => {
           <View className="relative">
             <Image
               source={{ 
-                uri: otherDog.photos && otherDog.photos.length > 0 
-                  ? (otherDog.photos[0].url.startsWith('http') 
-                      ? otherDog.photos[0].url 
-                      : `https://dogmatch-backend.onrender.com${otherDog.photos[0].url}`)
-                  : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face'
+                uri: otherDog.primary_photo_url && otherDog.primary_photo_url !== '/static/images/default-dog.jpg'
+                  ? otherDog.primary_photo_url
+                  : (otherDog.photos && otherDog.photos.length > 0
+                      ? otherDog.photos[0].url
+                      : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face')
               }}
               className="w-full h-80"
               resizeMode="cover"
@@ -194,7 +200,7 @@ const PendingSwipesScreen = ({ navigation }) => {
               </Text>
               <View className="px-3 py-1 rounded-full bg-primary-500/20">
                 <Text className="text-primary-500 text-sm font-semibold">
-                  {otherDog.age} years
+                  {otherDog.age_string || `${otherDog.age_years || 0} years`}
                 </Text>
               </View>
             </View>

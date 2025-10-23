@@ -117,19 +117,39 @@ const DiscoverScreen = ({ navigation }) => {
 
   // Render individual dog card with glass morphism design
   const renderCard = useCallback((dog) => {
+    // Debug: Log dog data to see photo structure
+    console.log('Rendering dog card:', {
+      name: dog.name,
+      photos: dog.photos,
+      primary_photo_url: dog.primary_photo_url
+    });
+
+    // Determine image URL - prioritize primary_photo_url, then photos array
+    // S3 photos will already have full HTTPS URLs, local photos need backend URL prefix
+    let imageUrl = 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face';
+    
+    if (dog.primary_photo_url && dog.primary_photo_url !== '/static/images/default-dog.jpg') {
+      // Use primary photo URL (should be S3 signed URL or local path)
+      imageUrl = dog.primary_photo_url;
+      console.log('Using primary_photo_url:', imageUrl);
+    } else if (dog.photos && dog.photos.length > 0) {
+      // Fallback to first photo in photos array (should be S3 signed URL)
+      imageUrl = dog.photos[0].url;
+      console.log('Using photos[0].url:', imageUrl);
+    }
+
     return (
-      <View style={{ width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 24, overflow: 'hidden' }}>
+      <View style={{ width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 24, overflow: 'hidden', backgroundColor: '#1E293B' }}>
         {/* Dog Photo */}
         <Image
-          source={{ 
-            uri: dog.photos && dog.photos.length > 0 
-              ? (dog.photos[0].url.startsWith('http') 
-                  ? dog.photos[0].url 
-                  : `https://dogmatch-backend.onrender.com${dog.photos[0].url}`)
-              : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop&crop=face'
-          }}
+          source={{ uri: imageUrl }}
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
+          onError={(e) => {
+            console.log('❌ Image load error for', dog.name, ':', e.nativeEvent.error);
+            console.log('Failed URL:', imageUrl);
+          }}
+          onLoad={() => console.log('✅ Image loaded successfully for:', dog.name)}
         />
         
         {/* Gradient overlay for better text readability */}
@@ -147,7 +167,7 @@ const DiscoverScreen = ({ navigation }) => {
               </Text>
               <View className={`px-3 py-1 rounded-full ${isDark ? 'bg-accent-500/30' : 'bg-accent-400/30'}`}>
                 <Text className="text-white text-sm font-semibold">
-                  {dog.age} years
+                  {dog.age_string || `${dog.age_years || 0} years`}
                 </Text>
               </View>
             </View>
@@ -377,6 +397,7 @@ const DiscoverScreen = ({ navigation }) => {
             ref={swiperRef}
             data={discoverDogs}
             renderCard={renderCard}
+            prerenderItems={2}
             cardStyle={{
               width: CARD_WIDTH,
               height: CARD_HEIGHT,

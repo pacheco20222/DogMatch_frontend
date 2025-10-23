@@ -29,17 +29,18 @@ const GlassInput = ({
   rightIcon: RightIcon,
   onRightIconPress,
   className = '',
+  placeholder,
   ...props 
 }) => {
   const { isDark } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
-  const labelPosition = useSharedValue(value ? -28 : 0);
-  const labelScale = useSharedValue(value ? 0.75 : 1);
+  const labelPosition = useSharedValue(value ? -18 : 0);
+  const labelScale = useSharedValue(value ? 0.85 : 1);
 
   const handleFocus = () => {
     setIsFocused(true);
-    labelPosition.value = withTiming(-28, { duration: 200 });
-    labelScale.value = withTiming(0.75, { duration: 200 });
+    labelPosition.value = withTiming(-18, { duration: 200 });
+    labelScale.value = withTiming(0.85, { duration: 200 });
   };
 
   const handleBlur = () => {
@@ -76,8 +77,10 @@ const GlassInput = ({
             ${isDark ? 'bg-white/10' : 'bg-white/70'}
             border-2 ${borderColor}
             rounded-2xl
-            px-4 py-4
+            px-4
+            ${props.multiline ? 'py-3' : 'py-4'}
             flex-row items-center
+            min-h-[56px]
           `}>
             {LeftIcon && (
               <LeftIcon 
@@ -86,12 +89,17 @@ const GlassInput = ({
               />
             )}
             
-            <View className="flex-1 relative">
+            <View className="flex-1 relative pt-1">
               {label && (
                 <Animated.View 
                   style={[
                     animatedLabelStyle,
-                    { position: 'absolute', left: 0, top: 0, zIndex: 1 }
+                    { 
+                      position: 'absolute', 
+                      left: 0, 
+                      top: isFocused || value ? 0 : 12, 
+                      zIndex: 1 
+                    }
                   ]}
                   pointerEvents="none"
                 >
@@ -116,8 +124,9 @@ const GlassInput = ({
                 className={`
                   ${isDark ? 'text-white' : 'text-gray-900'}
                   text-base
-                  ${label && (value || isFocused) ? 'mt-5' : ''}
+                  ${label && (value || isFocused) ? 'mt-4' : 'mt-0'}
                 `}
+                placeholder={(isFocused || value) ? placeholder : ''}
                 placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
                 {...props}
               />

@@ -66,12 +66,15 @@ const MatchesScreen = ({ navigation }) => {
   }, [error]);
 
   const handleChatPress = (match) => {
-    // Navigate to chat conversation
-    navigation.navigate('ChatConversation', {
-      matchId: match.id,
-      otherUser: match.other_user,
-      otherDog: match.other_dog,
-      match: match
+    // Navigate to chat conversation (nested in Chats tab)
+    navigation.navigate('Chats', {
+      screen: 'ChatConversation',
+      params: {
+        matchId: match.id,
+        otherUser: match.other_dog?.owner,
+        otherDog: match.other_dog,
+        match: match
+      }
     });
   };
 
@@ -94,11 +97,11 @@ const MatchesScreen = ({ navigation }) => {
               <View className="relative mr-4">
                 <Image
                   source={{ 
-                    uri: otherDog.photos && otherDog.photos.length > 0 
-                      ? (otherDog.photos[0].url.startsWith('http')
+                    uri: otherDog.primary_photo_url && otherDog.primary_photo_url !== '/static/images/default-dog.jpg'
+                      ? otherDog.primary_photo_url
+                      : (otherDog.photos && otherDog.photos.length > 0 
                           ? otherDog.photos[0].url
-                          : `https://dogmatch-backend.onrender.com${otherDog.photos[0].url}`)
-                      : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop&crop=face'
+                          : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop&crop=face')
                   }}
                   className="w-16 h-16 rounded-full"
                 />

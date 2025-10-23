@@ -24,6 +24,7 @@ import { apiFetch } from '../api/client';
 import { store } from '../store';
 import { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
+import { useTheme } from '../theme/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -34,6 +35,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const chatService = useChatService();
   const dispatch = useAppDispatch();
   const { messages: reduxMessages, loading, error } = useAppSelector(state => state.chats);
+  const { isDark } = useTheme();
   
   const messages = reduxMessages[matchId] || [];
   const [sending, setSending] = useState(false);
@@ -285,13 +287,13 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const renderHeader = () => (
     <Animated.View 
       entering={FadeInDown.duration(600)}
-      style={styles.header}
+      style={[styles.header, isDark && styles.headerDark]}
     >
       <TouchableOpacity 
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
-        <Text style={styles.backButtonText}>←</Text>
+        <Text style={[styles.backButtonText, isDark && styles.backButtonTextDark]}>←</Text>
       </TouchableOpacity>
       
       <Image
@@ -304,11 +306,11 @@ const ChatConversationScreen = ({ navigation, route }) => {
       />
       
       <View style={styles.headerInfo}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]} numberOfLines={1}>
           {otherUser?.first_name} {otherUser?.last_name}
         </Text>
-        <Text style={styles.headerSubtitle} numberOfLines={1}>
-          🐕 {otherDog?.name} & {match?.dog_one?.name}
+        <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]} numberOfLines={1}>
+          🐕 {otherDog?.name} & {match?.my_dog?.name}
         </Text>
       </View>
       
@@ -333,15 +335,15 @@ const ChatConversationScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={[styles.container, isDark && styles.containerDark]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {renderHeader()}
       
       <KeyboardAvoidingView 
         style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
         {/* Messages List */}
         <FlatList
@@ -359,15 +361,15 @@ const ChatConversationScreen = ({ navigation, route }) => {
         {/* Message Input */}
         <Animated.View 
           entering={FadeInUp.duration(600)}
-          style={styles.inputContainer}
+          style={[styles.inputContainer, isDark && styles.inputContainerDark]}
         >
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, isDark && styles.inputWrapperDark]}>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, isDark && styles.textInputDark]}
               value={messageText}
               onChangeText={handleTextChange}
               placeholder="Type a message..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={isDark ? '#64748B' : '#9CA3AF'}
               multiline
               maxLength={500}
               editable={!sending}
@@ -392,7 +394,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -401,14 +403,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  containerDark: {
+    backgroundColor: '#0F172A',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingTop: 50,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+  },
+  headerDark: {
+    backgroundColor: '#1E293B',
+    borderBottomColor: '#334155',
   },
   backButton: {
     marginRight: 12,
@@ -418,6 +428,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#4F8EF7',
     fontWeight: 'bold',
+  },
+  backButtonTextDark: {
+    color: '#818CF8',
   },
   headerAvatar: {
     width: 40,
@@ -434,10 +447,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
   },
+  headerTitleDark: {
+    color: '#FFFFFF',
+  },
   headerSubtitle: {
     fontSize: 14,
     color: '#6B7280',
     marginTop: 2,
+  },
+  headerSubtitleDark: {
+    color: '#94A3B8',
   },
   connectionStatus: {
     marginLeft: 12,
@@ -454,6 +473,7 @@ const styles = StyleSheet.create({
   messagesList: {
     paddingHorizontal: 16,
     paddingVertical: 8,
+    paddingBottom: 16, // Reduced padding since tab bar is hidden
   },
   messageContainer: {
     flexDirection: 'row',
@@ -555,10 +575,15 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
+    paddingBottom: 8,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+  },
+  inputContainerDark: {
+    backgroundColor: '#1E293B',
+    borderTopColor: '#334155',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -570,12 +595,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  inputWrapperDark: {
+    backgroundColor: '#334155',
+    borderColor: '#475569',
+  },
   textInput: {
     flex: 1,
     fontSize: 16,
     color: '#1F2937',
     maxHeight: 100,
     paddingVertical: 8,
+  },
+  textInputDark: {
+    color: '#FFFFFF',
   },
   sendButton: {
     marginLeft: 8,

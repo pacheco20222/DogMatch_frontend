@@ -1,87 +1,60 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Card, Text, Avatar } from 'react-native-paper';
-import { useTheme } from 'react-native-paper';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useTheme } from '../../theme/ThemeContext';
+import GlassCard from '../glass/GlassCard';
 
 const StatCard = React.memo(({ 
   title, 
   value, 
-  icon, 
+  icon: IconComponent, 
   color = 'primary',
   onPress,
   style 
 }) => {
-  const theme = useTheme();
+  const { isDark } = useTheme();
   
-  const getColor = () => {
+  const getColorClass = () => {
     switch (color) {
-      case 'primary':
-        return theme.colors.primary;
-      case 'secondary':
-        return theme.colors.secondary;
-      case 'success':
-        return theme.colors.success;
-      case 'warning':
-        return theme.colors.warning;
-      case 'error':
-        return theme.colors.error;
-      default:
-        return theme.colors.primary;
+      case 'primary': return 'bg-primary-500';
+      case 'secondary': return 'bg-secondary-500';
+      case 'success': return 'bg-success-500';
+      case 'warning': return 'bg-warning-500';
+      case 'error': return 'bg-error-500';
+      default: return 'bg-primary-500';
     }
   };
 
+  const getTextColorClass = () => {
+    switch (color) {
+      case 'primary': return 'text-primary-500';
+      case 'secondary': return 'text-secondary-500';
+      case 'success': return 'text-success-500';
+      case 'warning': return 'text-warning-500';
+      case 'error': return 'text-error-500';
+      default: return 'text-primary-500';
+    }
+  };
+
+  const Wrapper = onPress ? TouchableOpacity : View;
+
   return (
-    <Card 
-      mode="elevated" 
-      style={[styles.card, style]}
-      onPress={onPress}
-    >
-      <Card.Content style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Avatar.Icon 
-            icon={icon} 
-            size={48} 
-            style={[styles.avatar, { backgroundColor: getColor() }]}
-          />
+    <Wrapper onPress={onPress} activeOpacity={0.8} style={style} className="flex-1 m-1">
+      <GlassCard className="p-4 items-center justify-center min-h-30">
+        <View className={`w-12 h-12 rounded-2xl ${getColorClass()} items-center justify-center mb-2`}>
+          {IconComponent && <IconComponent size={24} color="#fff" />}
         </View>
-        <Text variant="displaySmall" style={[styles.value, { color: getColor() }]}>
+        <Text className={`text-3xl font-bold mb-1 ${getTextColorClass()}`}>
           {value}
         </Text>
-        <Text variant="labelMedium" style={styles.title}>
+        <Text className={`text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
           {title}
         </Text>
-      </Card.Content>
-    </Card>
+      </GlassCard>
+    </Wrapper>
   );
 });
 
 StatCard.displayName = 'StatCard';
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    margin: 4,
-    minHeight: 120,
-  },
-  content: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  iconContainer: {
-    marginBottom: 8,
-  },
-  avatar: {
-    backgroundColor: '#0EA5E9',
-  },
-  value: {
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  title: {
-    textAlign: 'center',
-    color: '#525252',
-  },
-});
 
 export default StatCard;

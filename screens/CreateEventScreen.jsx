@@ -2,59 +2,33 @@ import React, { useState } from 'react';
 import { 
   View, 
   ScrollView, 
-  Alert,
-  StyleSheet,
+  Alert, 
+  Image,
+  Text,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Image
+  ActivityIndicator
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Text,
-  Card,
-  Surface,
-  Button,
-  TextInput,
-  HelperText,
-  Chip,
-  IconButton,
-  ActivityIndicator,
-  Snackbar,
-  Portal,
-  Divider,
-  RadioButton,
-} from 'react-native-paper';
 import { Formik } from 'formik';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  FadeIn,
-  SlideInUp,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { ArrowLeft, Camera, Calendar, MapPin, Users, DollarSign } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { createEvent, uploadEventPhoto, clearError } from '../store/slices/eventsSlice';
-import { useAuth } from '../hooks/useAuth';
 import { createEventSchema } from '../validation/eventSchemas';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { useTheme } from '../theme/ThemeContext';
+import GlassCard from '../components/glass/GlassCard';
+import GlassInput from '../components/glass/GlassInput';
+import GlassButton from '../components/glass/GlassButton';
 
 const CreateEventScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector(state => state.events);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-
-  // Animation values
-  const headerOpacity = useSharedValue(0);
-  const formOpacity = useSharedValue(0);
-
-  React.useEffect(() => {
-    // Animate header and form
-    headerOpacity.value = withDelay(200, withSpring(1, { damping: 15, stiffness: 100 }));
-    formOpacity.value = withDelay(400, withSpring(1, { damping: 15, stiffness: 100 }));
-  }, []);
+  const { isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Clear error when component unmounts
   React.useEffect(() => {
@@ -63,6 +37,7 @@ const CreateEventScreen = ({ navigation }) => {
     };
   }, [dispatch]);
 
+  // Event categories based on Event model
   const eventCategories = [
     { value: 'meetup', label: 'Dog Meetup' },
     { value: 'training', label: 'Training Workshop' },
@@ -73,7 +48,7 @@ const CreateEventScreen = ({ navigation }) => {
   ];
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status} = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload photos!');
       return;
@@ -125,77 +100,90 @@ const CreateEventScreen = ({ navigation }) => {
 
     } catch (error) {
       console.error('Error creating event:', error);
-      setSnackbarVisible(true);
+      Alert.alert('Error', error.message || 'Failed to create event. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const renderSelectField = (label, field, options, values, setFieldValue, errors, touched) => (
-    <View style={styles.selectField}>
-      <Text variant="bodyLarge" style={styles.selectLabel}>{label}</Text>
-      <View style={styles.optionsContainer}>
+    <View className="mb-4">
+      <Text className={`text-base font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        {label}
+      </Text>
+      <View className="flex-row flex-wrap gap-2">
         {options.map((option) => (
-          <Chip
+          <TouchableOpacity
             key={option.value}
-            mode={values[field] === option.value ? "flat" : "outlined"}
-            selected={values[field] === option.value}
             onPress={() => setFieldValue(field, option.value)}
-            style={styles.optionChip}
-            textStyle={styles.optionChipText}
+            className={`px-4 py-2.5 rounded-xl ${values[field] === option.value
+              ? (isDark ? 'bg-primary-500' : 'bg-primary-500')
+              : (isDark ? 'bg-white/10 border border-white/20' : 'bg-gray-100 border border-gray-300')
+            }`}
           >
-            {option.label}
-          </Chip>
+            <Text className={`font-medium ${values[field] === option.value
+              ? 'text-white'
+              : (isDark ? 'text-gray-300' : 'text-gray-700')
+            }`}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
         ))}
       </View>
       {touched[field] && errors[field] && (
-        <HelperText type="error" visible={true}>
-          {errors[field]}
-        </HelperText>
+        <Text className="text-error-500 text-sm mt-1">{errors[field]}</Text>
       )}
     </View>
   );
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-  }));
-
-  const formAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: formOpacity.value,
-  }));
+  const renderRadioGroup = (label, field, values, setFieldValue) => (
+    <View className="mb-4">
+      <Text className={`text-base font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        {label}
+      </Text>
+      <View className="flex-row gap-4">
+        {[{ value: true, label: 'Yes' }, { value: false, label: 'No' }].map((option) => (
+          <TouchableOpacity
+            key={option.label}
+            onPress={() => setFieldValue(field, option.value)}
+            className="flex-row items-center gap-2"
+          >
+            <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
+              values[field] === option.value
+                ? 'border-primary-500'
+                : (isDark ? 'border-gray-500' : 'border-gray-400')
+            }`}>
+              {values[field] === option.value && (
+                <View className="w-2.5 h-2.5 rounded-full bg-primary-500" />
+              )}
+            </View>
+            <Text className={isDark ? 'text-gray-300' : 'text-gray-700'}>{option.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      {/* Header with iPhone notch support */}
+      <View className="px-6 pt-4 pb-3 flex-row items-center" style={{ paddingTop: insets.top + 16 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
+          <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
+        </TouchableOpacity>
+        <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Create Event
+        </Text>
+      </View>
+
       <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
+        className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Modern Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]} entering={SlideInUp.duration(600)}>
-          <Surface style={styles.headerSurface} elevation={2}>
-            <View style={styles.headerContent}>
-              <IconButton
-                icon="arrow-left"
-                size={24}
-                onPress={() => navigation.goBack()}
-                style={styles.backButton}
-              />
-              <View style={styles.titleContainer}>
-                <Text variant="headlineMedium" style={styles.title}>
-                  Create New Event
-                </Text>
-                <Text variant="bodyMedium" style={styles.subtitle}>
-                  Fill in the details to create your event
-                </Text>
-              </View>
-            </View>
-          </Surface>
-        </Animated.View>
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+        <ScrollView 
+          className="flex-1"
+          contentContainerStyle={{ padding: 24, paddingBottom: insets.bottom + 24 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -205,530 +193,235 @@ const CreateEventScreen = ({ navigation }) => {
               description: '',
               category: 'meetup',
               event_date: '',
-              start_time: '',
-              end_time: '',
               location: '',
-              capacity: '',
+              max_participants: '',
               price: '0',
-              requirements: '',
+              special_requirements: '',
               contact_email: '',
               contact_phone: '',
-              website: '',
-              is_public: true,
+              vaccination_required: true,
               requires_approval: false
             }}
             validationSchema={createEventSchema}
             onSubmit={handleSubmit}
           >
             {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue, isSubmitting }) => (
-              <Animated.View style={[styles.formContainer, formAnimatedStyle]} entering={FadeIn.delay(200).duration(600)}>
+              <View>
                 {/* Event Photo */}
-                <Card style={styles.sectionCard} mode="elevated">
-                  <Card.Content>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>
-                      Event Photo
-                    </Text>
-                    
-                    <View style={styles.photoSection}>
+                <Animated.View entering={FadeInDown.delay(100).duration(500)}>
+                  <GlassCard className="mb-6">
+                    <View className="items-center">
+                      <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Event Photo
+                      </Text>
+                      
                       {selectedImage ? (
-                        <View style={styles.photoContainer}>
+                        <View className="items-center">
                           <Image
                             source={{ uri: selectedImage.uri }}
-                            style={styles.eventPhoto}
+                            className="w-full h-48 rounded-xl mb-4"
+                            resizeMode="cover"
                           />
-                          <Button
-                            mode="outlined"
+                          <GlassButton
                             onPress={pickImage}
-                            style={styles.changePhotoButton}
-                            icon="camera"
+                            variant="outline"
+                            icon={Camera}
                           >
                             Change Photo
-                          </Button>
+                          </GlassButton>
                         </View>
                       ) : (
-                        <Button
-                          mode="outlined"
+                        <TouchableOpacity
                           onPress={pickImage}
-                          style={styles.photoPlaceholder}
-                          icon="camera"
+                          className={`w-full h-48 rounded-xl items-center justify-center border-2 border-dashed mb-2 ${
+                            isDark ? 'bg-white/5 border-white/20' : 'bg-gray-50 border-gray-300'
+                          }`}
                         >
-                          Add Event Photo
-                        </Button>
+                          <Camera size={48} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                          <Text className={`mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Add Event Photo
+                          </Text>
+                        </TouchableOpacity>
                       )}
-                      <Text variant="bodySmall" style={styles.photoHelpText}>
+                      <Text className={`text-sm text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                         Optional: Add a banner photo for your event
                       </Text>
                     </View>
-                  </Card.Content>
-                </Card>
+                  </GlassCard>
+                </Animated.View>
 
                 {/* Basic Information */}
-                <Card style={styles.sectionCard} mode="elevated">
-                  <Card.Content>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                <Animated.View entering={FadeInDown.delay(200).duration(500)}>
+                  <GlassCard className="mb-6">
+                    <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       Basic Information
                     </Text>
                     
-                    <TextInput
+                    <GlassInput
                       label="Event Title"
                       placeholder="Enter event title"
                       value={values.title}
                       onChangeText={handleChange('title')}
                       onBlur={handleBlur('title')}
                       error={touched.title && errors.title}
-                      mode="outlined"
-                      style={styles.input}
                     />
-                    <HelperText type="error" visible={touched.title && errors.title}>
-                      {errors.title}
-                    </HelperText>
 
-                    <TextInput
+                    <GlassInput
                       label="Description"
                       placeholder="Describe your event..."
                       value={values.description}
                       onChangeText={handleChange('description')}
                       onBlur={handleBlur('description')}
                       error={touched.description && errors.description}
-                      mode="outlined"
-                      multiline={true}
+                      multiline
                       numberOfLines={4}
-                      style={styles.input}
                     />
-                    <HelperText type="error" visible={touched.description && errors.description}>
-                      {errors.description}
-                    </HelperText>
 
                     {renderSelectField('Category', 'category', eventCategories, values, setFieldValue, errors, touched)}
-                  </Card.Content>
-                </Card>
+                  </GlassCard>
+                </Animated.View>
 
-                {/* Date & Time */}
-                <Card style={styles.sectionCard} mode="elevated">
-                  <Card.Content>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>
-                      Date & Time
-                    </Text>
+                {/* Date & Location */}
+                <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+                  <GlassCard className="mb-6">
+                    <View className="flex-row items-center mb-4">
+                      <Calendar size={20} color={isDark ? '#fff' : '#000'} className="mr-2" />
+                      <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Date & Location
+                      </Text>
+                    </View>
                     
-                    <TextInput
-                      label="Event Date"
-                      placeholder="YYYY-MM-DD"
+                    <GlassInput
+                      label="Event Date & Time"
+                      placeholder="YYYY-MM-DD HH:MM (e.g., 2025-12-31 14:00)"
                       value={values.event_date}
                       onChangeText={handleChange('event_date')}
                       onBlur={handleBlur('event_date')}
                       error={touched.event_date && errors.event_date}
-                      mode="outlined"
-                      style={styles.input}
                     />
-                    <HelperText type="error" visible={touched.event_date && errors.event_date}>
-                      {errors.event_date}
-                    </HelperText>
 
-                    <View style={styles.timeRow}>
-                      <View style={styles.halfWidth}>
-                        <TextInput
-                          label="Start Time"
-                          placeholder="HH:MM"
-                          value={values.start_time}
-                          onChangeText={handleChange('start_time')}
-                          onBlur={handleBlur('start_time')}
-                          error={touched.start_time && errors.start_time}
-                          mode="outlined"
-                          style={styles.input}
-                        />
-                        <HelperText type="error" visible={touched.start_time && errors.start_time}>
-                          {errors.start_time}
-                        </HelperText>
-                      </View>
-                      <View style={styles.halfWidth}>
-                        <TextInput
-                          label="End Time"
-                          placeholder="HH:MM"
-                          value={values.end_time}
-                          onChangeText={handleChange('end_time')}
-                          onBlur={handleBlur('end_time')}
-                          error={touched.end_time && errors.end_time}
-                          mode="outlined"
-                          style={styles.input}
-                        />
-                        <HelperText type="error" visible={touched.end_time && errors.end_time}>
-                          {errors.end_time}
-                        </HelperText>
-                      </View>
-                    </View>
-                  </Card.Content>
-                </Card>
-
-                {/* Location & Capacity */}
-                <Card style={styles.sectionCard} mode="elevated">
-                  <Card.Content>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>
-                      Location & Capacity
-                    </Text>
-                    
-                    <TextInput
+                    <GlassInput
                       label="Location"
                       placeholder="Enter event location"
                       value={values.location}
                       onChangeText={handleChange('location')}
                       onBlur={handleBlur('location')}
                       error={touched.location && errors.location}
-                      mode="outlined"
-                      style={styles.input}
+                      icon={MapPin}
                     />
-                    <HelperText type="error" visible={touched.location && errors.location}>
-                      {errors.location}
-                    </HelperText>
+                  </GlassCard>
+                </Animated.View>
 
-                    <TextInput
-                      label="Capacity"
-                      placeholder="Maximum number of participants"
-                      value={values.capacity}
-                      onChangeText={handleChange('capacity')}
-                      onBlur={handleBlur('capacity')}
-                      error={touched.capacity && errors.capacity}
-                      mode="outlined"
+                {/* Capacity & Pricing */}
+                <Animated.View entering={FadeInDown.delay(400).duration(500)}>
+                  <GlassCard className="mb-6">
+                    <View className="flex-row items-center mb-4">
+                      <Users size={20} color={isDark ? '#fff' : '#000'} className="mr-2" />
+                      <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Capacity & Pricing
+                      </Text>
+                    </View>
+                    
+                    <GlassInput
+                      label="Maximum Participants"
+                      placeholder="e.g., 50"
+                      value={values.max_participants}
+                      onChangeText={handleChange('max_participants')}
+                      onBlur={handleBlur('max_participants')}
+                      error={touched.max_participants && errors.max_participants}
                       keyboardType="numeric"
-                      style={styles.input}
                     />
-                    <HelperText type="error" visible={touched.capacity && errors.capacity}>
-                      {errors.capacity}
-                    </HelperText>
 
-                    <TextInput
+                    <GlassInput
                       label="Price (MXN)"
-                      placeholder="0"
+                      placeholder="0 for free events"
                       value={values.price}
                       onChangeText={handleChange('price')}
                       onBlur={handleBlur('price')}
                       error={touched.price && errors.price}
-                      mode="outlined"
                       keyboardType="numeric"
-                      style={styles.input}
+                      icon={DollarSign}
                     />
-                    <HelperText type="error" visible={touched.price && errors.price}>
-                      {errors.price}
-                    </HelperText>
-                  </Card.Content>
-                </Card>
+                  </GlassCard>
+                </Animated.View>
 
                 {/* Contact Information */}
-                <Card style={styles.sectionCard} mode="elevated">
-                  <Card.Content>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>
+                <Animated.View entering={FadeInDown.delay(500).duration(500)}>
+                  <GlassCard className="mb-6">
+                    <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       Contact Information
                     </Text>
                     
-                    <TextInput
+                    <GlassInput
                       label="Contact Email"
                       placeholder="your@email.com"
                       value={values.contact_email}
                       onChangeText={handleChange('contact_email')}
                       onBlur={handleBlur('contact_email')}
                       error={touched.contact_email && errors.contact_email}
-                      mode="outlined"
                       keyboardType="email-address"
-                      style={styles.input}
+                      autoCapitalize="none"
                     />
-                    <HelperText type="error" visible={touched.contact_email && errors.contact_email}>
-                      {errors.contact_email}
-                    </HelperText>
 
-                    <TextInput
+                    <GlassInput
                       label="Contact Phone"
                       placeholder="+52 123 456 7890"
                       value={values.contact_phone}
                       onChangeText={handleChange('contact_phone')}
                       onBlur={handleBlur('contact_phone')}
                       error={touched.contact_phone && errors.contact_phone}
-                      mode="outlined"
                       keyboardType="phone-pad"
-                      style={styles.input}
                     />
-                    <HelperText type="error" visible={touched.contact_phone && errors.contact_phone}>
-                      {errors.contact_phone}
-                    </HelperText>
+                  </GlassCard>
+                </Animated.View>
 
-                    <TextInput
-                      label="Website (Optional)"
-                      placeholder="https://example.com"
-                      value={values.website}
-                      onChangeText={handleChange('website')}
-                      onBlur={handleBlur('website')}
-                      error={touched.website && errors.website}
-                      mode="outlined"
-                      keyboardType="url"
-                      style={styles.input}
-                    />
-                    <HelperText type="error" visible={touched.website && errors.website}>
-                      {errors.website}
-                    </HelperText>
-                  </Card.Content>
-                </Card>
-
-                {/* Additional Information */}
-                <Card style={styles.sectionCard} mode="elevated">
-                  <Card.Content>
-                    <Text variant="titleLarge" style={styles.sectionTitle}>
-                      Additional Information
+                {/* Requirements & Settings */}
+                <Animated.View entering={FadeInDown.delay(600).duration(500)}>
+                  <GlassCard className="mb-6">
+                    <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      Requirements & Settings
                     </Text>
                     
-                    <TextInput
-                      label="Requirements"
+                    <GlassInput
+                      label="Special Requirements (Optional)"
                       placeholder="Any special requirements for participants..."
-                      value={values.requirements}
-                      onChangeText={handleChange('requirements')}
-                      onBlur={handleBlur('requirements')}
-                      error={touched.requirements && errors.requirements}
-                      mode="outlined"
-                      multiline={true}
+                      value={values.special_requirements}
+                      onChangeText={handleChange('special_requirements')}
+                      onBlur={handleBlur('special_requirements')}
+                      error={touched.special_requirements && errors.special_requirements}
+                      multiline
                       numberOfLines={3}
-                      style={styles.input}
                     />
-                    <HelperText type="error" visible={touched.requirements && errors.requirements}>
-                      {errors.requirements}
-                    </HelperText>
 
-                    <View style={styles.radioGroup}>
-                      <Text variant="bodyLarge" style={styles.radioLabel}>Public Event</Text>
-                      <View style={styles.radioOptions}>
-                        <View style={styles.radioOption}>
-                          <RadioButton
-                            value="true"
-                            status={values.is_public === true ? 'checked' : 'unchecked'}
-                            onPress={() => setFieldValue('is_public', true)}
-                          />
-                          <Text variant="bodyMedium">Yes</Text>
-                        </View>
-                        <View style={styles.radioOption}>
-                          <RadioButton
-                            value="false"
-                            status={values.is_public === false ? 'checked' : 'unchecked'}
-                            onPress={() => setFieldValue('is_public', false)}
-                          />
-                          <Text variant="bodyMedium">No</Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.radioGroup}>
-                      <Text variant="bodyLarge" style={styles.radioLabel}>Requires Approval</Text>
-                      <View style={styles.radioOptions}>
-                        <View style={styles.radioOption}>
-                          <RadioButton
-                            value="true"
-                            status={values.requires_approval === true ? 'checked' : 'unchecked'}
-                            onPress={() => setFieldValue('requires_approval', true)}
-                          />
-                          <Text variant="bodyMedium">Yes</Text>
-                        </View>
-                        <View style={styles.radioOption}>
-                          <RadioButton
-                            value="false"
-                            status={values.requires_approval === false ? 'checked' : 'unchecked'}
-                            onPress={() => setFieldValue('requires_approval', false)}
-                          />
-                          <Text variant="bodyMedium">No</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </Card.Content>
-                </Card>
+                    {renderRadioGroup('Vaccination Required', 'vaccination_required', values, setFieldValue)}
+                    {renderRadioGroup('Requires Approval', 'requires_approval', values, setFieldValue)}
+                  </GlassCard>
+                </Animated.View>
 
                 {/* Submit Button */}
-                <Button
-                  mode="contained"
-                  onPress={handleSubmit}
-                  loading={isSubmitting}
-                  disabled={isSubmitting}
-                  style={styles.submitButton}
-                  icon="plus"
-                >
-                  {isSubmitting ? 'Creating Event...' : 'Create Event'}
-                </Button>
-              </Animated.View>
+                <Animated.View entering={FadeInDown.delay(700).duration(500)}>
+                  <GlassButton
+                    onPress={handleSubmit}
+                    disabled={isSubmitting}
+                    className="mb-4"
+                  >
+                    {isSubmitting ? (
+                      <View className="flex-row items-center justify-center">
+                        <ActivityIndicator color="#fff" size="small" className="mr-2" />
+                        <Text className="text-white font-bold">Creating Event...</Text>
+                      </View>
+                    ) : (
+                      'Create Event'
+                    )}
+                  </GlassButton>
+                </Animated.View>
+              </View>
             )}
           </Formik>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Snackbar for errors */}
-      <Portal>
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={4000}
-          action={{
-            label: 'Dismiss',
-            onPress: () => setSnackbarVisible(false),
-          }}
-        >
-          {error || 'Something went wrong'}
-        </Snackbar>
-      </Portal>
-    </SafeAreaView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  
-  headerSurface: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  
-  backButton: {
-    marginRight: Spacing.lg,
-  },
-  
-  titleContainer: {
-    flex: 1,
-  },
-  
-  title: {
-    color: Colors.text.primary,
-    marginBottom: -Spacing.xs,
-  },
-  
-  subtitle: {
-    color: Colors.text.secondary,
-  },
-  
-  scrollView: {
-    flex: 1,
-  },
-  
-  scrollContent: {
-    padding: Spacing.lg,
-  },
-  
-  formContainer: {
-    flex: 1,
-  },
-  
-  sectionCard: {
-    marginBottom: Spacing.lg,
-  },
-  
-  sectionTitle: {
-    color: Colors.text.primary,
-    marginBottom: Spacing.lg,
-    paddingBottom: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[200],
-  },
-  
-  input: {
-    marginBottom: Spacing.sm,
-  },
-  
-  photoSection: {
-    alignItems: 'center',
-  },
-  
-  photoContainer: {
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  
-  eventPhoto: {
-    width: 200,
-    height: 112,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  
-  changePhotoButton: {
-    paddingHorizontal: Spacing.lg,
-  },
-  
-  photoPlaceholder: {
-    width: 200,
-    height: 112,
-    marginBottom: Spacing.md,
-  },
-  
-  photoHelpText: {
-    color: Colors.text.tertiary,
-    textAlign: 'center',
-  },
-  
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
-  },
-  
-  halfWidth: {
-    flex: 1,
-  },
-  
-  selectField: {
-    marginBottom: Spacing.lg,
-  },
-  
-  selectLabel: {
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-  },
-  
-  optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  
-  optionChip: {
-    marginBottom: Spacing.sm,
-  },
-  
-  optionChipText: {
-    fontSize: Typography.fontSize.sm,
-  },
-  
-  radioGroup: {
-    marginBottom: Spacing.lg,
-  },
-  
-  radioLabel: {
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  
-  radioOptions: {
-    flexDirection: 'row',
-    gap: Spacing.lg,
-  },
-  
-  radioOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  
-  submitButton: {
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.xl,
-  },
-});
 
 export default CreateEventScreen;

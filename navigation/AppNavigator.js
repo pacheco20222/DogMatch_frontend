@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { View, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +16,7 @@ import EventsScreen from '../screens/EventsScreen.jsx';
 import ProfileScreen from '../screens/ProfileScreen.jsx';
 import CreateDogScreen from '../screens/CreateDogScreen.jsx';
 import CreateEventScreen from '../screens/CreateEventScreen.jsx';
-import RegisterEventsScreen from '../screens/RegisterEventsScreen.jsx';
+import RegisterEventScreen from '../screens/RegisterEventScreen.jsx';
 import MatchesScreen from '../screens/MatchesScreen.jsx';
 import ChatsScreen from '../screens/ChatsScreen.jsx';
 import ChatConversationScreen from '../screens/ChatConversationScreen.jsx';
@@ -52,7 +53,7 @@ function EventsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="EventsList" component={EventsScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
-      <Stack.Screen name="RegisterEvent" component={RegisterEventsScreen} />
+      <Stack.Screen name="RegisterEvent" component={RegisterEventScreen} />
     </Stack.Navigator>
   );
 }
@@ -61,8 +62,16 @@ function EventsStack() {
 function ChatsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ChatsList" component={ChatsScreen} />
-      <Stack.Screen name="ChatConversation" component={ChatConversationScreen} />
+      <Stack.Screen 
+        name="ChatsList" 
+        component={ChatsScreen}
+        options={{ tabBarStyle: { display: 'flex' } }}
+      />
+      <Stack.Screen 
+        name="ChatConversation" 
+        component={ChatConversationScreen}
+        options={{ tabBarStyle: { display: 'none' } }}
+      />
     </Stack.Navigator>
   );
 }
@@ -174,16 +183,35 @@ export default function AppNavigator() {
       <Tab.Screen
         name="Chats"
         component={ChatsStack}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{
-              backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
-              padding: 8,
-              borderRadius: 12,
-            }}>
-              <MessageCircle size={24} color={color} />
-            </View>
-          ),
+        options={({ route }) => {
+          // Use getFocusedRouteNameFromRoute to properly detect nested screen
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'ChatsList';
+          
+          return {
+            tabBarStyle: routeName === 'ChatConversation' 
+              ? { display: 'none' } 
+              : {
+                  backgroundColor: 'transparent',
+                  borderTopWidth: 0,
+                  paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+                  paddingTop: 12,
+                  height: insets.bottom > 0 ? 75 + insets.bottom : 75,
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  elevation: 0,
+                },
+            tabBarIcon: ({ color, focused }) => (
+              <View style={{
+                backgroundColor: focused ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)') : 'transparent',
+                padding: 8,
+                borderRadius: 12,
+              }}>
+                <MessageCircle size={24} color={color} />
+              </View>
+            ),
+          };
         }}
       />
       <Tab.Screen

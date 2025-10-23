@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Card, Text, Chip, Avatar, Menu, IconButton } from 'react-native-paper';
-import { useTheme } from 'react-native-paper';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { MoreVertical } from 'lucide-react-native';
+import { useTheme } from '../../theme/ThemeContext';
+import GlassCard from '../glass/GlassCard';
 
 const DogCard = ({ 
   dog, 
@@ -11,193 +12,91 @@ const DogCard = ({
   showActions = false,
   style 
 }) => {
-  const theme = useTheme();
+  const { isDark } = useTheme();
   const [menuVisible, setMenuVisible] = React.useState(false);
 
-  const getSizeColor = (size) => {
-    switch (size) {
-      case 'small':
-        return theme.colors.primary;
-      case 'medium':
-        return theme.colors.secondary;
-      case 'large':
-        return theme.colors.tertiary;
-      case 'extra_large':
-        return theme.colors.error;
-      default:
-        return theme.colors.outline;
-    }
-  };
-
-  const getEnergyColor = (energy) => {
-    switch (energy) {
-      case 'low':
-        return theme.colors.success;
-      case 'medium':
-        return theme.colors.warning;
-      case 'high':
-        return theme.colors.error;
-      default:
-        return theme.colors.outline;
-    }
-  };
-
   return (
-    <Card 
-      mode="elevated" 
-      style={[styles.card, style]}
-      onPress={onPress}
-    >
-      <Card.Cover 
-        source={{ uri: dog.photo_url || 'https://via.placeholder.com/300x200?text=No+Photo' }}
-        style={styles.cover}
-      />
-      <Card.Content style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.titleContainer}>
-            <Text variant="titleLarge" style={styles.name}>
-              {dog.name}
-            </Text>
-            <Text variant="bodyMedium" style={styles.breed}>
-              {dog.breed}
-            </Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={style}>
+      <GlassCard className="m-2 overflow-hidden">
+        <Image 
+          source={{ uri: dog.photo_url || 'https://via.placeholder.com/300x200?text=No+Photo' }}
+          className="w-full h-40"
+          resizeMode="cover"
+        />
+        <View className="p-4">
+          <View className="flex-row justify-between items-start mb-3">
+            <View className="flex-1">
+              <Text className={`text-xl font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {dog.name}
+              </Text>
+              <Text className={isDark ? 'text-gray-400' : 'text-gray-600'}>
+                {dog.breed}
+              </Text>
+            </View>
+            {showActions && (
+              <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
+                <MoreVertical size={20} color={isDark ? '#fff' : '#000'} />
+              </TouchableOpacity>
+            )}
           </View>
-          {showActions && (
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchor={
-                <IconButton
-                  icon="dots-vertical"
-                  size={20}
-                  onPress={() => setMenuVisible(true)}
-                />
-              }
-            >
-              <Menu.Item onPress={() => {
-                setMenuVisible(false);
-                onEdit?.(dog);
-              }} title="Edit" />
-              <Menu.Item onPress={() => {
-                setMenuVisible(false);
-                onDelete?.(dog);
-              }} title="Delete" />
-            </Menu>
+
+          {menuVisible && showActions && (
+            <View className={`mb-3 p-2 rounded-xl ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+              <TouchableOpacity
+                onPress={() => { setMenuVisible(false); onEdit?.(dog); }}
+                className="py-2 px-3"
+              >
+                <Text className={isDark ? 'text-white' : 'text-gray-900'}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { setMenuVisible(false); onDelete?.(dog); }}
+                className="py-2 px-3"
+              >
+                <Text className="text-error-500">Delete</Text>
+              </TouchableOpacity>
+            </View>
           )}
-        </View>
 
-        <View style={styles.chipsContainer}>
-          <Chip 
-            mode="outlined" 
-            compact
-            style={[styles.chip, { borderColor: getSizeColor(dog.size) }]}
-            textStyle={{ color: getSizeColor(dog.size) }}
-          >
-            {dog.size?.replace('_', ' ').toUpperCase()}
-          </Chip>
-          <Chip 
-            mode="outlined" 
-            compact
-            style={[styles.chip, { borderColor: getEnergyColor(dog.energy_level) }]}
-            textStyle={{ color: getEnergyColor(dog.energy_level) }}
-          >
-            {dog.energy_level?.toUpperCase()}
-          </Chip>
-          <Chip 
-            mode="outlined" 
-            compact
-            style={styles.chip}
-          >
-            {dog.age} years
-          </Chip>
-        </View>
+          <View className="flex-row flex-wrap gap-2 mb-3">
+            <View className="px-3 py-1.5 rounded-full bg-primary-500/20 border border-primary-500/30">
+              <Text className="text-primary-500 text-xs font-semibold">
+                {dog.size?.replace('_', ' ').toUpperCase()}
+              </Text>
+            </View>
+            <View className="px-3 py-1.5 rounded-full bg-secondary-500/20 border border-secondary-500/30">
+              <Text className="text-secondary-500 text-xs font-semibold">
+                {dog.energy_level?.toUpperCase()}
+              </Text>
+            </View>
+            <View className={`px-3 py-1.5 rounded-full ${isDark ? 'bg-white/10 border border-white/20' : 'bg-gray-100 border border-gray-300'}`}>
+              <Text className={`text-xs font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                {dog.age} years
+              </Text>
+            </View>
+          </View>
 
-        <Text variant="bodySmall" style={styles.description} numberOfLines={2}>
-          {dog.description}
-        </Text>
+          <Text className={`mb-3 leading-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} numberOfLines={2}>
+            {dog.description}
+          </Text>
 
-        <View style={styles.footer}>
-          <View style={styles.statusContainer}>
-            <View style={[
-              styles.statusDot, 
-              { backgroundColor: dog.availability_status === 'available' ? theme.colors.success : theme.colors.error }
-            ]} />
-            <Text variant="labelSmall" style={styles.status}>
-              {dog.availability_status?.replace('_', ' ').toUpperCase()}
+          <View className="flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <View className={`w-2 h-2 rounded-full mr-2 ${
+                dog.availability_status === 'available' ? 'bg-success-500' : 'bg-error-500'
+              }`} />
+              <Text className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                {dog.availability_status?.replace('_', ' ').toUpperCase()}
+              </Text>
+            </View>
+            <Text className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              📍 {dog.location}
             </Text>
           </View>
-          <Text variant="labelSmall" style={styles.location}>
-            📍 {dog.location}
-          </Text>
         </View>
-      </Card.Content>
-    </Card>
+      </GlassCard>
+    </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    margin: 8,
-    minHeight: 280,
-  },
-  cover: {
-    height: 160,
-  },
-  content: {
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  titleContainer: {
-    flex: 1,
-  },
-  name: {
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  breed: {
-    color: '#666',
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-    gap: 6,
-  },
-  chip: {
-    marginRight: 6,
-    marginBottom: 4,
-  },
-  description: {
-    color: '#666',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  status: {
-    fontWeight: '500',
-  },
-  location: {
-    color: '#666',
-  },
-});
 
 export default DogCard;

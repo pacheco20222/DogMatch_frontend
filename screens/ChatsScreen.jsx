@@ -101,13 +101,68 @@ const ChatsScreen = ({ navigation }) => {
 
   // Render empty state
   const renderEmptyState = () => (
-    <EmptyState
-      icon="message-outline"
-      title="No conversations yet"
-      description="Start swiping to find matches and begin chatting!"
-      actionLabel="Start Swiping"
-      onAction={() => navigation.navigate('Discover')}
-    />
+    <View className="flex-1 justify-center items-center px-6">
+      <Animated.View 
+        entering={FadeIn.duration(600)}
+        className="items-center"
+      >
+        {/* Icon */}
+        <View className={`w-24 h-24 rounded-full items-center justify-center mb-6 ${
+          isDark ? 'bg-indigo-500/20' : 'bg-indigo-100'
+        }`}>
+          <MessageCircle size={48} color={isDark ? '#818CF8' : '#6366F1'} />
+        </View>
+
+        {/* Title */}
+        <Text className={`text-2xl font-bold text-center mb-3 ${
+          isDark ? 'text-white' : 'text-gray-900'
+        }`}>
+          No conversations yet
+        </Text>
+
+        {/* Description */}
+        <Text className={`text-base text-center mb-8 ${
+          isDark ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          Check your matches to start chatting with dogs you've connected with!
+        </Text>
+
+        {/* Action Buttons */}
+        <View className="w-full max-w-sm gap-3">
+          {/* View Matches Button (Primary) */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Discover', { screen: 'Matches' })}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#6366F1', '#8B5CF6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="px-8 py-4 rounded-2xl"
+            >
+              <Text className="text-white text-center text-lg font-bold">
+                View Matches
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Start Swiping Button (Secondary) */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Discover')}
+            className={`px-8 py-4 rounded-2xl border-2 ${
+              isDark ? 'border-white/20 bg-white/5' : 'border-gray-200 bg-white'
+            }`}
+            activeOpacity={0.8}
+          >
+            <Text className={`text-center text-lg font-semibold ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`}>
+              Start Swiping
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </View>
   );
 
   // Render error state

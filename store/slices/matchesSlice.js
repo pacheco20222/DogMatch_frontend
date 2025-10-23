@@ -9,7 +9,7 @@ export const swipeDog = createAsyncThunk(
       const { auth } = getState();
       const response = await apiFetch('/api/matches/swipe', {
         method: 'POST',
-        body: { dog_id: dogId, action },
+        body: { target_dog_id: dogId, action },
         token: auth.accessToken,
       });
       
@@ -22,10 +22,19 @@ export const swipeDog = createAsyncThunk(
 
 export const fetchMatches = createAsyncThunk(
   'matches/fetchMatches',
-  async (_, { getState, rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
       const { auth } = getState();
-      const response = await apiFetch('/api/matches', {
+      
+      // Build query string if status is provided
+      const queryParams = new URLSearchParams();
+      if (params.status) {
+        queryParams.append('status', params.status);
+      }
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/api/matches/?${queryString}` : '/api/matches/';
+      
+      const response = await apiFetch(endpoint, {
         token: auth.accessToken,
       });
       
@@ -45,7 +54,9 @@ export const fetchPendingSwipes = createAsyncThunk(
         token: auth.accessToken,
       });
       
-      return response.pending_swipes || response;
+      console.log('📥 Pending swipes response:', response);
+      
+      return response.pending_matches || response.pending_swipes || [];
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch pending swipes');
     }
@@ -54,16 +65,16 @@ export const fetchPendingSwipes = createAsyncThunk(
 
 export const respondToSwipe = createAsyncThunk(
   'matches/respond',
-  async ({ swipeId, response }, { getState, rejectWithValue }) => {
+  async ({ matchId, action }, { getState, rejectWithValue }) => {
     try {
       const { auth } = getState();
-      const result = await apiFetch(`/api/matches/${swipeId}/respond`, {
+      const result = await apiFetch(`/api/matches/${matchId}/respond`, {
         method: 'POST',
-        body: { response },
+        body: { action },
         token: auth.accessToken,
       });
       
-      return { swipeId, response, result };
+      return { matchId, action, result };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to respond to swipe');
     }

@@ -13,8 +13,8 @@ import LoadingScreen from './components/ui/LoadingScreen';
 export default function App() {
   return (
     <ReduxProvider store={store}>
-      <PersistGate loading={<LoadingScreen />} persistor={persistor}>
-        <ThemeProvider>
+      <ThemeProvider>
+        <PersistGate loading={<LoadingScreen />} persistor={persistor}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>
               <AuthInitializer>
@@ -24,8 +24,8 @@ export default function App() {
               </AuthInitializer>
             </SafeAreaProvider>
           </GestureHandlerRootView>
-        </ThemeProvider>
-      </PersistGate>
+        </PersistGate>
+      </ThemeProvider>
     </ReduxProvider>
   );
 }

@@ -151,17 +151,21 @@ const MyDogsScreen = ({ navigation }) => {
             
             {/* Size and Gender Pills */}
             <View className="flex-row space-x-2">
-              <View className={`px-2 py-1 rounded-lg flex-row items-center ${
-                isDark ? 'bg-white/10' : 'bg-gray-100'
-              }`}>
+              <View 
+                key="size-pill"
+                className={`px-2 py-1 rounded-lg flex-row items-center ${
+                  isDark ? 'bg-white/10' : 'bg-gray-100'
+                }`}>
                 <Ruler size={12} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
                 <Text className={`text-xs ml-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {dog.size}
                 </Text>
               </View>
-              <View className={`px-2 py-1 rounded-lg flex-row items-center ${
-                isDark ? 'bg-white/10' : 'bg-gray-100'
-              }`}>
+              <View 
+                key="gender-pill"
+                className={`px-2 py-1 rounded-lg flex-row items-center ${
+                  isDark ? 'bg-white/10' : 'bg-gray-100'
+                }`}>
                 <UserIcon size={12} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
                 <Text className={`text-xs ml-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {dog.gender}
@@ -183,6 +187,7 @@ const MyDogsScreen = ({ navigation }) => {
         {/* Action Buttons */}
         <View className="flex-row space-x-2">
           <TouchableOpacity
+            key="edit-button"
             onPress={() => handleEditDog(dog)}
             activeOpacity={0.7}
             className="flex-1"
@@ -196,6 +201,7 @@ const MyDogsScreen = ({ navigation }) => {
           </TouchableOpacity>
           
           <TouchableOpacity
+            key="delete-button"
             onPress={() => handleDeleteDog(dog.id, dog.name)}
             activeOpacity={0.7}
             className="flex-1"
@@ -294,15 +300,33 @@ const MyDogsScreen = ({ navigation }) => {
       <SafeAreaView className="flex-1" edges={['top']}>
         {/* Header */}
         <Animated.View entering={FadeIn.duration(600)} className="px-6 py-4">
-          <GradientText
-            colors={['#6366F1', '#EC4899', '#14B8A6']}
-            className="text-3xl font-bold mb-1"
-          >
-            My Dogs
-          </GradientText>
-          <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Manage your dog profiles
-          </Text>
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-1">
+              <GradientText
+                colors={['#6366F1', '#EC4899', '#14B8A6']}
+                className="text-3xl font-bold mb-1"
+              >
+                My Dogs
+              </GradientText>
+              <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Manage your dog profiles
+              </Text>
+            </View>
+            {myDogs.length > 0 && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('AddDog')}
+                activeOpacity={0.7}
+                className={`px-4 py-2.5 rounded-xl flex-row items-center ${
+                  isDark ? 'bg-primary-500/20' : 'bg-primary-500'
+                }`}
+              >
+                <Plus size={20} className={isDark ? 'text-primary-400' : 'text-white'} />
+                <Text className={`text-sm font-semibold ml-1 ${isDark ? 'text-primary-400' : 'text-white'}`}>
+                  Add Dog
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </Animated.View>
 
         <ScrollView
