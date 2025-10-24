@@ -11,72 +11,62 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MessageCircle, RefreshCw, WifiOff, Wifi } from 'lucide-react-native';
+import { MessageCircle, RefreshCw, Plus } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { useAuth } from '../hooks/useAuth';
-import { useSocket } from '../hooks/useSocket';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchConversations } from '../store/slices/chatsSlice';
-import { useChatService } from '../services/chatService';
 import { useTheme } from '../theme/ThemeContext';
 import ChatListItem from '../components/ui/ChatListItem';
 import EmptyState from '../components/ui/EmptyState';
-import { GlassCard } from '../components/glass';
+import { GlassCard, FloatingActionButton } from '../components/glass';
 
 const ChatsScreen = ({ navigation }) => {
-  const { accessToken } = useAuth();
-  const { isConnected, connectionError, reconnect, connect } = useSocket();
-  const chatService = useChatService();
   const dispatch = useAppDispatch();
   const { conversations, loading, error } = useAppSelector(state => state.chats);
   const [refreshing, setRefreshing] = useState(false);
-  const hasLoadedRef = useRef(false);
+  const isLoadingRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(true);
-
-  // Fetch conversations from API
-  const loadConversations = useCallback(async () => {
-    try {
-      await dispatch(fetchConversations());
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    }
-  }, [dispatch]);
 
   // Load conversations on mount and focus
   useFocusEffect(
     useCallback(() => {
-      // Only load if not already loading and not already loaded
-      if (!loading && !hasLoadedRef.current) {
-        console.log('🔌 ChatsScreen: Loading conversations');
-        hasLoadedRef.current = true;
-        loadConversations().finally(() => {
+      // Prevent multiple simultaneous loads
+      if (isLoadingRef.current) {
+        console.log('🔌 ChatsScreen: Already loading, skipping...');
+        return;
+      }
+
+      console.log('🔌 ChatsScreen: Screen focused, refreshing conversations');
+      isLoadingRef.current = true;
+      
+      // Load conversations
+      dispatch(fetchConversations())
+        .finally(() => {
+          isLoadingRef.current = false;
           setIsInitializing(false);
         });
-      } else if (hasLoadedRef.current) {
-        // If already loaded, just set initializing to false
-        setIsInitializing(false);
-      }
       
-      // Ensure socket is connected when entering chats
-      if (!isConnected) {
-        console.log('🔌 ChatsScreen: Socket not connected, attempting to connect');
-        connect();
-      }
-    }, [loading, isConnected, loadConversations, connect])
+      // Cleanup function - runs when screen loses focus
+      return () => {
+        console.log('🔌 ChatsScreen: Screen unfocused');
+      };
+    }, [dispatch])
   );
 
   // Socket listeners are now handled by Redux middleware
   // Real-time updates are managed through Redux state
 
   // Handle pull-to-refresh
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    hasLoadedRef.current = false; // Reset the ref to allow reloading
-    setIsInitializing(true); // Reset initialization state
-    loadConversations().finally(() => {
-      setIsInitializing(false);
-    });
-  }, [loadConversations]);
+    try {
+      await dispatch(fetchConversations()).unwrap();
+    } catch (error) {
+      console.error('Error refreshing conversations:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch]);
 
   // Handle conversation tap
   const handleConversationPress = (conversation) => {
@@ -178,7 +168,8 @@ const ChatsScreen = ({ navigation }) => {
 
   const { isDark } = useTheme();
 
-  if (loading || isInitializing) {
+  // Show loading only on initial load, not during refresh
+  if ((loading && !conversations.length) || isInitializing) {
     return (
       <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -251,20 +242,6 @@ const ChatsScreen = ({ navigation }) => {
 
             {/* Header Actions */}
             <View className="flex-row items-center gap-2">
-              {/* Connection Status */}
-              {!isConnected && (
-                <TouchableOpacity
-                  onPress={connect}
-                  className={`px-3 py-2 rounded-full flex-row items-center ${
-                    isDark ? 'bg-red-500/20' : 'bg-red-100'
-                  }`}
-                  activeOpacity={0.7}
-                >
-                  <WifiOff size={16} className="text-red-500" />
-                  <Text className="text-red-500 text-xs font-semibold ml-1.5">Offline</Text>
-                </TouchableOpacity>
-              )}
-
               {/* Refresh Button */}
               <TouchableOpacity
                 onPress={onRefresh}
@@ -302,6 +279,12 @@ const ChatsScreen = ({ navigation }) => {
           />
         )}
       </SafeAreaView>
+
+      {/* Floating Action Button to create new chat */}
+      <FloatingActionButton
+        icon={Plus}
+        onPress={() => navigation.navigate('Discover', { screen: 'Matches' })}
+      />
     </View>
   );
 };

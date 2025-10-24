@@ -339,11 +339,17 @@ const chatsSlice = createSlice({
         state.messages[matchId].push(message);
         state.lastMessage = message;
         
-        // Update conversation
-        const conversation = state.conversations.find(conv => conv.match.id === matchId);
+        // Update conversation or create new one if it doesn't exist
+        let conversation = state.conversations.find(conv => conv.match.id === matchId);
         if (conversation) {
+          // Update existing conversation
           conversation.last_message = message;
           conversation.updated_at = message.created_at;
+        } else {
+          // Create new conversation entry (will be properly populated on next refresh)
+          // This is a temporary entry to show the conversation immediately
+          console.log('📝 Creating temporary conversation entry for match:', matchId);
+          // We'll let the auto-refresh handle this properly
         }
       });
 

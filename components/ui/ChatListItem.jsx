@@ -57,8 +57,26 @@ const ChatListItem = React.memo(({
   const isOnline = conversation.match?.other_dog?.owner?.is_online || false;
   const lastMessage = conversation.last_message;
   const otherUser = conversation.match?.other_dog?.owner;
+  const otherDog = conversation.match?.other_dog;
   const unreadCount = getUnreadCount();
   const hasUnread = unreadCount > 0;
+
+  // Get profile photo URL from owner or dog
+  const getProfilePhotoUrl = () => {
+    // Try to get from owner first
+    if (otherUser?.profile_photo_url) {
+      return otherUser.profile_photo_url;
+    }
+    // Fall back to dog photo
+    if (otherDog?.primary_photo_url && otherDog.primary_photo_url !== '/static/images/default-dog.jpg') {
+      return otherDog.primary_photo_url;
+    }
+    if (otherDog?.photos && otherDog.photos.length > 0) {
+      return otherDog.photos[0].url;
+    }
+    // Default placeholder
+    return 'https://via.placeholder.com/56x56?text=' + (otherUser?.username?.[0]?.toUpperCase() || 'U');
+  };
 
   return (
     <TouchableOpacity
@@ -71,9 +89,7 @@ const ChatListItem = React.memo(({
           {/* Avatar */}
           <View className="relative mr-4">
             <Image
-              source={{ 
-                uri: otherUser?.profile_photo_url || 'https://via.placeholder.com/56x56?text=U' 
-              }}
+              source={{ uri: getProfilePhotoUrl() }}
               className="w-14 h-14 rounded-full"
             />
             {isOnline && (
