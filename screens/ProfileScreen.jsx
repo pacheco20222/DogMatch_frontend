@@ -34,6 +34,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { uploadProfilePhoto, clearError } from '../store/slices/userSlice';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import { GlassCard, GlassButton } from '../components/glass';
 
 const ProfileScreen = ({ navigation }) => {
@@ -96,7 +97,7 @@ const ProfileScreen = ({ navigation }) => {
         await uploadProfilePhoto(result.assets[0]);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      logger.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
@@ -111,7 +112,7 @@ const ProfileScreen = ({ navigation }) => {
       
       Alert.alert('Success!', 'Profile photo updated successfully!');
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      logger.error('Error uploading photo:', error);
       setSnackbarVisible(true);
     }
   };

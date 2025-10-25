@@ -22,6 +22,7 @@ import { fetchMessages, sendMessage, markMessageAsRead } from '../store/slices/c
 import { useChatService } from '../services/chatService';
 import { apiFetch } from '../api/client';
 import { store } from '../store';
+import { logger } from '../utils/logger';
 import { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
@@ -64,14 +65,14 @@ const ChatConversationScreen = ({ navigation, route }) => {
   // Handle socket connection changes
   useEffect(() => {
     if (isConnected) {
-      console.log('🔌 ChatConversationScreen: Socket connected, joining match room', matchId);
+      logger.log('🔌 ChatConversationScreen: Socket connected, joining match room', matchId);
       joinMatch(matchId);
     }
     
     return () => {
       // Leave match room when component unmounts
       if (isConnected) {
-        console.log('🔌 ChatConversationScreen: Component unmounting, leaving match room', matchId);
+        logger.log('🔌 ChatConversationScreen: Component unmounting, leaving match room', matchId);
         leaveMatch(matchId);
       }
     };
@@ -86,14 +87,14 @@ const ChatConversationScreen = ({ navigation, route }) => {
       await dispatch(fetchMessages(matchId));
       scrollToBottom();
     } catch (error) {
-      console.error('Error loading messages:', error);
+      logger.error('Error loading messages:', error);
     }
   };
 
   // Mark all messages as read
   const markAllMessagesAsRead = async () => {
     try {
-      console.log('📖 Marking all messages as read for match', matchId);
+      logger.log('📖 Marking all messages as read for match', matchId);
       
       // Get current messages and mark unread ones as read
       const currentMessages = messages.filter(msg => 
@@ -105,13 +106,13 @@ const ChatConversationScreen = ({ navigation, route }) => {
         try {
           await dispatch(markMessageAsRead(message.id));
         } catch (error) {
-          console.error('Error marking message as read:', error);
+          logger.error('Error marking message as read:', error);
         }
       }
       
-      console.log('✅ All messages marked as read for match', matchId);
+      logger.log('✅ All messages marked as read for match', matchId);
     } catch (error) {
-      console.error('Error marking messages as read:', error);
+      logger.error('Error marking messages as read:', error);
     }
   };
 
@@ -125,7 +126,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
         msg.id === messageId ? { ...msg, is_read: true } : msg
       ));
     } catch (error) {
-      console.error('Error marking message as read:', error);
+      logger.error('Error marking message as read:', error);
     }
   };
 
@@ -166,7 +167,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
         }
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message:', error);
       setSending(false);
       Alert.alert('Error', 'Failed to send message');
     }

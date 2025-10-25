@@ -26,6 +26,7 @@ import Animated, {
 import { useAuth } from '../hooks/useAuth';
 import { registerSchema } from '../validation/authSchemas';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import { GlassCard, GlassInput, GlassButton, GradientText } from '../components/glass';
 
 const RegisterScreen = ({ navigation }) => {
@@ -53,7 +54,7 @@ const RegisterScreen = ({ navigation }) => {
       await register(values);
       // Navigation handled by AuthNavigator
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       Alert.alert('Registration Failed', error.message || 'Unable to create account. Please try again.');
       setFieldError('general', error.message);
     } finally {

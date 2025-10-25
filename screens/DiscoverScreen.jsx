@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   View, 
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +28,7 @@ import { fetchDiscoverDogs, clearError } from '../store/slices/dogsSlice';
 import { swipeDog, fetchPendingSwipes, clearError as clearMatchesError } from '../store/slices/matchesSlice';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import { GlassCard, GradientText } from '../components/glass';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -48,7 +50,7 @@ const DiscoverScreen = ({ navigation }) => {
     try {
       await dispatch(fetchDiscoverDogs()).unwrap();
     } catch (e) {
-      console.error('Failed to load discover dogs:', e);
+      logger.error('Failed to load discover dogs:', e);
     }
   }, [dispatch]);
 
@@ -100,13 +102,13 @@ const DiscoverScreen = ({ navigation }) => {
       }
       
     } catch (error) {
-      console.error('Error swiping:', error);
+      logger.error('Error swiping:', error);
       
       // Handle specific error cases
       if (error.message && error.message.includes('already swiped')) {
-        console.log('Already swiped on this dog, continuing...');
+        logger.log('Already swiped on this dog, continuing...');
       } else if (error.status === 400) {
-        console.log('Swipe request failed (likely already swiped), continuing...');
+        logger.log('Swipe request failed (likely already swiped), continuing...');
       } else {
         Alert.alert('Error', 'Failed to process swipe. Please try again.');
       }
@@ -118,7 +120,7 @@ const DiscoverScreen = ({ navigation }) => {
   // Render individual dog card with glass morphism design
   const renderCard = useCallback((dog) => {
     // Debug: Log dog data to see photo structure
-    console.log('Rendering dog card:', {
+    logger.log('Rendering dog card:', {
       name: dog.name,
       photos: dog.photos,
       primary_photo_url: dog.primary_photo_url
@@ -131,35 +133,35 @@ const DiscoverScreen = ({ navigation }) => {
     if (dog.primary_photo_url && dog.primary_photo_url !== '/static/images/default-dog.jpg') {
       // Use primary photo URL (should be S3 signed URL or local path)
       imageUrl = dog.primary_photo_url;
-      console.log('Using primary_photo_url:', imageUrl);
+      logger.log('Using primary_photo_url:', imageUrl);
     } else if (dog.photos && dog.photos.length > 0) {
       // Fallback to first photo in photos array (should be S3 signed URL)
       imageUrl = dog.photos[0].url;
-      console.log('Using photos[0].url:', imageUrl);
+      logger.log('Using photos[0].url:', imageUrl);
     }
 
     return (
-      <View style={{ width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 24, overflow: 'hidden', backgroundColor: '#1E293B' }}>
+      <View style={styles.cardContainer}>
         {/* Dog Photo */}
         <Image
           source={{ uri: imageUrl }}
-          style={{ width: '100%', height: '100%' }}
+          style={styles.cardImage}
           resizeMode="cover"
           onError={(e) => {
-            console.log('❌ Image load error for', dog.name, ':', e.nativeEvent.error);
-            console.log('Failed URL:', imageUrl);
+            logger.log('❌ Image load error for', dog.name, ':', e.nativeEvent.error);
+            logger.log('Failed URL:', imageUrl);
           }}
-          onLoad={() => console.log('✅ Image loaded successfully for:', dog.name)}
+          onLoad={() => logger.log('✅ Image loaded successfully for:', dog.name)}
         />
         
         {/* Gradient overlay for better text readability */}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.8)']}
-          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200 }}
+          style={styles.gradientOverlay}
         />
 
         {/* Dog Info - Glass Card at bottom */}
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
+        <View style={styles.dogInfoContainer}>
           <View className="mb-3">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-white text-3xl font-bold flex-1">
@@ -213,54 +215,21 @@ const DiscoverScreen = ({ navigation }) => {
 
   // Overlay components for swipe feedback - PRESERVE THESE
   const OverlayLabelRight = useCallback(() => (
-    <View style={{ 
-      width: 140, 
-      height: 140, 
-      borderRadius: 70, 
-      backgroundColor: 'rgba(99, 102, 241, 0.9)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-    }}>
+    <View style={styles.overlayLabelLike}>
       <Heart size={56} color="#fff" fill="#fff" />
       <Text className="text-white text-xl font-bold mt-2">LIKE</Text>
     </View>
   ), []);
 
   const OverlayLabelLeft = useCallback(() => (
-    <View style={{ 
-      width: 140, 
-      height: 140, 
-      borderRadius: 70, 
-      backgroundColor: 'rgba(239, 68, 68, 0.9)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-    }}>
+    <View style={styles.overlayLabelPass}>
       <X size={56} color="#fff" strokeWidth={3} />
       <Text className="text-white text-xl font-bold mt-2">PASS</Text>
     </View>
   ), []);
 
   const OverlayLabelTop = useCallback(() => (
-    <View style={{ 
-      width: 140, 
-      height: 140, 
-      borderRadius: 70, 
-      backgroundColor: 'rgba(236, 72, 153, 0.9)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-    }}>
+    <View style={styles.overlayLabelSuperLike}>
       <Star size={56} color="#fff" fill="#fff" />
       <Text className="text-white text-base font-bold mt-2">SUPER LIKE</Text>
     </View>
@@ -506,5 +475,69 @@ const DiscoverScreen = ({ navigation }) => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  cardContainer: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+  },
+  dogInfoContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+  },
+  overlayLabelLike: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  overlayLabelPass: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  overlayLabelSuperLike: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(236, 72, 153, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+});
 
 export default DiscoverScreen;

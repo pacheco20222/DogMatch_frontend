@@ -4,7 +4,7 @@ import { MoreVertical } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import GlassCard from '../glass/GlassCard';
 
-const DogCard = ({ 
+const DogCard = React.memo(({ 
   dog, 
   onPress, 
   onEdit, 
@@ -96,7 +96,8 @@ const DogCard = ({
       </GlassCard>
     </TouchableOpacity>
   );
-};
+});
 
+DogCard.displayName = 'DogCard';
 
 export default DogCard;

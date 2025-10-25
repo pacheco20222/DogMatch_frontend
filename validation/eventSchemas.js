@@ -4,63 +4,51 @@ import * as Yup from 'yup';
 export const createEventSchema = Yup.object().shape({
   title: Yup.string()
     .min(3, 'Event title must be at least 3 characters')
-    .max(100, 'Event title must be less than 100 characters')
+    .max(200, 'Event title must be less than 200 characters')
     .required('Event title is required'),
   description: Yup.string()
     .min(20, 'Event description must be at least 20 characters')
-    .max(1000, 'Event description must be less than 1000 characters')
+    .max(2000, 'Event description must be less than 2000 characters')
     .required('Event description is required'),
   category: Yup.string()
     .oneOf(['meetup', 'training', 'adoption', 'competition', 'social', 'educational'], 'Invalid event category')
     .required('Event category is required'),
-  event_date: Yup.date()
-    .min(new Date(), 'Event date must be in the future')
-    .required('Event date is required'),
-  start_time: Yup.string()
-    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter a valid time (HH:MM)')
-    .required('Start time is required'),
-  end_time: Yup.string()
-    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter a valid time (HH:MM)')
-    .required('End time is required')
-    .when('start_time', {
-      is: (val) => val != null,
-      then: (schema) => schema.test('end-after-start', 'End time must be after start time', function(value) {
-        const { start_time } = this.parent;
-        if (!start_time || !value) return true;
-        
-        const start = new Date(`2000-01-01T${start_time}`);
-        const end = new Date(`2000-01-01T${value}`);
-        return end > start;
-      }),
+  event_date: Yup.string()
+    .required('Event date is required')
+    .test('is-future-date', 'Event date must be in the future', function(value) {
+      if (!value) return false;
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate >= today;
     }),
+  event_time: Yup.string()
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter a valid time (HH:MM)')
+    .required('Event time is required'),
   location: Yup.string()
     .min(5, 'Location must be at least 5 characters')
-    .max(200, 'Location must be less than 200 characters')
+    .max(300, 'Location must be less than 300 characters')
     .required('Location is required'),
-  capacity: Yup.number()
-    .min(1, 'Capacity must be at least 1')
-    .max(1000, 'Capacity must be less than 1000')
-    .required('Capacity is required'),
+  max_participants: Yup.number()
+    .min(1, 'Maximum participants must be at least 1')
+    .max(1000, 'Maximum participants must be less than 1000')
+    .nullable(),
   price: Yup.number()
     .min(0, 'Price cannot be negative')
-    .max(10000, 'Price must be less than $10,000')
+    .max(100000, 'Price must be less than 100,000')
     .required('Price is required'),
-  requirements: Yup.string()
-    .max(500, 'Requirements must be less than 500 characters')
+  special_requirements: Yup.string()
+    .max(500, 'Special requirements must be less than 500 characters')
     .nullable(),
   contact_email: Yup.string()
     .email('Please enter a valid email address')
-    .max(100, 'Email must be less than 100 characters')
+    .max(255, 'Email must be less than 255 characters')
     .nullable(),
   contact_phone: Yup.string()
     .matches(/^[0-9+\-\s()]*$/, 'Please enter a valid phone number')
     .max(20, 'Phone number must be less than 20 characters')
     .nullable(),
-  website: Yup.string()
-    .url('Please enter a valid website URL')
-    .max(200, 'Website URL must be less than 200 characters')
-    .nullable(),
-  is_public: Yup.boolean()
+  vaccination_required: Yup.boolean()
     .default(true),
   requires_approval: Yup.boolean()
     .default(false),

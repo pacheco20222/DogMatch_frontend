@@ -15,6 +15,7 @@ import uiReducer from './slices/uiSlice';
 
 // Import middleware
 import { createSocketMiddleware } from './middleware/socketMiddleware';
+import authErrorMiddleware from './middleware/authErrorMiddleware';
 
 // Persist configuration
 const persistConfig = {
@@ -46,13 +47,11 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
-    }).concat(createSocketMiddleware()),
+    })
+      .concat(authErrorMiddleware)
+      .concat(createSocketMiddleware()),
   devTools: __DEV__,
 });
 
 // Persistor
 export const persistor = persistStore(store);
-
-// Types for TypeScript-style development
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;

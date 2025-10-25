@@ -206,7 +206,9 @@ const EventsScreen = ({ navigation }) => {
                   <Text className={`text-xs ${
                     isDark ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    by {event.organizer?.full_name || event.organizer?.username || 'Unknown'}
+                    by {event.organizer?.user_type === 'admin' 
+                      ? 'DogMatch' 
+                      : (event.organizer?.full_name || event.organizer?.username || 'Unknown')}
                   </Text>
                 </View>
                 

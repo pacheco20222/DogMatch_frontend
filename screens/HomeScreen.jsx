@@ -24,6 +24,7 @@ import Animated, {
 import { useAuth } from '../hooks/useAuth';
 import { getUserTypeDisplayName, getUserTypeColor } from '../utils/permissions';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { logger } from '../utils/logger';
 import { fetchMatches } from '../store/slices/matchesSlice';
 import { fetchMyDogs } from '../store/slices/dogsSlice';
 import { fetchEvents } from '../store/slices/eventsSlice';
@@ -60,7 +61,7 @@ const HomeScreen = ({ navigation }) => {
         dispatch(fetchEvents())
       ]);
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      logger.error('Error fetching stats:', error);
     } finally {
       setRefreshing(false);
     }

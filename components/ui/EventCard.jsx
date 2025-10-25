@@ -5,7 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import GlassCard from '../glass/GlassCard';
 import GlassButton from '../glass/GlassButton';
 
-const EventCard = ({ 
+const EventCard = React.memo(({ 
   event, 
   onPress, 
   onRegister, 
@@ -149,7 +149,8 @@ const EventCard = ({
       </GlassCard>
     </TouchableOpacity>
   );
-};
+});
 
+EventCard.displayName = 'EventCard';
 
 export default EventCard;

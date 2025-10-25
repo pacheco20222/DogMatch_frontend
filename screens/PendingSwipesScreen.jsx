@@ -29,6 +29,7 @@ import Animated, {
 import { useAuth } from '../hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchPendingSwipes, respondToSwipe } from '../store/slices/matchesSlice';
+import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
 import EmptyState from '../components/ui/EmptyState';
 import { GlassCard } from '../components/glass';
@@ -48,11 +49,11 @@ const PendingSwipesScreen = ({ navigation }) => {
   // Fetch pending swipes from API
   const loadPendingSwipes = useCallback(async () => {
     try {
-      console.log('🔄 Loading pending swipes...');
-      const result = await dispatch(fetchPendingSwipes());
-      console.log('✅ Pending swipes result:', result);
+      logger.log('🔄 Loading pending swipes...');
+      const result = await dispatch(fetchPendingSwipes()).unwrap();
+      logger.log('✅ Pending swipes result:', result);
     } catch (error) {
-      console.error('❌ Error fetching pending swipes:', error);
+      logger.error('❌ Error fetching pending swipes:', error);
     }
   }, [dispatch]);
 
@@ -118,7 +119,7 @@ const PendingSwipesScreen = ({ navigation }) => {
         Alert.alert('Error', response.error || response.payload?.message || 'Failed to respond to swipe');
       }
     } catch (error) {
-      console.error('Error responding to swipe:', error);
+      logger.error('Error responding to swipe:', error);
       Alert.alert('Error', 'Failed to respond to swipe');
     } finally {
       setRespondingTo(null);

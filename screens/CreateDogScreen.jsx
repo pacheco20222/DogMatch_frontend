@@ -19,6 +19,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { createDog, uploadDogPhoto, clearError } from '../store/slices/dogsSlice';
 import { createDogSchema } from '../validation/dogSchemas';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import GlassCard from '../components/glass/GlassCard';
 import GlassInput from '../components/glass/GlassInput';
 import GlassButton from '../components/glass/GlassButton';
@@ -73,7 +74,7 @@ const CreateDogScreen = ({ navigation }) => {
 
       // Upload photo if one was selected
       if (selectedImage && dog.id) {
-        console.log('Uploading photo for dog:', dog.id);
+        logger.log('Uploading photo for dog:', dog.id);
         try {
           const photoResult = await dispatch(uploadDogPhoto({
             dogId: dog.id,
@@ -83,13 +84,13 @@ const CreateDogScreen = ({ navigation }) => {
               name: 'dog_photo.jpg',
             }
           })).unwrap();
-          console.log('Photo upload success:', photoResult);
+          logger.log('Photo upload success:', photoResult);
         } catch (photoError) {
-          console.error('Photo upload failed:', photoError);
+          logger.error('Photo upload failed:', photoError);
           Alert.alert('Photo Upload Failed', 'The dog was created but the photo failed to upload. You can add a photo later.');
         }
       } else {
-        console.log('No photo selected or dog.id missing:', { selectedImage: !!selectedImage, dogId: dog?.id });
+        logger.log('No photo selected or dog.id missing:', { selectedImage: !!selectedImage, dogId: dog?.id });
       }
 
       Alert.alert(
@@ -104,7 +105,7 @@ const CreateDogScreen = ({ navigation }) => {
       );
 
     } catch (error) {
-      console.error('Error creating dog:', error);
+      logger.error('Error creating dog:', error);
       Alert.alert('Error', error.message || 'Failed to create dog profile. Please try again.');
     } finally {
       setSubmitting(false);

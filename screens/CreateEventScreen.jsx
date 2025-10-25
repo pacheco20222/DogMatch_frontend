@@ -11,14 +11,16 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Formik } from 'formik';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { ArrowLeft, Camera, Calendar, MapPin, Users, DollarSign } from 'lucide-react-native';
+import { ArrowLeft, Camera, Calendar, MapPin, Users, DollarSign, Clock } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { createEvent, uploadEventPhoto, clearError } from '../store/slices/eventsSlice';
 import { createEventSchema } from '../validation/eventSchemas';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import GlassCard from '../components/glass/GlassCard';
 import GlassInput from '../components/glass/GlassInput';
 import GlassButton from '../components/glass/GlassButton';
@@ -27,6 +29,8 @@ const CreateEventScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector(state => state.events);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -55,7 +59,7 @@ const CreateEventScreen = ({ navigation }) => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.8,
@@ -68,11 +72,30 @@ const CreateEventScreen = ({ navigation }) => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      logger.log('=== CREATE EVENT STARTED ===');
+      logger.log('Form values:', values);
+      
+      // Combine date and time into a single datetime string
+      const eventDateTime = `${values.event_date}T${values.event_time}:00`;
+      logger.log('Combined datetime:', eventDateTime);
+      
+      // Create event data with combined datetime
+      const eventData = {
+        ...values,
+        event_date: eventDateTime
+      };
+      delete eventData.event_time; // Remove the separate time field
+      
+      logger.log('Event data to send:', eventData);
+      
       // Create the event
-      const event = await dispatch(createEvent(values)).unwrap();
+      logger.log('Dispatching createEvent...');
+      const event = await dispatch(createEvent(eventData)).unwrap();
+      logger.log('Event created successfully:', event);
 
       // Upload photo if one was selected
       if (selectedImage && event.id) {
+        logger.log('Uploading event photo...');
         try {
           await dispatch(uploadEventPhoto({
             eventId: event.id,
@@ -82,8 +105,9 @@ const CreateEventScreen = ({ navigation }) => {
               name: 'event_photo.jpg',
             }
           })).unwrap();
+          logger.log('Photo uploaded successfully');
         } catch (photoError) {
-          console.log('Photo upload failed:', photoError);
+          logger.log('Photo upload failed:', photoError);
         }
       }
 
@@ -99,11 +123,52 @@ const CreateEventScreen = ({ navigation }) => {
       );
 
     } catch (error) {
-      console.error('Error creating event:', error);
+      logger.error('=== ERROR CREATING EVENT ===');
+      logger.error('Error object:', error);
+      logger.error('Error message:', error.message);
+      logger.error('Error stack:', error.stack);
       Alert.alert('Error', error.message || 'Failed to create event. Please try again.');
     } finally {
+      logger.log('Setting submitting to false');
       setSubmitting(false);
     }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return 'Select Date';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const formatDisplayTime = (timeString) => {
+    if (!timeString) return 'Select Time';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   const renderSelectField = (label, field, options, values, setFieldValue, errors, touched) => (
@@ -193,6 +258,7 @@ const CreateEventScreen = ({ navigation }) => {
               description: '',
               category: 'meetup',
               event_date: '',
+              event_time: '',
               location: '',
               max_participants: '',
               price: '0',
@@ -216,10 +282,10 @@ const CreateEventScreen = ({ navigation }) => {
                       </Text>
                       
                       {selectedImage ? (
-                        <View className="items-center">
+                        <View className="items-center w-full">
                           <Image
                             source={{ uri: selectedImage.uri }}
-                            className="w-full h-48 rounded-xl mb-4"
+                            style={{ width: '100%', height: 192, borderRadius: 12, marginBottom: 16 }}
                             resizeMode="cover"
                           />
                           <GlassButton
@@ -287,18 +353,138 @@ const CreateEventScreen = ({ navigation }) => {
                     <View className="flex-row items-center mb-4">
                       <Calendar size={20} color={isDark ? '#fff' : '#000'} className="mr-2" />
                       <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        Date & Location
+                        Date & Time
                       </Text>
                     </View>
                     
-                    <GlassInput
-                      label="Event Date & Time"
-                      placeholder="YYYY-MM-DD HH:MM (e.g., 2025-12-31 14:00)"
-                      value={values.event_date}
-                      onChangeText={handleChange('event_date')}
-                      onBlur={handleBlur('event_date')}
-                      error={touched.event_date && errors.event_date}
-                    />
+                    {/* Date Picker */}
+                    <View className="mb-4">
+                      <Text className={`text-base font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Event Date
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowDatePicker(true)}
+                        className={`flex-row items-center justify-between p-4 rounded-xl border ${
+                          isDark 
+                            ? 'bg-white/10 border-white/20' 
+                            : 'bg-white border-gray-300'
+                        }`}
+                      >
+                        <View className="flex-row items-center">
+                          <Calendar size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                          <Text className={`ml-3 ${
+                            values.event_date 
+                              ? (isDark ? 'text-white' : 'text-gray-900')
+                              : (isDark ? 'text-gray-400' : 'text-gray-500')
+                          }`}>
+                            {formatDisplayDate(values.event_date)}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {touched.event_date && errors.event_date && (
+                        <Text className="text-error-500 text-sm mt-1">{errors.event_date}</Text>
+                      )}
+                      
+                      {/* Date Picker - inline for iOS */}
+                      {showDatePicker && (
+                        <View className="mt-3">
+                          <DateTimePicker
+                            value={values.event_date ? new Date(values.event_date) : new Date()}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={(event, selectedDate) => {
+                              if (Platform.OS === 'android') {
+                                setShowDatePicker(false);
+                                if (event.type === 'set' && selectedDate) {
+                                  setFieldValue('event_date', formatDate(selectedDate));
+                                }
+                              } else if (Platform.OS === 'ios') {
+                                // On iOS, update the value immediately as user scrolls
+                                if (selectedDate) {
+                                  setFieldValue('event_date', formatDate(selectedDate));
+                                }
+                              }
+                            }}
+                            minimumDate={new Date()}
+                            themeVariant={isDark ? 'dark' : 'light'}
+                          />
+                          {Platform.OS === 'ios' && (
+                            <TouchableOpacity
+                              onPress={() => setShowDatePicker(false)}
+                              className="mt-2 p-3 bg-primary-500 rounded-xl items-center"
+                            >
+                              <Text className="text-white font-semibold">Done</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Time Picker */}
+                    <View className="mb-4">
+                      <Text className={`text-base font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Event Time
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowTimePicker(true)}
+                        className={`flex-row items-center justify-between p-4 rounded-xl border ${
+                          isDark 
+                            ? 'bg-white/10 border-white/20' 
+                            : 'bg-white border-gray-300'
+                        }`}
+                      >
+                        <View className="flex-row items-center">
+                          <Clock size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                          <Text className={`ml-3 ${
+                            values.event_time 
+                              ? (isDark ? 'text-white' : 'text-gray-900')
+                              : (isDark ? 'text-gray-400' : 'text-gray-500')
+                          }`}>
+                            {formatDisplayTime(values.event_time)}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {touched.event_time && errors.event_time && (
+                        <Text className="text-error-500 text-sm mt-1">{errors.event_time}</Text>
+                      )}
+                      
+                      {/* Time Picker - inline for iOS */}
+                      {showTimePicker && (
+                        <View className="mt-3">
+                          <DateTimePicker
+                            value={
+                              values.event_time 
+                                ? new Date(`2000-01-01T${values.event_time}:00`)
+                                : new Date()
+                            }
+                            mode="time"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={(event, selectedTime) => {
+                              if (Platform.OS === 'android') {
+                                setShowTimePicker(false);
+                                if (event.type === 'set' && selectedTime) {
+                                  setFieldValue('event_time', formatTime(selectedTime));
+                                }
+                              } else if (Platform.OS === 'ios') {
+                                // On iOS, update the value immediately as user scrolls
+                                if (selectedTime) {
+                                  setFieldValue('event_time', formatTime(selectedTime));
+                                }
+                              }
+                            }}
+                            themeVariant={isDark ? 'dark' : 'light'}
+                          />
+                          {Platform.OS === 'ios' && (
+                            <TouchableOpacity
+                              onPress={() => setShowTimePicker(false)}
+                              className="mt-2 p-3 bg-primary-500 rounded-xl items-center"
+                            >
+                              <Text className="text-white font-semibold">Done</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+                    </View>
 
                     <GlassInput
                       label="Location"
@@ -401,7 +587,13 @@ const CreateEventScreen = ({ navigation }) => {
                 {/* Submit Button */}
                 <Animated.View entering={FadeInDown.delay(700).duration(500)}>
                   <GlassButton
-                    onPress={handleSubmit}
+                    onPress={() => {
+                      logger.log('Submit button pressed');
+                      logger.log('Form values:', values);
+                      logger.log('Form errors:', errors);
+                      logger.log('Is submitting:', isSubmitting);
+                      handleSubmit();
+                    }}
                     disabled={isSubmitting}
                     className="mb-4"
                   >

@@ -27,6 +27,7 @@ import Animated, {
 import { useAuth } from '../hooks/useAuth';
 import { loginSchema } from '../validation/authSchemas';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import { GlassCard, GlassInput, GlassButton, GradientText } from '../components/glass';
 
 const LoginScreen = ({ navigation }) => {
@@ -60,7 +61,7 @@ const LoginScreen = ({ navigation }) => {
       await login({ email: values.email, password: values.password });
       // Navigation handled by AuthNavigator
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       Alert.alert('Login Failed', error.message || 'Unable to sign in. Please check your credentials.');
       setFieldError('general', error.message);
     } finally {

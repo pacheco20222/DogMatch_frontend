@@ -16,6 +16,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchConversations } from '../store/slices/chatsSlice';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import ChatListItem from '../components/ui/ChatListItem';
 import EmptyState from '../components/ui/EmptyState';
 import { GlassCard, FloatingActionButton } from '../components/glass';
@@ -32,11 +33,11 @@ const ChatsScreen = ({ navigation }) => {
     useCallback(() => {
       // Prevent multiple simultaneous loads
       if (isLoadingRef.current) {
-        console.log('🔌 ChatsScreen: Already loading, skipping...');
+        logger.log('🔌 ChatsScreen: Already loading, skipping...');
         return;
       }
 
-      console.log('🔌 ChatsScreen: Screen focused, refreshing conversations');
+      logger.log('🔌 ChatsScreen: Screen focused, refreshing conversations');
       isLoadingRef.current = true;
       
       // Load conversations
@@ -48,7 +49,7 @@ const ChatsScreen = ({ navigation }) => {
       
       // Cleanup function - runs when screen loses focus
       return () => {
-        console.log('🔌 ChatsScreen: Screen unfocused');
+        logger.log('🔌 ChatsScreen: Screen unfocused');
       };
     }, [dispatch])
   );
@@ -62,7 +63,7 @@ const ChatsScreen = ({ navigation }) => {
     try {
       await dispatch(fetchConversations()).unwrap();
     } catch (error) {
-      console.error('Error refreshing conversations:', error);
+      logger.error('Error refreshing conversations:', error);
     } finally {
       setRefreshing(false);
     }

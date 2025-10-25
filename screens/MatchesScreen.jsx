@@ -27,6 +27,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchMatches } from '../store/slices/matchesSlice';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import EmptyState from '../components/ui/EmptyState';
 import { GlassCard } from '../components/glass';
 
@@ -47,7 +48,7 @@ const MatchesScreen = ({ navigation }) => {
       }
       await dispatch(fetchMatches({ status: 'matched' }));
     } catch (error) {
-      console.error('Error fetching matches:', error);
+      logger.error('Error fetching matches:', error);
       Alert.alert('Error', 'Failed to load matches. Please try again.');
     } finally {
       setRefreshing(false);

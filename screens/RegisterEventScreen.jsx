@@ -24,6 +24,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchEvents, registerForEvent, unregisterFromEvent } from '../store/slices/eventsSlice';
 import { useTheme } from '../theme/ThemeContext';
+import { logger } from '../utils/logger';
 import GlassCard from '../components/glass/GlassCard';
 import GlassButton from '../components/glass/GlassButton';
 
@@ -42,7 +43,7 @@ const RegisterEventScreen = ({ route, navigation }) => {
     try {
       await dispatch(fetchEvents());
     } catch (error) {
-      console.error('Error fetching event details:', error);
+      logger.error('Error fetching event details:', error);
     }
   };
 
@@ -132,7 +133,7 @@ const RegisterEventScreen = ({ route, navigation }) => {
       }
 
     } catch (error) {
-      console.error('Error registering for event:', error);
+      logger.error('Error registering for event:', error);
       Alert.alert(
         'Registration Failed', 
         error.message || 'Failed to register for the event. Please try again.'
@@ -181,7 +182,7 @@ const RegisterEventScreen = ({ route, navigation }) => {
               }
 
             } catch (error) {
-              console.error('Error unregistering from event:', error);
+              logger.error('Error unregistering from event:', error);
               Alert.alert(
                 'Unregistration Failed', 
                 error.message || 'Failed to unregister from the event. Please try again.'

@@ -21,8 +21,9 @@ import Animated, {
   Layout,
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
-import { fetchMyDogs, deleteDog, clearError } from '../store/slices/dogsSlice';
+import { fetchMyDogs, clearError } from '../store/slices/dogsSlice';
 import { useAuth } from '../hooks/useAuth';
+import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
 import { GlassCard, FloatingActionButton, GlassButton, GradientText } from '../components/glass';
 
@@ -41,7 +42,7 @@ const MyDogsScreen = ({ navigation }) => {
       }
       await dispatch(fetchMyDogs()).unwrap();
     } catch (e) {
-      console.error('Failed to load dogs:', e);
+      logger.error('Failed to load dogs:', e);
     } finally {
       setRefreshing(false);
     }
