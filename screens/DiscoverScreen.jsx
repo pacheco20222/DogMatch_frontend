@@ -357,8 +357,9 @@ const DiscoverScreen = ({ navigation }) => {
           entering={FadeInDown.delay(200).duration(600)}
           style={{ 
             flex: 1, 
-            justifyContent: 'center', 
+            justifyContent: 'flex-start', 
             alignItems: 'center',
+            paddingTop: 20,
             paddingBottom: 20,
           }}
         >
@@ -404,7 +405,7 @@ const DiscoverScreen = ({ navigation }) => {
         <Animated.View 
           entering={SlideInUp.delay(400).duration(600)}
           className="flex-row justify-center items-center px-6 space-x-4"
-          style={{ paddingBottom: insets.bottom + 80, marginTop: 20 }}
+          style={{ paddingBottom: insets.bottom + 80, marginTop: 30 }}
         >
           {/* Pass Button */}
           <TouchableOpacity
@@ -412,9 +413,9 @@ const DiscoverScreen = ({ navigation }) => {
             disabled={swiping}
             activeOpacity={0.8}
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
+              width: 56,
+              height: 56,
+              borderRadius: 28,
               backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
               borderWidth: 2,
               borderColor: 'rgba(239, 68, 68, 0.4)',
@@ -426,7 +427,7 @@ const DiscoverScreen = ({ navigation }) => {
               shadowRadius: 8,
             }}
           >
-            <X size={28} color="#EF4444" strokeWidth={2.5} />
+            <X size={24} color="#EF4444" strokeWidth={2.5} />
           </TouchableOpacity>
 
           {/* Super Like Button */}
@@ -435,9 +436,9 @@ const DiscoverScreen = ({ navigation }) => {
             disabled={swiping}
             activeOpacity={0.8}
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
+              width: 48,
+              height: 48,
+              borderRadius: 24,
               backgroundColor: 'rgba(236, 72, 153, 0.9)',
               justifyContent: 'center',
               alignItems: 'center',
@@ -447,7 +448,7 @@ const DiscoverScreen = ({ navigation }) => {
               shadowRadius: 8,
             }}
           >
-            <Star size={24} color="#fff" fill="#fff" />
+            <Star size={20} color="#fff" fill="#fff" />
           </TouchableOpacity>
 
           {/* Like Button */}
@@ -456,9 +457,9 @@ const DiscoverScreen = ({ navigation }) => {
             disabled={swiping}
             activeOpacity={0.8}
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
+              width: 56,
+              height: 56,
+              borderRadius: 28,
               backgroundColor: 'rgba(99, 102, 241, 0.9)',
               justifyContent: 'center',
               alignItems: 'center',
@@ -468,7 +469,7 @@ const DiscoverScreen = ({ navigation }) => {
               shadowRadius: 8,
             }}
           >
-            <Heart size={28} color="#fff" fill="#fff" />
+            <Heart size={24} color="#fff" fill="#fff" />
           </TouchableOpacity>
         </Animated.View>
       </SafeAreaView>

@@ -73,7 +73,8 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleEditProfile = () => {
-    Alert.alert('Coming Soon', 'Edit Profile screen coming soon!');
+    // Navigate to the Edit Profile screen registered in the Profile stack
+    navigation.navigate('EditProfile');
   };
 
   const handleChangePhoto = async () => {

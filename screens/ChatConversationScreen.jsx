@@ -159,17 +159,19 @@ const ChatConversationScreen = ({ navigation, route }) => {
           }
         }));
         
-        if (response.payload?.success) {
+        // Check if the action was successful (Redux Toolkit pattern)
+        if (sendMessage.fulfilled.match(response)) {
           scrollToBottom();
-          setSending(false); // Reset sending state for API messages
+          setSending(false);
         } else {
-          throw new Error(response.payload?.message || 'Failed to send message');
+          // Action was rejected
+          throw new Error(response.error?.message || response.payload || 'Failed to send message');
         }
       }
     } catch (error) {
       logger.error('Error sending message:', error);
       setSending(false);
-      Alert.alert('Error', 'Failed to send message');
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };
 
@@ -350,7 +352,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
         <FlatList
           ref={flatListRef}
           data={messages}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item?.id?.toString() || `temp-${Date.now()}-${Math.random()}`}
           renderItem={renderMessage}
           ListFooterComponent={renderTypingIndicator}
           contentContainerStyle={styles.messagesList}

@@ -45,7 +45,8 @@ export const sendMessage = createAsyncThunk(
         token: auth.accessToken,
       });
       
-      return { matchId, message: response.message || response };
+      // Backend returns { message: "success string", data: {actual message object} }
+      return { matchId, message: response.data || response };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to send message');
     }

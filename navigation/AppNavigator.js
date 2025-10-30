@@ -22,6 +22,7 @@ import ChatsScreen from '../screens/ChatsScreen.jsx';
 import ChatConversationScreen from '../screens/ChatConversationScreen.jsx';
 import PendingSwipesScreen from '../screens/PendingSwipesScreen.jsx';
 import SettingsScreen from '../screens/SettingsScreen.jsx';
+import EditProfileScreen from '../screens/EditProfileScreen.jsx';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -81,6 +82,7 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
