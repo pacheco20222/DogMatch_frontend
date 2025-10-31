@@ -210,7 +210,7 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Profile Card */}
           <Animated.View entering={FadeInDown.delay(200).duration(400)} className="px-4 mb-3">
-            <GlassCard className="p-5">
+            <GlassCard>
               {/* Avatar and Basic Info */}
               <View className="items-center mb-4">
                 <View className="relative">
@@ -357,7 +357,7 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Quick Actions */}
           <Animated.View entering={FadeInDown.delay(300).duration(400)} className="px-4 mb-3">
-            <GlassCard className="p-5">
+            <GlassCard>
               <Text className={`text-lg font-bold mb-3 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`}>
@@ -422,7 +422,7 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Account Management */}
           <Animated.View entering={FadeInDown.delay(400).duration(400)} className="px-4 mb-3">
-            <GlassCard className="p-5">
+            <GlassCard>
               <Text className={`text-lg font-bold mb-3 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`}>
@@ -449,7 +449,7 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* App Info */}
           <Animated.View entering={FadeInDown.delay(500).duration(400)} className="px-4 mb-6">
-            <GlassCard className="p-4 items-center">
+            <GlassCard className="items-center">
               <Text className="text-2xl font-bold text-primary-500 mb-2">
                 DogMatch
               </Text>

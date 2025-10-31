@@ -31,7 +31,7 @@ import { logger } from '../utils/logger';
 import { GlassCard, GlassInput, GlassButton, GradientText } from '../components/glass';
 
 const LoginScreen = ({ navigation }) => {
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
   const { isDark } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -126,7 +126,7 @@ const LoginScreen = ({ navigation }) => {
 
             {/* Login Form */}
             <Animated.View entering={FadeInDown.delay(200).duration(600)}>
-              <GlassCard className="p-6 mb-6">
+              <GlassCard className="mb-6">
                 <Formik
                   initialValues={{
                     email: '',
@@ -173,11 +173,11 @@ const LoginScreen = ({ navigation }) => {
                         variant="primary"
                         size="lg"
                         onPress={handleSubmit}
-                        loading={isSubmitting || loading}
-                        disabled={isSubmitting || loading}
+                        loading={isSubmitting}
+                        disabled={isSubmitting}
                         className="w-full"
                       >
-                        {isSubmitting || loading ? 'Signing In...' : 'Sign In'}
+                        {isSubmitting ? 'Signing In...' : 'Sign In'}
                       </GlassButton>
                     </View>
                   )}

@@ -54,6 +54,10 @@ const styles = StyleSheet.create({
   innerContainer: {
     borderRadius: 24,
     width: '100%',
+    // default internal padding so content (especially headings) doesn't
+    // collide with the rounded corners or get visually clipped. Individual
+    // usages can still pass additional padding via className/style.
+    padding: 16,
   },
   darkContainer: {
     backgroundColor: 'rgba(30, 41, 59, 0.3)', // Even lower opacity for seamless blend

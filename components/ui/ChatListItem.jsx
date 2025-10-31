@@ -84,7 +84,7 @@ const ChatListItem = React.memo(({
       activeOpacity={0.7}
       className="mb-3 mx-4"
     >
-      <GlassCard className="p-4">
+  <GlassCard>
         <View className="flex-row items-center">
           {/* Avatar */}
           <View className="relative mr-4">

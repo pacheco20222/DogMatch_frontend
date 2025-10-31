@@ -107,7 +107,7 @@ const MyDogsScreen = ({ navigation }) => {
       layout={Layout.springify()}
       className="mb-4"
     >
-      <GlassCard className="p-5">
+  <GlassCard>
         {/* Dog Header with Photo and Info */}
         <View className="flex-row items-start mb-4">
           {/* Dog Photo */}

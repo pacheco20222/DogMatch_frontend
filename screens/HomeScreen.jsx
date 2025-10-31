@@ -227,7 +227,7 @@ const HomeScreen = ({ navigation }) => {
                   className="flex-1 mx-1"
                 >
                   <TouchableOpacity onPress={stat.onPress} activeOpacity={0.8}>
-                    <GlassCard className="p-5">
+                    <GlassCard>
                       <View className="items-center">
                         <View className={`w-14 h-14 rounded-2xl ${stat.bgColor} items-center justify-center mb-3`}>
                           <stat.icon size={28} className={stat.textColor} />
@@ -252,7 +252,7 @@ const HomeScreen = ({ navigation }) => {
               Quick Actions
             </Text>
             
-            <GlassCard className="p-5">
+            <GlassCard>
               <GlassButton
                 variant="primary"
                 size="lg"
@@ -291,7 +291,7 @@ const HomeScreen = ({ navigation }) => {
               Recent Activity
             </Text>
             
-            <GlassCard className="p-6">
+            <GlassCard>
               <View className="flex-row items-start">
                 <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${
                   isDark ? 'bg-accent-500/20' : 'bg-accent-100'

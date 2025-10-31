@@ -39,7 +39,7 @@ const StatCard = React.memo(({
 
   return (
     <Wrapper onPress={onPress} activeOpacity={0.8} style={style} className="flex-1 m-1">
-      <GlassCard className="p-4 items-center justify-center min-h-30">
+  <GlassCard className="items-center justify-center min-h-30">
         <View className={`w-12 h-12 rounded-2xl ${getColorClass()} items-center justify-center mb-2`}>
           {IconComponent && <IconComponent size={24} color="#fff" />}
         </View>

@@ -7,6 +7,7 @@ import Animated, {
   withTiming 
 } from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
+import { Platform } from 'react-native';
 
 /**
  * GlassInput - Modern glass morphism input with floating label
@@ -83,10 +84,24 @@ const GlassInput = ({
             min-h-[56px]
           `}>
             {LeftIcon && (
-              <LeftIcon 
-                size={20} 
-                className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mr-3`}
-              />
+              // If the label is floated (input has value or is focused) the
+              // TextInput content is pushed down (we add mt-4). Mirror that
+              // offset for the icon so both glyph and input text share the
+              // same visual baseline.
+              (() => {
+                // Use platform-tuned offsets to get a closer pixel match on iOS
+                // vs Android. These numbers were chosen after visual tuning.
+                const floatedOffset = Platform.OS === 'ios' ? 6 : 8;
+                const iconOffset = (isFocused || value) ? floatedOffset : 0;
+                return (
+                  <View style={{ marginRight: 12, alignSelf: 'center', transform: [{ translateY: iconOffset }] }}>
+                    <LeftIcon 
+                      size={20} 
+                      className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}
+                    />
+                  </View>
+                );
+              })()
             )}
             
             <View className="flex-1 relative pt-1">
@@ -133,12 +148,18 @@ const GlassInput = ({
             </View>
 
             {RightIcon && (
-              <TouchableOpacity onPress={onRightIconPress} className="ml-3">
-                <RightIcon 
-                  size={20} 
-                  className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}
-                />
-              </TouchableOpacity>
+              (() => {
+                const floatedOffsetR = Platform.OS === 'ios' ? 6 : 8;
+                const iconOffset = (isFocused || value) ? floatedOffsetR : 0;
+                return (
+                  <TouchableOpacity onPress={onRightIconPress} style={{ marginLeft: 12, alignSelf: 'center', transform: [{ translateY: iconOffset }] }}>
+                    <RightIcon 
+                      size={20} 
+                      className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}
+                    />
+                  </TouchableOpacity>
+                );
+              })()
             )}
           </View>
         </View>

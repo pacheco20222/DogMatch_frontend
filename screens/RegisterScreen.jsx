@@ -115,7 +115,7 @@ const RegisterScreen = ({ navigation }) => {
 
             {/* Registration Form */}
             <Animated.View entering={FadeInDown.delay(200).duration(600)}>
-              <GlassCard className="p-6 mb-6">
+              <GlassCard className="mb-6">
                 <Formik
                   initialValues={{
                     email: '',

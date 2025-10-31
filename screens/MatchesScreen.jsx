@@ -92,7 +92,7 @@ const MatchesScreen = ({ navigation }) => {
           onPress={() => handleChatPress(item)}
           activeOpacity={0.9}
         >
-          <GlassCard className="p-4">
+          <GlassCard>
             <View className="flex-row items-center">
               {/* Dog Avatar */}
               <View className="relative mr-4">

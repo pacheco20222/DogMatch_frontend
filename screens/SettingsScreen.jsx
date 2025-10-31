@@ -101,7 +101,7 @@ const SettingsScreen = ({ navigation }) => {
               Appearance
             </Text>
 
-            <GlassCard className="p-6 mb-6">
+            <GlassCard className="mb-6">
               {themeOptions.map((option, index) => (
                 <TouchableOpacity
                   key={option.id}
@@ -162,7 +162,7 @@ const SettingsScreen = ({ navigation }) => {
               More Settings
             </Text>
 
-            <GlassCard className="p-6">
+            <GlassCard>
               <Text className={`text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                 Additional settings coming soon...
               </Text>

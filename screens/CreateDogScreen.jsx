@@ -251,7 +251,7 @@ const CreateDogScreen = ({ navigation }) => {
             {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue, isSubmitting }) => (
               <Animated.View entering={FadeInDown.delay(200).duration(600)}>
                 {/* Photo Upload */}
-                <GlassCard className="mb-4 p-5">
+                <GlassCard className="mb-4">
                   <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     Dog Photo
                   </Text>
@@ -291,7 +291,7 @@ const CreateDogScreen = ({ navigation }) => {
                 </GlassCard>
 
                 {/* Basic Information */}
-                <GlassCard className="mb-4 p-5">
+                <GlassCard className="mb-4">
                   <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     Basic Information
                   </Text>
@@ -368,7 +368,7 @@ const CreateDogScreen = ({ navigation }) => {
                 </GlassCard>
 
                 {/* Social Behavior */}
-                <GlassCard className="mb-4 p-5">
+                <GlassCard className="mb-4">
                   <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     Social Behavior
                   </Text>
@@ -379,7 +379,7 @@ const CreateDogScreen = ({ navigation }) => {
                 </GlassCard>
 
                 {/* Health Information */}
-                <GlassCard className="mb-4 p-5">
+                <GlassCard className="mb-4">
                   <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     Health Information
                   </Text>
@@ -389,7 +389,7 @@ const CreateDogScreen = ({ navigation }) => {
                 </GlassCard>
 
                 {/* Additional Information */}
-                <GlassCard className="mb-4 p-5">
+                <GlassCard className="mb-4">
                   <Text className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     Additional Information
                   </Text>

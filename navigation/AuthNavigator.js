@@ -9,11 +9,11 @@ import AppNavigator from './AppNavigator';
 const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return null; // Could add loading spinner here
-  }
+  // AuthInitializer guarantees that initialization finished before the
+  // navigator renders. Avoid hiding the navigator based on the general
+  // `loading` flag here, since that flag represents many auth ops (login,
+  // register, refresh) and could cause a blank screen during normal flows.
+  const { user } = useAuth();
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
