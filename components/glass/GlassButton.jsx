@@ -7,6 +7,7 @@ import Animated, {
   withSpring 
 } from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
+import { getDesignTokens } from '../../styles/designTokens';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -32,6 +33,7 @@ const GlassButton = ({
   ...props 
 }) => {
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
   const scale = useSharedValue(1);
 
   const handlePressIn = () => {
@@ -98,12 +100,12 @@ const GlassButton = ({
   };
 
   const getTextColor = () => {
-    if (disabled) return 'text-gray-500';
-    if (variant === 'ghost') {
-      return isDark ? 'text-white' : 'text-gray-900';
-    }
-    return 'text-white';
+    if (disabled) return tokens.muted;
+    if (variant === 'ghost') return tokens.textPrimary;
+    return tokens.primaryContrast;
   };
+
+  const getTextColorToken = getTextColor();
 
   return (
     <AnimatedTouchable
@@ -129,11 +131,17 @@ const GlassButton = ({
           ${sizeClasses[size]}
         `}>
           {loading ? (
-            <ActivityIndicator color={variant === 'ghost' ? (isDark ? '#fff' : '#000') : '#fff'} />
+            <ActivityIndicator color={variant === 'ghost' ? getTextColorToken : tokens.primaryContrast} />
           ) : (
             <>
-              {Icon && <Icon size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} className={`${getTextColor()} mr-2`} />}
-              <Text className={`${getTextColor()} ${textSizeClasses[size]} font-semibold`}>
+              {Icon && (
+                <Icon
+                  size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20}
+                  color={getTextColorToken}
+                  style={{ marginRight: 8 }}
+                />
+              )}
+              <Text style={{ color: getTextColorToken }} className={`${textSizeClasses[size]} font-semibold`}>
                 {children}
               </Text>
             </>

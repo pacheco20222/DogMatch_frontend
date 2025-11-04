@@ -7,11 +7,14 @@ import { useAuth } from '../hooks/useAuth';
 import { updateUser } from '../store/slices/authSlice';
 import { apiFetch } from '../api/client';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 
 const EditProfileScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user, accessToken, fetchProfile } = useAuth();
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
+  const styles = React.useMemo(() => createStyles(tokens), [isDark]);
 
   const [username, setUsername] = useState(user?.username || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -187,7 +190,7 @@ const EditProfileScreen = ({ navigation }) => {
             onChangeText={setUsername}
             style={[styles.input, isDark ? styles.inputDark : styles.inputLight]}
             placeholder="Username"
-            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+            placeholderTextColor={tokens.placeholder}
             autoCapitalize="none"
           />
         </View>
@@ -199,7 +202,7 @@ const EditProfileScreen = ({ navigation }) => {
             onChangeText={setPhone}
             style={[styles.input, isDark ? styles.inputDark : styles.inputLight]}
             placeholder="Phone number"
-            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+            placeholderTextColor={tokens.placeholder}
             keyboardType="phone-pad"
           />
         </View>
@@ -211,10 +214,10 @@ const EditProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity style={styles.saveButton} onPress={saveProfile} disabled={loading || uploading}>
             {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveText}>{uploading ? 'Uploading...' : 'Save'}</Text>
-            )}
+                <ActivityIndicator color={tokens.primaryContrast} />
+              ) : (
+                <Text style={styles.saveText}>{uploading ? 'Uploading...' : 'Save'}</Text>
+              )}
           </TouchableOpacity>
         </View>
       </View>
@@ -222,30 +225,32 @@ const EditProfileScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  darkBg: { backgroundColor: '#0F172A' },
-  lightBg: { backgroundColor: '#F8FAFC' },
-  header: { paddingHorizontal: 20, paddingTop: 10 },
-  title: { fontSize: 28, fontWeight: '700' },
-  textLight: { color: '#fff' },
-  textDark: { color: '#0F172A' },
-  content: { padding: 20 },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#E5E7EB' },
-  avatarButtons: { marginLeft: 16, flex: 1 },
-  smallButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#6366F1', marginBottom: 8 },
-  smallButtonText: { color: '#fff', fontWeight: '600' },
-  field: { marginBottom: 16 },
-  label: { marginBottom: 6, fontWeight: '600' },
-  input: { borderRadius: 10, padding: 12, fontSize: 16 },
-  inputDark: { backgroundColor: '#0B1220', color: '#fff' },
-  inputLight: { backgroundColor: '#fff', color: '#111827' },
-  actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  cancelButton: { flex: 1, marginRight: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: '#E5E7EB', alignItems: 'center' },
-  cancelText: { color: '#111827', fontWeight: '600' },
-  saveButton: { flex: 1, marginLeft: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: '#10B981', alignItems: 'center' },
-  saveText: { color: '#fff', fontWeight: '700' },
-});
+function createStyles(tokens) {
+  return StyleSheet.create({
+    container: { flex: 1 },
+    darkBg: { backgroundColor: tokens.background },
+    lightBg: { backgroundColor: tokens.surface },
+    header: { paddingHorizontal: tokens.spacingLarge, paddingTop: 10 },
+    title: { fontSize: 28, fontWeight: '700', color: tokens.textPrimary },
+    textLight: { color: tokens.textPrimary },
+    textDark: { color: tokens.textPrimary },
+    content: { padding: tokens.spacingLarge },
+    avatarRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spacingLarge },
+    avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: tokens.cardBackground },
+    avatarButtons: { marginLeft: tokens.spacingLarge, flex: 1 },
+    smallButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: tokens.primary, marginBottom: 8 },
+    smallButtonText: { color: tokens.primaryContrast, fontWeight: '600' },
+    field: { marginBottom: tokens.spacingLarge },
+    label: { marginBottom: 6, fontWeight: '600', color: tokens.textPrimary },
+    input: { borderRadius: 10, padding: 12, fontSize: tokens.fontSizeBase, backgroundColor: tokens.inputBackground, color: tokens.inputText },
+    inputDark: { backgroundColor: tokens.inputBackground, color: tokens.inputText },
+    inputLight: { backgroundColor: tokens.surface, color: tokens.inputText },
+    actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: tokens.spacing },
+    cancelButton: { flex: 1, marginRight: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: tokens.cardBackground, alignItems: 'center' },
+    cancelText: { color: tokens.textPrimary, fontWeight: '600' },
+    saveButton: { flex: 1, marginLeft: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: tokens.primaryVariant, alignItems: 'center' },
+    saveText: { color: tokens.primaryContrast, fontWeight: '700' },
+  });
+}
 
 export default EditProfileScreen;

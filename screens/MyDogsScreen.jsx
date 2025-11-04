@@ -25,12 +25,14 @@ import { fetchMyDogs, clearError } from '../store/slices/dogsSlice';
 import { useAuth } from '../hooks/useAuth';
 import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import { GlassCard, FloatingActionButton, GlassButton, GradientText } from '../components/glass';
 
 const MyDogsScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
   const { myDogs, loading, error } = useAppSelector(state => state.dogs);
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
@@ -111,9 +113,7 @@ const MyDogsScreen = ({ navigation }) => {
         {/* Dog Header with Photo and Info */}
         <View className="flex-row items-start mb-4">
           {/* Dog Photo */}
-          <View className={`w-20 h-20 rounded-2xl overflow-hidden mr-4 ${
-            isDark ? 'bg-primary-500/20' : 'bg-primary-100'
-          }`}>
+          <View className={`w-20 h-20 rounded-2xl overflow-hidden mr-4`} style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : tokens.cardBackground }}>
             {dog.primary_photo_url ? (
               <Image
                 source={{ 
@@ -126,7 +126,7 @@ const MyDogsScreen = ({ navigation }) => {
               />
             ) : (
               <View className="w-full h-full items-center justify-center">
-                <Dog size={32} className={isDark ? 'text-primary-400' : 'text-primary-600'} />
+                <Dog size={32} color={tokens.primary} />
               </View>
             )}
           </View>
@@ -134,19 +134,17 @@ const MyDogsScreen = ({ navigation }) => {
           {/* Dog Info */}
           <View className="flex-1">
             <View className="flex-row items-center mb-1">
-              <Text className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} flex-1`}>
+              <Text style={{ color: tokens.textPrimary, fontSize: 20, fontWeight: '700', flex: 1 }}>
                 {dog.name}
               </Text>
-              <View className={`px-2 py-1 rounded-full ${
-                isDark ? 'bg-accent-500/20' : 'bg-accent-100'
-              }`}>
-                <Text className="text-accent-500 text-xs font-semibold">
+              <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 9999, backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : tokens.primary }}>
+                <Text style={{ color: isDark ? tokens.primary : tokens.primaryContrast, fontSize: 12, fontWeight: '600' }}>
                   {dog.age_string || `${dog.age}y`}
                 </Text>
               </View>
             </View>
             
-            <Text className={`text-sm mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <Text style={{ color: tokens.textSecondary, fontSize: 14, marginBottom: 8 }}>
               {dog.breed}
             </Text>
             
@@ -154,23 +152,19 @@ const MyDogsScreen = ({ navigation }) => {
             <View className="flex-row space-x-2">
               <View 
                 key="size-pill"
-                className={`px-2 py-1 rounded-lg flex-row items-center ${
-                  isDark ? 'bg-white/10' : 'bg-gray-100'
-                }`}>
-                <Ruler size={12} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
-                <Text className={`text-xs ml-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {dog.size}
-                </Text>
+                className="px-2 py-1 rounded-lg flex-row items-center"
+                style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : tokens.cardBackground }}
+              >
+                <Ruler size={12} color={tokens.textSecondary} />
+                <Text style={{ color: tokens.textSecondary, marginLeft: 6, fontSize: 12 }}>{dog.size}</Text>
               </View>
               <View 
                 key="gender-pill"
-                className={`px-2 py-1 rounded-lg flex-row items-center ${
-                  isDark ? 'bg-white/10' : 'bg-gray-100'
-                }`}>
-                <UserIcon size={12} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
-                <Text className={`text-xs ml-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {dog.gender}
-                </Text>
+                className="px-2 py-1 rounded-lg flex-row items-center"
+                style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : tokens.cardBackground }}
+              >
+                <UserIcon size={12} color={tokens.textSecondary} />
+                <Text style={{ color: tokens.textSecondary, marginLeft: 6, fontSize: 12 }}>{dog.gender}</Text>
               </View>
             </View>
           </View>
@@ -179,9 +173,7 @@ const MyDogsScreen = ({ navigation }) => {
         {/* Description */}
         {dog.description && (
           <View className="mb-4">
-            <Text className={`text-sm leading-5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              {dog.description}
-            </Text>
+            <Text style={{ color: tokens.textSecondary, lineHeight: 20 }}>{dog.description}</Text>
           </View>
         )}
 
@@ -193,11 +185,9 @@ const MyDogsScreen = ({ navigation }) => {
             activeOpacity={0.7}
             className="flex-1"
           >
-            <View className={`py-2.5 px-4 rounded-xl flex-row items-center justify-center ${
-              isDark ? 'bg-primary-500/20' : 'bg-primary-100 border border-primary-200'
-            }`}>
-              <Edit size={16} className="text-primary-500 mr-2" />
-              <Text className="text-primary-500 font-semibold text-sm">Edit</Text>
+            <View style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : tokens.primary, borderWidth: isDark ? 0 : 1, borderColor: isDark ? 'transparent' : '#E0E7FF' }}>
+              <Edit size={16} color={isDark ? tokens.primary : tokens.primaryContrast} style={{ marginRight: 8 }} />
+              <Text style={{ color: isDark ? tokens.primary : tokens.primaryContrast, fontWeight: '600', fontSize: 14 }}>Edit</Text>
             </View>
           </TouchableOpacity>
           
@@ -207,11 +197,9 @@ const MyDogsScreen = ({ navigation }) => {
             activeOpacity={0.7}
             className="flex-1"
           >
-            <View className={`py-2.5 px-4 rounded-xl flex-row items-center justify-center ${
-              isDark ? 'bg-error-500/20' : 'bg-red-50 border border-red-200'
-            }`}>
-              <Trash2 size={16} className="text-error-500 mr-2" />
-              <Text className="text-error-500 font-semibold text-sm">Delete</Text>
+            <View style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.actionPassBg, borderWidth: isDark ? 0 : 1, borderColor: isDark ? 'transparent' : tokens.danger }}>
+              <Trash2 size={16} color={tokens.danger} style={{ marginRight: 8 }} />
+              <Text style={{ color: tokens.danger, fontWeight: '600', fontSize: 14 }}>Delete</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -232,10 +220,8 @@ const MyDogsScreen = ({ navigation }) => {
           className="absolute top-0 left-0 right-0 bottom-0"
         />
         <SafeAreaView className="flex-1 items-center justify-center" edges={['top']}>
-          <ActivityIndicator size="large" color="#6366F1" />
-          <Text className={`text-base mt-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Loading your dogs...
-          </Text>
+          <ActivityIndicator size="large" color={tokens.primary} />
+            <Text style={{ color: tokens.textSecondary, marginTop: 16, fontSize: 16 }}>Loading your dogs...</Text>
         </SafeAreaView>
       </View>
     );
@@ -244,17 +230,11 @@ const MyDogsScreen = ({ navigation }) => {
   // Empty State
   const renderEmptyState = () => (
     <Animated.View entering={FadeIn.duration(600)} className="items-center justify-center px-6 py-12">
-      <View className={`w-24 h-24 rounded-full items-center justify-center mb-6 ${
-        isDark ? 'bg-primary-500/20' : 'bg-primary-100'
-      }`}>
-        <Dog size={48} className="text-primary-500" />
-      </View>
-      <Text className={`text-2xl font-bold mb-3 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        No dogs added yet
-      </Text>
-      <Text className={`text-base text-center mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-        Add your first dog to start connecting with other dog owners!
-      </Text>
+      <View className="w-24 h-24 rounded-full items-center justify-center mb-6" style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : tokens.cardBackground }}>
+          <Dog size={48} color={tokens.primary} />
+        </View>
+      <Text style={{ color: tokens.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 12, textAlign: 'center' }}>No dogs added yet</Text>
+      <Text style={{ color: tokens.textSecondary, fontSize: 16, marginBottom: 24, textAlign: 'center' }}>Add your first dog to start connecting with other dog owners!</Text>
       <GlassButton
         variant="primary"
         size="lg"

@@ -171,15 +171,16 @@ const PendingSwipesScreen = ({ navigation }) => {
             />
             
             {/* Swipe Action Badge */}
-            <View className={`absolute top-4 right-4 flex-row items-center px-3 py-2 rounded-full ${
-              swipe.other_dog_action === 'super_like' ? 'bg-blue-500' : 'bg-pink-500'
-            }`}>
+            <View
+              className="absolute top-4 right-4 flex-row items-center px-3 py-2 rounded-full"
+              style={{ backgroundColor: swipe.other_dog_action === 'super_like' ? tokens.actionSuperLikeBg : tokens.overlayPassBg }}
+            >
               {swipe.other_dog_action === 'super_like' ? (
-                <Star size={16} className="text-white" fill="white" />
+                <Star size={16} color={tokens.primaryContrast} fill={tokens.primaryContrast} />
               ) : (
-                <Heart size={16} className="text-white" fill="white" />
+                <Heart size={16} color={tokens.primaryContrast} fill={tokens.primaryContrast} />
               )}
-              <Text className="text-white text-xs font-bold ml-1">
+              <Text style={{ color: tokens.primaryContrast, fontSize: 12, fontWeight: '700', marginLeft: 6 }}>
                 {swipe.other_dog_action === 'like' ? 'Liked You' : 'Super Liked You'}
               </Text>
             </View>
@@ -194,29 +195,23 @@ const PendingSwipesScreen = ({ navigation }) => {
           {/* Dog Info */}
           <View className="p-5">
             <View className="flex-row items-center justify-between mb-2">
-              <Text className={`text-2xl font-bold flex-1 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>
+              <Text style={{ color: tokens.textPrimary, fontSize: 20, fontWeight: '700', flex: 1 }}>
                 {otherDog.name}
               </Text>
-              <View className="px-3 py-1 rounded-full bg-primary-500/20">
-                <Text className="text-primary-500 text-sm font-semibold">
+              <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, backgroundColor: 'rgba(99,102,241,0.12)' }}>
+                <Text style={{ color: tokens.primary, fontSize: 12, fontWeight: '600' }}>
                   {otherDog.age_string || `${otherDog.age_years || 0} years`}
                 </Text>
               </View>
             </View>
 
-            <Text className={`text-base mb-2 ${
-              isDark ? 'text-gray-300' : 'text-gray-700'
-            }`}>
+            <Text style={{ color: tokens.textSecondary, fontSize: 16, marginBottom: 8 }}>
               {otherDog.breed}
             </Text>
 
             {otherDog.description && (
               <Text 
-                className={`text-sm mb-4 leading-5 ${
-                  isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}
+                style={{ color: tokens.textSecondary, fontSize: 14, marginBottom: 12, lineHeight: 20 }}
                 numberOfLines={2}
               >
                 {otherDog.description}
@@ -224,7 +219,7 @@ const PendingSwipesScreen = ({ navigation }) => {
             )}
 
             {/* Owner Info */}
-            <View className="flex-row items-center mb-4 pb-4 border-b" style={{
+              <View className="flex-row items-center mb-4 pb-4 border-b" style={{
               borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
             }}>
               <Image
@@ -235,16 +230,12 @@ const PendingSwipesScreen = ({ navigation }) => {
                 className="w-10 h-10 rounded-full mr-3"
               />
               <View className="flex-1">
-                <Text className={`text-sm font-semibold ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}>
+                <Text style={{ color: tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>
                   {otherOwner?.first_name} {otherOwner?.last_name}
                 </Text>
                 <View className="flex-row items-center mt-0.5">
-                  <Clock size={12} className={isDark ? 'text-gray-500' : 'text-gray-500'} />
-                  <Text className={`text-xs ml-1 ${
-                    isDark ? 'text-gray-500' : 'text-gray-500'
-                  }`}>
+                  <Clock size={12} color={tokens.textSecondary} />
+                  <Text style={{ color: tokens.textSecondary, marginLeft: 6, fontSize: 12 }}>
                     {formatTimestamp(swipe.created_at)}
                   </Text>
                 </View>
@@ -257,32 +248,24 @@ const PendingSwipesScreen = ({ navigation }) => {
               <TouchableOpacity
                 onPress={() => handleSwipeResponse(swipe.id, 'pass')}
                 disabled={isResponding}
-                className={`flex-1 py-3 rounded-2xl border-2 items-center ${
-                  isResponding ? 'opacity-50' : ''
-                } ${
-                  isDark ? 'border-gray-600 bg-white/5' : 'border-gray-300 bg-gray-50'
-                }`}
+                className={`flex-1 py-3 rounded-2xl border-2 items-center ${isResponding ? 'opacity-50' : ''}`}
                 activeOpacity={0.7}
+                style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tokens.cardBackground, borderColor: tokens.border }}
               >
-                <X size={24} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
-                <Text className={`text-xs font-semibold mt-1 ${
-                  isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}>
-                  Pass
-                </Text>
+                <X size={24} color={tokens.textSecondary} />
+                <Text style={{ color: tokens.textSecondary, fontSize: 12, fontWeight: '600', marginTop: 6 }}>Pass</Text>
               </TouchableOpacity>
 
               {/* Like Button */}
               <TouchableOpacity
                 onPress={() => handleSwipeResponse(swipe.id, 'like')}
                 disabled={isResponding}
-                className={`flex-1 py-3 rounded-2xl items-center bg-pink-500 ${
-                  isResponding ? 'opacity-50' : ''
-                }`}
+                className={`flex-1 py-3 rounded-2xl items-center ${isResponding ? 'opacity-50' : ''}`}
                 activeOpacity={0.7}
+                style={{ backgroundColor: tokens.overlayPassBg }}
               >
-                <Heart size={24} className="text-white" fill="white" />
-                <Text className="text-white text-xs font-semibold mt-1">
+                <Heart size={24} color={tokens.primaryContrast} fill={tokens.primaryContrast} />
+                <Text style={{ color: tokens.primaryContrast, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
                   Like
                 </Text>
               </TouchableOpacity>
@@ -291,13 +274,12 @@ const PendingSwipesScreen = ({ navigation }) => {
               <TouchableOpacity
                 onPress={() => handleSwipeResponse(swipe.id, 'super_like')}
                 disabled={isResponding}
-                className={`flex-1 py-3 rounded-2xl items-center bg-blue-500 ${
-                  isResponding ? 'opacity-50' : ''
-                }`}
+                className={`flex-1 py-3 rounded-2xl items-center ${isResponding ? 'opacity-50' : ''}`}
                 activeOpacity={0.7}
+                style={{ backgroundColor: tokens.actionSuperLikeBg }}
               >
-                <Star size={24} className="text-white" fill="white" />
-                <Text className="text-white text-xs font-semibold mt-1">
+                <Star size={24} color={tokens.primaryContrast} fill={tokens.primaryContrast} />
+                <Text style={{ color: tokens.primaryContrast, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
                   Super
                 </Text>
               </TouchableOpacity>

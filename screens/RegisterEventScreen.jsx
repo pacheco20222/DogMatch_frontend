@@ -25,6 +25,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchEvents, registerForEvent, unregisterFromEvent } from '../store/slices/eventsSlice';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import { logger } from '../utils/logger';
 import GlassCard from '../components/glass/GlassCard';
 import GlassButton from '../components/glass/GlassButton';
@@ -38,6 +39,7 @@ const RegisterEventScreen = ({ route, navigation }) => {
   const { events, loading, error } = useAppSelector(state => state.events);
   const [registering, setRegistering] = useState(false);
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
   const insets = useSafeAreaInsets();
   // Extra bottom padding to ensure action button is visible above tab bar on various devices
   const EXTRA_BOTTOM = (insets.bottom || 0) + 120;
@@ -118,11 +120,11 @@ const RegisterEventScreen = ({ route, navigation }) => {
           emergency_contact_phone: ''
         }
       }));
-
-      if (response.payload?.success) {
+      // Check asyncThunk result status (fulfilled vs rejected)
+      if (response?.meta?.requestStatus === 'fulfilled') {
         Alert.alert(
-          'Success!', 
-          response.payload.message || 'Successfully registered for the event!',
+          'Success!',
+          response.payload?.message || 'Successfully registered for the event!',
           [
             {
               text: 'OK',
@@ -131,10 +133,9 @@ const RegisterEventScreen = ({ route, navigation }) => {
           ]
         );
       } else {
-        Alert.alert(
-          'Registration Failed', 
-          response.payload?.message || 'Failed to register for the event. Please try again.'
-        );
+        // Try to show backend message if available, otherwise generic
+        const errMsg = response?.payload || response?.error?.message || 'Failed to register for the event. Please try again.';
+        Alert.alert('Registration Failed', typeof errMsg === 'string' ? errMsg : (errMsg.message || 'Failed to register for the event.'));
       }
 
     } catch (error) {
@@ -168,7 +169,7 @@ const RegisterEventScreen = ({ route, navigation }) => {
 
               const response = await dispatch(unregisterFromEvent(eventId));
 
-              if (response.payload?.success) {
+              if (response?.meta?.requestStatus === 'fulfilled') {
                 Alert.alert(
                   'Success!', 
                   'Successfully unregistered from the event.',
@@ -180,10 +181,8 @@ const RegisterEventScreen = ({ route, navigation }) => {
                   ]
                 );
               } else {
-                Alert.alert(
-                  'Unregistration Failed', 
-                  response.payload?.message || 'Failed to unregister from the event. Please try again.'
-                );
+                const errMsg = response?.payload || response?.error?.message || 'Failed to unregister from the event. Please try again.';
+                Alert.alert('Unregistration Failed', typeof errMsg === 'string' ? errMsg : (errMsg.message || 'Failed to unregister from the event.'));
               }
 
             } catch (error) {
@@ -244,7 +243,7 @@ const RegisterEventScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View className={`flex-1 items-center justify-center ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
-        <ActivityIndicator size="large" color={isDark ? '#fff' : '#000'} />
+        <ActivityIndicator size="large" color={tokens.textPrimary} />
         <Text className={`mt-4 text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>
           Loading event details...
         </Text>
@@ -323,26 +322,22 @@ const RegisterEventScreen = ({ route, navigation }) => {
                     {getCategoryDisplayName(event.category)}
                   </Text>
                 </View>
-                <View style={{
-                  alignSelf: 'flex-start',
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  backgroundColor: isDark
-                    ? (event.price > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)')
-                    : (event.price > 0 ? '#FEF3C7' : '#D1FAE5')
-                }}>
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '700',
-                    color: isDark
-                      ? (event.price > 0 ? '#F59E0B' : '#34D399')
-                      : (event.price > 0 ? '#92400E' : '#065F46'),
-                    lineHeight: 18
-                  }}>
-                    {formatPrice(event.price, event.currency)}
-                  </Text>
-                </View>
+                      <View style={{
+                        alignSelf: 'flex-start',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 999,
+                        backgroundColor: event.price > 0 ? tokens.priceBgWarning : tokens.priceBgSuccess
+                      }}>
+                        <Text style={{
+                          fontSize: 14,
+                          fontWeight: '700',
+                          color: event.price > 0 ? tokens.warning : tokens.success,
+                          lineHeight: 18
+                        }}>
+                          {formatPrice(event.price, event.currency)}
+                        </Text>
+                      </View>
               </View>
             </View>
 
@@ -494,9 +489,9 @@ const RegisterEventScreen = ({ route, navigation }) => {
               variant="outline"
               className="mb-4"
             >
-              {registering ? (
+                  {registering ? (
                 <View className="flex-row items-center justify-center">
-                  <ActivityIndicator color={isDark ? '#fff' : '#000'} size="small" className="mr-2" />
+                  <ActivityIndicator color={tokens.primaryContrast} size="small" className="mr-2" />
                   <Text className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     Unregistering...
                   </Text>
@@ -513,7 +508,7 @@ const RegisterEventScreen = ({ route, navigation }) => {
             >
               {registering ? (
                 <View className="flex-row items-center justify-center">
-                  <ActivityIndicator color="#fff" size="small" className="mr-2" />
+                  <ActivityIndicator color={tokens.primaryContrast} size="small" className="mr-2" />
                   <Text className="text-white font-bold">Registering...</Text>
                 </View>
               ) : (event.max_participants && event.current_participants >= event.max_participants) ? (

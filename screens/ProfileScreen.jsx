@@ -34,6 +34,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { uploadProfilePhoto, clearError } from '../store/slices/userSlice';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import { logger } from '../utils/logger';
 import { GlassCard, GlassButton } from '../components/glass';
 
@@ -46,6 +47,7 @@ const ProfileScreen = ({ navigation }) => {
   const [editingProfile, setEditingProfile] = useState(false);
 
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
 
   // Clear error when component unmounts
   React.useEffect(() => {
@@ -137,11 +139,11 @@ const ProfileScreen = ({ navigation }) => {
 
   const getUserTypeColor = (userType) => {
     const colorMap = {
-      'owner': '#6366F1',
-      'admin': '#F59E0B',
-      'shelter': '#10B981'
+      'owner': tokens.primary,
+      'admin': tokens.warning,
+      'shelter': tokens.success
     };
-    return colorMap[userType] || '#6366F1';
+    return colorMap[userType] || tokens.primary;
   };
 
   const getUserTypeIcon = (userType) => {
@@ -159,10 +161,7 @@ const ProfileScreen = ({ navigation }) => {
       
       {/* Gradient Background */}
       <LinearGradient
-        colors={isDark 
-          ? ['#312E81', '#1E293B', '#0F172A'] 
-          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-        }
+        colors={tokens.gradientBackground}
         className="absolute top-0 left-0 right-0 h-80"
       />
 
@@ -179,10 +178,10 @@ const ProfileScreen = ({ navigation }) => {
           >
             <View className="flex-row items-center justify-between">
               <View>
-                <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <Text style={{ color: tokens.textPrimary, fontSize: 28, fontWeight: '700' }}>
                   Profile
                 </Text>
-                <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                <Text style={{ color: tokens.textSecondary, fontSize: 16, marginTop: 4 }}>
                   Manage your account
                 </Text>
               </View>
@@ -190,19 +189,19 @@ const ProfileScreen = ({ navigation }) => {
               <View className="flex-row gap-2">
                 <TouchableOpacity
                   onPress={handleLogout}
-                  className="w-10 h-10 rounded-full items-center justify-center bg-red-500"
+                  className="w-10 h-10 rounded-full items-center justify-center"
                   activeOpacity={0.7}
+                  style={{ backgroundColor: tokens.actionPassBg }}
                 >
-                  <LogOut size={20} className="text-white" />
+                  <LogOut size={20} color={tokens.danger} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setEditingProfile(!editingProfile)}
-                  className={`w-10 h-10 rounded-full items-center justify-center ${
-                    isDark ? 'bg-white/10' : 'bg-white/70'
-                  }`}
+                  className="w-10 h-10 rounded-full items-center justify-center"
                   activeOpacity={0.7}
+                  style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : tokens.cardBackground }}
                 >
-                  <Edit3 size={20} className={isDark ? 'text-white' : 'text-gray-900'} />
+                  <Edit3 size={20} color={tokens.textPrimary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -223,11 +222,9 @@ const ProfileScreen = ({ navigation }) => {
                       }}
                       className="w-24 h-24 rounded-full"
                     />
-                  ) : (
-                    <View className={`w-24 h-24 rounded-full items-center justify-center ${
-                      isDark ? 'bg-white/10' : 'bg-gray-200'
-                    }`}>
-                      <User size={40} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    ) : (
+                    <View className="w-24 h-24 rounded-full items-center justify-center" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : tokens.cardBackground }}>
+                      <User size={40} color={tokens.textSecondary} />
                     </View>
                   )}
                   
@@ -235,28 +232,25 @@ const ProfileScreen = ({ navigation }) => {
                   <TouchableOpacity
                     onPress={handleChangePhoto}
                     disabled={loading}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary-500 items-center justify-center border-2 border-white"
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full items-center justify-center"
                     activeOpacity={0.8}
+                    style={{ backgroundColor: tokens.primary, borderWidth: 2, borderColor: tokens.primaryContrast }}
                   >
                     {loading ? (
-                      <ActivityIndicator size="small" color="white" />
+                      <ActivityIndicator size="small" color={tokens.primaryContrast} />
                     ) : (
-                      <Camera size={16} className="text-white" />
+                      <Camera size={16} color={tokens.primaryContrast} />
                     )}
                   </TouchableOpacity>
                 </View>
 
                 {/* User Name */}
-                <Text className={`text-2xl font-bold mt-4 ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}>
+                <Text style={{ color: tokens.textPrimary, fontSize: 20, fontWeight: '700', marginTop: 16 }}>
                   {user?.first_name} {user?.last_name}
                 </Text>
 
                 {/* Email */}
-                <Text className={`text-sm mt-1 ${
-                  isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}>
+                <Text style={{ color: tokens.textSecondary, fontSize: 14, marginTop: 6 }}>
                   {user?.email}
                 </Text>
 
@@ -279,52 +273,34 @@ const ProfileScreen = ({ navigation }) => {
               </View>
 
               {/* Divider */}
-              <View className="h-px mb-3" style={{
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
-              }} />
+              <View className="h-px mb-3" style={{ backgroundColor: tokens.border }} />
 
               {/* Profile Details */}
               <View>
                 {/* Username */}
                 <View className="flex-row items-center">
-                  <View className={`w-10 h-10 rounded-lg items-center justify-center mr-3 ${
-                    isDark ? 'bg-white/5' : 'bg-gray-100'
-                  }`}>
-                    <User size={20} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
-                  </View>
+                  <View className="w-10 h-10 rounded-lg items-center justify-center mr-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}>
+                      <User size={20} color={tokens.textSecondary} />
+                    </View>
                   <View className="flex-1">
-                    <Text className={`text-xs ${
-                      isDark ? 'text-gray-500' : 'text-gray-500'
-                    }`}>
+                    <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>
                       Username
                     </Text>
-                    <Text className={`text-sm font-medium ${
-                      isDark ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      {user?.username}
-                    </Text>
+                    <Text style={{ color: tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>{user?.username}</Text>
                   </View>
                 </View>
 
                 {/* Phone */}
                 {user?.phone && (
                   <View className="flex-row items-center mt-2">
-                    <View className={`w-10 h-10 rounded-lg items-center justify-center mr-3 ${
-                      isDark ? 'bg-white/5' : 'bg-gray-100'
-                    }`}>
-                      <Phone size={20} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    <View className="w-10 h-10 rounded-lg items-center justify-center mr-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}>
+                      <Phone size={20} color={tokens.textSecondary} />
                     </View>
                     <View className="flex-1">
-                      <Text className={`text-xs ${
-                        isDark ? 'text-gray-500' : 'text-gray-500'
-                      }`}>
+                      <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>
                         Phone
                       </Text>
-                      <Text className={`text-sm font-medium ${
-                        isDark ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {user.phone}
-                      </Text>
+                      <Text style={{ color: tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>{user.phone}</Text>
                     </View>
                   </View>
                 )}
@@ -332,22 +308,14 @@ const ProfileScreen = ({ navigation }) => {
                 {/* Location */}
                 {user?.city && user?.state && (
                   <View className="flex-row items-center mt-2">
-                    <View className={`w-10 h-10 rounded-lg items-center justify-center mr-3 ${
-                      isDark ? 'bg-white/5' : 'bg-gray-100'
-                    }`}>
-                      <MapPin size={20} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    <View className="w-10 h-10 rounded-lg items-center justify-center mr-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}>
+                      <MapPin size={20} color={tokens.textSecondary} />
                     </View>
                     <View className="flex-1">
-                      <Text className={`text-xs ${
-                        isDark ? 'text-gray-500' : 'text-gray-500'
-                      }`}>
+                      <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>
                         Location
                       </Text>
-                      <Text className={`text-sm font-medium ${
-                        isDark ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {user.city}, {user.state}
-                      </Text>
+                        <Text style={{ color: tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>{user.city}, {user.state}</Text>
                     </View>
                   </View>
                 )}
@@ -358,64 +326,47 @@ const ProfileScreen = ({ navigation }) => {
           {/* Quick Actions */}
           <Animated.View entering={FadeInDown.delay(300).duration(400)} className="px-4 mb-3">
             <GlassCard>
-              <Text className={`text-lg font-bold mb-3 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>
+              <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
                 Quick Actions
               </Text>
 
               {/* Edit Profile Button */}
               <TouchableOpacity
                 onPress={handleEditProfile}
-                className={`flex-row items-center p-3 rounded-2xl mb-2 ${
-                  isDark ? 'bg-white/5' : 'bg-gray-50'
-                }`}
+                className="flex-row items-center p-3 rounded-2xl mb-2"
                 activeOpacity={0.7}
+                style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}
               >
-                <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center mr-3">
-                  <Edit3 size={20} className="text-blue-500" />
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)' }}>
+                  <Edit3 size={20} color={tokens.primary} />
                 </View>
-                <Text className={`text-base font-semibold flex-1 ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}>
-                  Edit Profile
-                </Text>
+                <Text style={{ color: tokens.textPrimary, fontSize: 16, fontWeight: '600', flex: 1 }}>Edit Profile</Text>
               </TouchableOpacity>
 
               {/* My Matches Button */}
               <TouchableOpacity
                 onPress={handleMyMatches}
-                className={`flex-row items-center p-3 rounded-2xl mb-2 ${
-                  isDark ? 'bg-white/5' : 'bg-gray-50'
-                }`}
+                className="flex-row items-center p-3 rounded-2xl mb-2"
                 activeOpacity={0.7}
+                style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}
               >
-                <View className="w-10 h-10 rounded-full bg-pink-500/20 items-center justify-center mr-3">
-                  <Heart size={20} className="text-pink-500" />
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: isDark ? 'rgba(236,72,153,0.12)' : 'rgba(236,72,153,0.08)' }}>
+                  <Heart size={20} color={'#EC4899'} />
                 </View>
-                <Text className={`text-base font-semibold flex-1 ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}>
-                  My Matches
-                </Text>
+                <Text style={{ color: tokens.textPrimary, fontSize: 16, fontWeight: '600', flex: 1 }}>My Matches</Text>
               </TouchableOpacity>
 
               {/* Settings Button */}
               <TouchableOpacity
                 onPress={handleSettings}
-                className={`flex-row items-center p-3 rounded-2xl ${
-                  isDark ? 'bg-white/5' : 'bg-gray-50'
-                }`}
+                className="flex-row items-center p-3 rounded-2xl"
                 activeOpacity={0.7}
+                style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}
               >
-                <View className="w-10 h-10 rounded-full bg-gray-500/20 items-center justify-center mr-3">
-                  <SettingsIcon size={20} className="text-gray-500" />
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: isDark ? 'rgba(107,114,128,0.12)' : 'rgba(107,114,128,0.06)' }}>
+                  <SettingsIcon size={20} color={tokens.textSecondary} />
                 </View>
-                <Text className={`text-base font-semibold flex-1 ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}>
-                  Settings
-                </Text>
+                <Text style={{ color: tokens.textPrimary, fontSize: 16, fontWeight: '600', flex: 1 }}>Settings</Text>
               </TouchableOpacity>
             </GlassCard>
           </Animated.View>
@@ -423,26 +374,19 @@ const ProfileScreen = ({ navigation }) => {
           {/* Account Management */}
           <Animated.View entering={FadeInDown.delay(400).duration(400)} className="px-4 mb-3">
             <GlassCard>
-              <Text className={`text-lg font-bold mb-3 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>
-                Account Management
-              </Text>
+              <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 12 }}>Account Management</Text>
 
               {/* Logout Button */}
               <TouchableOpacity
                 onPress={handleLogout}
-                className={`flex-row items-center p-3 rounded-2xl ${
-                  isDark ? 'bg-red-500/10' : 'bg-red-50'
-                }`}
+                className="flex-row items-center p-3 rounded-2xl"
                 activeOpacity={0.7}
+                style={{ backgroundColor: tokens.actionPassBg }}
               >
-                <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center mr-3">
-                  <LogOut size={20} className="text-red-500" />
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: 'rgba(239,68,68,0.12)' }}>
+                  <LogOut size={20} color={tokens.danger} />
                 </View>
-                <Text className="text-base font-semibold flex-1 text-red-500">
-                  Logout
-                </Text>
+                <Text style={{ color: tokens.danger, fontSize: 16, fontWeight: '600', flex: 1 }}>Logout</Text>
               </TouchableOpacity>
             </GlassCard>
           </Animated.View>
@@ -450,17 +394,9 @@ const ProfileScreen = ({ navigation }) => {
           {/* App Info */}
           <Animated.View entering={FadeInDown.delay(500).duration(400)} className="px-4 mb-6">
             <GlassCard className="items-center">
-              <Text className="text-2xl font-bold text-primary-500 mb-2">
-                DogMatch
-              </Text>
-              <Text className={`text-xs mb-3 ${
-                isDark ? 'text-gray-500' : 'text-gray-500'
-              }`}>
-                Version 1.0.0
-              </Text>
-              <Text className={`text-sm text-center leading-5 ${
-                isDark ? 'text-gray-400' : 'text-gray-600'
-              }`}>
+              <Text style={{ color: tokens.primary, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>DogMatch</Text>
+              <Text style={{ color: tokens.textSecondary, fontSize: 12, marginBottom: 12 }}>Version 1.0.0</Text>
+              <Text style={{ color: tokens.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
                 Connect with other dog owners and find the perfect match for your furry friend.
               </Text>
             </GlassCard>

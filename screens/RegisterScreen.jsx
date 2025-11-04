@@ -28,10 +28,12 @@ import { registerSchema } from '../validation/authSchemas';
 import { useTheme } from '../theme/ThemeContext';
 import { logger } from '../utils/logger';
 import { GlassCard, GlassInput, GlassButton, GradientText } from '../components/glass';
+import { getDesignTokens } from '../styles/designTokens';
 
 const RegisterScreen = ({ navigation }) => {
   const { register, loading } = useAuth();
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedUserType, setSelectedUserType] = useState('owner');
@@ -96,8 +98,8 @@ const RegisterScreen = ({ navigation }) => {
               className="items-center mb-8"
             >
               <Animated.View style={heartAnimatedStyle} className="mb-4">
-                <View className="w-20 h-20 rounded-full bg-secondary-500/20 items-center justify-center">
-                  <Heart size={40} className="text-secondary-500" fill="#EC4899" />
+                <View className="w-20 h-20 rounded-full items-center justify-center" style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)' }}>
+                  <Heart size={40} color={tokens.primary} fill={tokens.primary} />
                 </View>
               </Animated.View>
               
@@ -108,7 +110,7 @@ const RegisterScreen = ({ navigation }) => {
                 Join DogMatch!
               </GradientText>
               
-              <Text className={`text-sm text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Text style={{ color: tokens.textSecondary, textAlign: 'center' }}>
                 Create your account and start matching with amazing dogs
               </Text>
             </Animated.View>
@@ -228,9 +230,9 @@ const RegisterScreen = ({ navigation }) => {
 
                       {/* Account Type Selector */}
                       <View className="mb-4">
-                        <Text className={`text-sm font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          Account Type
-                        </Text>
+                          <Text style={{ color: tokens.textPrimary, fontSize: 14, fontWeight: '600', marginBottom: 12 }}>
+                            Account Type
+                          </Text>
                         <View className="flex-row space-x-3">
                           <TouchableOpacity
                             onPress={() => {
@@ -240,22 +242,12 @@ const RegisterScreen = ({ navigation }) => {
                             className="flex-1"
                             activeOpacity={0.8}
                           >
-                            <View className={`p-4 rounded-2xl border-2 ${
-                              values.user_type === 'owner'
-                                ? (isDark ? 'bg-primary-500/20 border-primary-500' : 'bg-primary-100 border-primary-500')
-                                : (isDark ? 'bg-white/5 border-white/20' : 'bg-gray-100 border-gray-300')
-                            }`}>
-                              <Home size={24} className={`${
-                                values.user_type === 'owner' ? 'text-primary-500' : (isDark ? 'text-gray-400' : 'text-gray-600')
-                              } mb-2`} />
-                              <Text className={`text-sm font-semibold ${
-                                values.user_type === 'owner' 
-                                  ? 'text-primary-500' 
-                                  : (isDark ? 'text-white' : 'text-gray-900')
-                              }`}>
-                                Dog Owner
-                              </Text>
-                            </View>
+                              <View style={{ padding: 16, borderRadius: 16, borderWidth: 2, backgroundColor: values.user_type === 'owner' ? tokens.primary : (isDark ? 'rgba(255,255,255,0.04)' : tokens.cardBackground), borderColor: values.user_type === 'owner' ? tokens.primary : tokens.border }}>
+                                <Home size={24} color={values.user_type === 'owner' ? tokens.primary : tokens.textSecondary} style={{ marginBottom: 8 }} />
+                                <Text style={{ color: values.user_type === 'owner' ? tokens.primary : tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>
+                                  Dog Owner
+                                </Text>
+                              </View>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -266,19 +258,9 @@ const RegisterScreen = ({ navigation }) => {
                             className="flex-1"
                             activeOpacity={0.8}
                           >
-                            <View className={`p-4 rounded-2xl border-2 ${
-                              values.user_type === 'shelter'
-                                ? (isDark ? 'bg-secondary-500/20 border-secondary-500' : 'bg-secondary-100 border-secondary-500')
-                                : (isDark ? 'bg-white/5 border-white/20' : 'bg-gray-100 border-gray-300')
-                            }`}>
-                              <Heart size={24} className={`${
-                                values.user_type === 'shelter' ? 'text-secondary-500' : (isDark ? 'text-gray-400' : 'text-gray-600')
-                              } mb-2`} />
-                              <Text className={`text-sm font-semibold ${
-                                values.user_type === 'shelter' 
-                                  ? 'text-secondary-500' 
-                                  : (isDark ? 'text-white' : 'text-gray-900')
-                              }`}>
+                            <View style={{ padding: 16, borderRadius: 16, borderWidth: 2, backgroundColor: values.user_type === 'shelter' ? tokens.actionSuperLikeBg : (isDark ? 'rgba(255,255,255,0.04)' : tokens.cardBackground), borderColor: values.user_type === 'shelter' ? tokens.actionSuperLikeBg : tokens.border }}>
+                              <Heart size={24} color={values.user_type === 'shelter' ? tokens.primaryContrast : tokens.textSecondary} style={{ marginBottom: 8 }} />
+                              <Text style={{ color: values.user_type === 'shelter' ? tokens.primaryContrast : tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>
                                 Shelter
                               </Text>
                             </View>
@@ -339,8 +321,8 @@ const RegisterScreen = ({ navigation }) => {
                   onPress={() => navigation.navigate('Login')}
                   activeOpacity={0.7}
                 >
-                  <Text className={`text-base ${isDark ? 'text-primary-400' : 'text-primary-600'}`}>
-                    Already have an account? <Text className="font-semibold">Sign In</Text>
+                  <Text style={{ color: tokens.primary, fontSize: 16 }}>
+                    Already have an account? <Text style={{ fontWeight: '700' }}>Sign In</Text>
                   </Text>
                 </TouchableOpacity>
               </View>

@@ -28,6 +28,7 @@ import { fetchDiscoverDogs, clearError } from '../store/slices/dogsSlice';
 import { swipeDog, fetchPendingSwipes, clearError as clearMatchesError } from '../store/slices/matchesSlice';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import { logger } from '../utils/logger';
 import { GlassCard, GradientText } from '../components/glass';
 
@@ -39,6 +40,8 @@ const DiscoverScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
+  const styles = useMemo(() => createStyles(tokens), [isDark]);
   const { discoverDogs, discoverLoading, error: dogsError } = useAppSelector(state => state.dogs);
   const { pendingSwipes, pendingLoading, error: matchesError } = useAppSelector(state => state.matches);
   const [swiping, setSwiping] = useState(false);
@@ -156,54 +159,68 @@ const DiscoverScreen = ({ navigation }) => {
         
         {/* Gradient overlay for better text readability */}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          colors={[ 'transparent', 'rgba(0,0,0,0.8)' ]}
           style={styles.gradientOverlay}
         />
 
         {/* Dog Info - Glass Card at bottom */}
         <View style={styles.dogInfoContainer}>
           <View className="mb-3">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white text-3xl font-bold flex-1">
+              <View className="flex-row items-center justify-between mb-2">
+              <Text
+                className="text-3xl font-bold flex-1"
+                style={{ color: tokens.textPrimary }}
+              >
                 {dog.name}
               </Text>
-              <View className={`px-3 py-1 rounded-full ${isDark ? 'bg-accent-500/30' : 'bg-accent-400/30'}`}>
-                <Text className="text-white text-sm font-semibold">
+              <View
+                className="px-3 py-1 rounded-full"
+                style={{
+                  backgroundColor: isDark ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.08)'
+                }}
+              >
+                <Text style={{ color: tokens.primaryContrast, fontWeight: '600', fontSize: 14 }}>
                   {dog.age_string || `${dog.age_years || 0} years`}
                 </Text>
               </View>
             </View>
             
-            <Text className="text-white text-lg mb-2 opacity-90">
+            <Text style={{ color: tokens.textPrimary, fontSize: 18, marginBottom: 8, opacity: 0.9 }}>
               {dog.breed}
             </Text>
 
             {/* Owner Information */}
             {dog.owner && (
               <View className="flex-row items-center mb-2">
-                <Users size={16} className="text-white opacity-80 mr-2" />
-                <Text className="text-white text-sm opacity-80">
+                <Users size={16} color={tokens.textPrimary} style={{ opacity: 0.8, marginRight: 8 }} />
+                <Text style={{ color: tokens.textPrimary, fontSize: 14, opacity: 0.8 }}>
                   {dog.owner.first_name} {dog.owner.last_name}
                 </Text>
               </View>
             )}
             
-            <Text className="text-white text-sm opacity-80 leading-5" numberOfLines={2}>
+            <Text style={{ color: tokens.textPrimary, fontSize: 14, opacity: 0.8, lineHeight: 20 }} numberOfLines={2}>
               {dog.description}
             </Text>
           </View>
           
           {/* Traits */}
           <View className="flex-row space-x-2">
-            <View className={`px-3 py-1.5 rounded-lg flex-row items-center ${isDark ? 'bg-white/20' : 'bg-white/30'}`}>
-              <Ruler size={14} className="text-white mr-1" />
-              <Text className="text-white text-xs font-medium">
+            <View
+              className="px-3 py-1.5 rounded-lg flex-row items-center"
+              style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)' }}
+            >
+              <Ruler size={14} color={tokens.textPrimary} style={{ marginRight: 6 }} />
+              <Text style={{ color: tokens.textPrimary, fontSize: 12, fontWeight: '500' }}>
                 {dog.size}
               </Text>
             </View>
-            <View className={`px-3 py-1.5 rounded-lg flex-row items-center ${isDark ? 'bg-white/20' : 'bg-white/30'}`}>
-              <Zap size={14} className="text-white mr-1" />
-              <Text className="text-white text-xs font-medium">
+            <View
+              className="px-3 py-1.5 rounded-lg flex-row items-center"
+              style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)' }}
+            >
+              <Zap size={14} color={tokens.textPrimary} style={{ marginRight: 6 }} />
+              <Text style={{ color: tokens.textPrimary, fontSize: 12, fontWeight: '500' }}>
                 {dog.energy_level || 'Medium'}
               </Text>
             </View>
@@ -216,22 +233,22 @@ const DiscoverScreen = ({ navigation }) => {
   // Overlay components for swipe feedback - PRESERVE THESE
   const OverlayLabelRight = useCallback(() => (
     <View style={styles.overlayLabelLike}>
-      <Heart size={56} color="#fff" fill="#fff" />
-      <Text className="text-white text-xl font-bold mt-2">LIKE</Text>
+      <Heart size={56} color={tokens.primaryContrast} fill={tokens.primaryContrast} />
+      <Text style={{ color: tokens.primaryContrast, fontSize: 18, fontWeight: '700', marginTop: 8 }}>LIKE</Text>
     </View>
   ), []);
 
   const OverlayLabelLeft = useCallback(() => (
     <View style={styles.overlayLabelPass}>
-      <X size={56} color="#fff" strokeWidth={3} />
-      <Text className="text-white text-xl font-bold mt-2">PASS</Text>
+      <X size={56} color={tokens.primaryContrast} strokeWidth={3} />
+      <Text style={{ color: tokens.primaryContrast, fontSize: 18, fontWeight: '700', marginTop: 8 }}>PASS</Text>
     </View>
   ), []);
 
   const OverlayLabelTop = useCallback(() => (
     <View style={styles.overlayLabelSuperLike}>
-      <Star size={56} color="#fff" fill="#fff" />
-      <Text className="text-white text-base font-bold mt-2">SUPER LIKE</Text>
+      <Star size={56} color={tokens.primaryContrast} fill={tokens.primaryContrast} />
+      <Text style={{ color: tokens.primaryContrast, fontSize: 16, fontWeight: '700', marginTop: 8 }}>SUPER LIKE</Text>
     </View>
   ), []);
 
@@ -241,17 +258,14 @@ const DiscoverScreen = ({ navigation }) => {
       <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <LinearGradient
-          colors={isDark 
-            ? ['#312E81', '#1E293B', '#0F172A'] 
-            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-          }
-          className="absolute top-0 left-0 right-0 bottom-0"
-        />
+            colors={tokens.gradientBackground}
+            className="absolute top-0 left-0 right-0 bottom-0"
+          />
         <SafeAreaView className="flex-1 items-center justify-center" edges={['top']}>
-          <ActivityIndicator size="large" color="#6366F1" />
-          <Text className={`text-base mt-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Finding perfect matches for you...
-          </Text>
+          <ActivityIndicator size="large" color={tokens.primary} />
+            <Text style={{ color: tokens.textSecondary, marginTop: 16, fontSize: 16 }}>
+              Finding perfect matches for you...
+            </Text>
         </SafeAreaView>
       </View>
     );
@@ -263,31 +277,27 @@ const DiscoverScreen = ({ navigation }) => {
       <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <LinearGradient
-          colors={isDark 
-            ? ['#312E81', '#1E293B', '#0F172A'] 
-            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-          }
+          colors={tokens.gradientBackground}
           className="absolute top-0 left-0 right-0 bottom-0"
         />
         <SafeAreaView className="flex-1 items-center justify-center px-6" edges={['top']}>
           <Animated.View entering={FadeIn.duration(600)} className="items-center">
-            <View className={`w-24 h-24 rounded-full items-center justify-center mb-6 ${
-              isDark ? 'bg-primary-500/20' : 'bg-primary-100'
-            }`}>
-              <Heart size={48} className="text-primary-500" />
+              <View className={`w-24 h-24 rounded-full items-center justify-center mb-6`} style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)' }}>
+              <Heart size={48} color={tokens.primary} />
             </View>
-            <Text className={`text-2xl font-bold mb-3 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <Text style={{ color: tokens.textPrimary, fontSize: 20, fontWeight: '700', marginBottom: 12, textAlign: 'center' }}>
               No more dogs to discover!
             </Text>
-            <Text className={`text-base text-center mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <Text style={{ color: tokens.textSecondary, fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
               Check back later for new profiles or adjust your preferences.
             </Text>
             <TouchableOpacity
               onPress={loadDogs}
               activeOpacity={0.8}
-              className="px-6 py-3 rounded-xl bg-primary-500"
+              className="px-6 py-3 rounded-xl"
+              style={{ backgroundColor: tokens.primary }}
             >
-              <Text className="text-white font-semibold">Refresh</Text>
+              <Text style={{ color: tokens.primaryContrast, fontWeight: '600' }}>Refresh</Text>
             </TouchableOpacity>
           </Animated.View>
         </SafeAreaView>
@@ -301,10 +311,7 @@ const DiscoverScreen = ({ navigation }) => {
       
       {/* Gradient Background */}
       <LinearGradient
-        colors={isDark 
-          ? ['#312E81', '#1E293B', '#0F172A'] 
-          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-        }
+        colors={tokens.gradientBackground}
         className="absolute top-0 left-0 right-0 h-80"
       />
 
@@ -319,34 +326,32 @@ const DiscoverScreen = ({ navigation }) => {
               >
                 Discover
               </GradientText>
-              <Text className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Text style={{ color: tokens.textSecondary, fontSize: 14 }}>
                 Find your perfect match
               </Text>
             </View>
             
             <View className="flex-row space-x-2">
-              {pendingSwipes.length > 0 && (
+                {pendingSwipes.length > 0 && (
                 <TouchableOpacity
                   onPress={() => navigation.navigate('PendingSwipes')}
                   activeOpacity={0.7}
-                  className={`w-12 h-12 rounded-full items-center justify-center ${
-                    isDark ? 'bg-secondary-500/20' : 'bg-secondary-100'
-                  }`}
+                  className={`w-12 h-12 rounded-full items-center justify-center`}
+                  style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)' }}
                 >
-                  <Heart size={20} className="text-secondary-500" />
-                  <View className="absolute top-0 right-0 w-5 h-5 rounded-full bg-secondary-500 items-center justify-center">
-                    <Text className="text-white text-xs font-bold">{pendingSwipes.length}</Text>
+                  <Heart size={20} color={tokens.primary} />
+                  <View className="absolute top-0 right-0 w-5 h-5 rounded-full items-center justify-center" style={{ backgroundColor: tokens.primary }}>
+                    <Text style={{ color: tokens.primaryContrast, fontSize: 10, fontWeight: '700' }}>{pendingSwipes.length}</Text>
                   </View>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 onPress={() => navigation.navigate('Matches')}
                 activeOpacity={0.7}
-                className={`w-12 h-12 rounded-full items-center justify-center ${
-                  isDark ? 'bg-primary-500/20' : 'bg-primary-100'
-                }`}
+                className={`w-12 h-12 rounded-full items-center justify-center`}
+                style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)' }}
               >
-                <Heart size={20} className="text-primary-500" fill="#6366F1" />
+                <Heart size={20} color={tokens.primary} fill={tokens.primary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -355,13 +360,7 @@ const DiscoverScreen = ({ navigation }) => {
         {/* Swiper Container - PRESERVE ALL SWIPER FUNCTIONALITY */}
         <Animated.View 
           entering={FadeInDown.delay(200).duration(600)}
-          style={{ 
-            flex: 1, 
-            justifyContent: 'flex-start', 
-            alignItems: 'center',
-            paddingTop: 20,
-            paddingBottom: 20,
-          }}
+          style={styles.swiperContainer}
         >
           <Swiper
             ref={swiperRef}
@@ -416,12 +415,12 @@ const DiscoverScreen = ({ navigation }) => {
               width: 56,
               height: 56,
               borderRadius: 28,
-              backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+              backgroundColor: isDark ? tokens.actionPassBg : tokens.actionPassBg,
               borderWidth: 2,
-              borderColor: 'rgba(239, 68, 68, 0.4)',
+              borderColor: isDark ? tokens.actionPassBorder : tokens.actionPassBorder,
               justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: '#000',
+              shadowColor: tokens.actionLikeShadow || '#000',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.2,
               shadowRadius: 8,
@@ -439,10 +438,10 @@ const DiscoverScreen = ({ navigation }) => {
               width: 48,
               height: 48,
               borderRadius: 24,
-              backgroundColor: 'rgba(236, 72, 153, 0.9)',
+              backgroundColor: tokens.actionSuperLikeBg,
               justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: '#EC4899',
+              shadowColor: tokens.actionSuperLikeBg || '#EC4899',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.4,
               shadowRadius: 8,
@@ -460,10 +459,10 @@ const DiscoverScreen = ({ navigation }) => {
               width: 56,
               height: 56,
               borderRadius: 28,
-              backgroundColor: 'rgba(99, 102, 241, 0.9)',
+              backgroundColor: tokens.actionLikeBg,
               justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: '#6366F1',
+              shadowColor: tokens.actionLikeShadow || '#6366F1',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.4,
               shadowRadius: 8,
@@ -477,68 +476,77 @@ const DiscoverScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  cardContainer: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: '#1E293B',
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-  },
-  dogInfoContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-  },
-  overlayLabelLike: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(99, 102, 241, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  overlayLabelPass: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  overlayLabelSuperLike: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(236, 72, 153, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-});
+function createStyles(tokens) {
+  return StyleSheet.create({
+    cardContainer: {
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      borderRadius: tokens.borderRadius,
+      overflow: 'hidden',
+      backgroundColor: tokens.cardBackground,
+    },
+    cardImage: {
+      width: '100%',
+      height: '100%',
+    },
+    gradientOverlay: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 200,
+    },
+    dogInfoContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: tokens.spacingLarge,
+    },
+    overlayLabelLike: {
+      width: 140,
+      height: 140,
+      borderRadius: 70,
+      backgroundColor: tokens.primaryVariant,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    },
+    overlayLabelPass: {
+      width: 140,
+      height: 140,
+      borderRadius: 70,
+      backgroundColor: tokens.danger,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    },
+    overlayLabelSuperLike: {
+      width: 140,
+      height: 140,
+      borderRadius: 70,
+      backgroundColor: tokens.overlaySuperLikeBg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    },
+    swiperContainer: {
+      flex: 1,
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      paddingTop: 20,
+      paddingBottom: 20,
+    },
+  });
+}
 
 export default DiscoverScreen;

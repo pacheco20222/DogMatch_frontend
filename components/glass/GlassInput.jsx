@@ -89,10 +89,11 @@ const GlassInput = ({
               // offset for the icon so both glyph and input text share the
               // same visual baseline.
               (() => {
-                // Use platform-tuned offsets to get a closer pixel match on iOS
-                // vs Android. These numbers were chosen after visual tuning.
-                const floatedOffset = Platform.OS === 'ios' ? 6 : 8;
-                const iconOffset = (isFocused || value) ? floatedOffset : 0;
+                // Use platform-tuned negative offsets to lift the icon so it
+                // visually aligns with the numeric/text baseline on iPhones.
+                // Increase the upward nudge here after user's feedback.
+                const floatedOffset = Platform.OS === 'ios' ? -8 : -6;
+                const iconOffset = (isFocused || value) ? floatedOffset : -2;
                 return (
                   <View style={{ marginRight: 12, alignSelf: 'center', transform: [{ translateY: iconOffset }] }}>
                     <LeftIcon 
@@ -149,8 +150,8 @@ const GlassInput = ({
 
             {RightIcon && (
               (() => {
-                const floatedOffsetR = Platform.OS === 'ios' ? 6 : 8;
-                const iconOffset = (isFocused || value) ? floatedOffsetR : 0;
+                const floatedOffsetR = Platform.OS === 'ios' ? -8 : -6;
+                const iconOffset = (isFocused || value) ? floatedOffsetR : -2;
                 return (
                   <TouchableOpacity onPress={onRightIconPress} style={{ marginLeft: 12, alignSelf: 'center', transform: [{ translateY: iconOffset }] }}>
                     <RightIcon 

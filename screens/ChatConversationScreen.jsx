@@ -26,6 +26,7 @@ import { logger } from '../utils/logger';
 import { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -37,7 +38,8 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const { messages: reduxMessages, loading, error } = useAppSelector(state => state.chats);
   const { isDark } = useTheme();
-  
+  const tokens = getDesignTokens(isDark);
+  const styles = React.useMemo(() => createStyles(tokens), [isDark]);
   const messages = reduxMessages[matchId] || [];
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -401,246 +403,248 @@ const ChatConversationScreen = ({ navigation, route }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  containerDark: {
-    backgroundColor: '#0F172A',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  headerDark: {
-    backgroundColor: '#1E293B',
-    borderBottomColor: '#334155',
-  },
-  backButton: {
-    marginRight: 12,
-    padding: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#4F8EF7',
-    fontWeight: 'bold',
-  },
-  backButtonTextDark: {
-    color: '#818CF8',
-  },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-    backgroundColor: '#F3F4F6',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  headerTitleDark: {
-    color: '#FFFFFF',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  headerSubtitleDark: {
-    color: '#94A3B8',
-  },
-  connectionStatus: {
-    marginLeft: 12,
-  },
-  offlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-  },
-  chatContainer: {
-    flex: 1,
-  },
-  messagesList: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    paddingBottom: 16, // Reduced padding since tab bar is hidden
-  },
-  messageContainer: {
-    flexDirection: 'row',
-    marginVertical: 4,
-    alignItems: 'flex-end',
-  },
-  currentUserMessage: {
-    justifyContent: 'flex-end',
-  },
-  otherUserMessage: {
-    justifyContent: 'flex-start',
-  },
-  messageAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  messageBubble: {
-    maxWidth: screenWidth * 0.75,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  currentUserBubble: {
-    backgroundColor: '#4F8EF7',
-    borderBottomRightRadius: 4,
-  },
-  otherUserBubble: {
-    backgroundColor: '#F3F4F6',
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  currentUserText: {
-    color: '#FFFFFF',
-  },
-  otherUserText: {
-    color: '#1F2937',
-  },
-  messageTime: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  currentUserTime: {
-    color: '#E5E7EB',
-  },
-  otherUserTime: {
-    color: '#9CA3AF',
-  },
-  typingContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginVertical: 4,
-  },
-  typingAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  typingBubble: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderBottomLeftRadius: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  typingText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginRight: 8,
-  },
-  typingDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  typingDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#9CA3AF',
-    marginHorizontal: 1,
-  },
-  typingDot1: {
-    animationDelay: '0s',
-  },
-  typingDot2: {
-    animationDelay: '0.2s',
-  },
-  typingDot3: {
-    animationDelay: '0.4s',
-  },
-  inputContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    paddingBottom: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  inputContainerDark: {
-    backgroundColor: '#1E293B',
-    borderTopColor: '#334155',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  inputWrapperDark: {
-    backgroundColor: '#334155',
-    borderColor: '#475569',
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1F2937',
-    maxHeight: 100,
-    paddingVertical: 8,
-  },
-  textInputDark: {
-    color: '#FFFFFF',
-  },
-  sendButton: {
-    marginLeft: 8,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#4F8EF7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
-  },
-  sendButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  sendButtonTextDisabled: {
-    color: '#9CA3AF',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-});
+function createStyles(tokens) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: tokens.background,
+    },
+    containerDark: {
+      backgroundColor: tokens.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: tokens.spacingLarge,
+      paddingVertical: tokens.spacing,
+      paddingTop: 50,
+      borderBottomWidth: 1,
+      borderBottomColor: tokens.headerBorder,
+      backgroundColor: tokens.headerBackground,
+    },
+    headerDark: {
+      backgroundColor: tokens.headerBackground,
+      borderBottomColor: tokens.headerBorder,
+    },
+    backButton: {
+      marginRight: 12,
+      padding: 8,
+    },
+    backButtonText: {
+      fontSize: 24,
+      color: tokens.primaryVariant,
+      fontWeight: 'bold',
+    },
+    backButtonTextDark: {
+      color: tokens.primary,
+    },
+    headerAvatar: {
+      width: tokens.avatarSize,
+      height: tokens.avatarSize,
+      borderRadius: tokens.avatarSize / 2,
+      marginRight: 12,
+      backgroundColor: tokens.avatarBackground,
+    },
+    headerInfo: {
+      flex: 1,
+    },
+    headerTitle: {
+      fontSize: tokens.fontSizeLg,
+      fontWeight: '600',
+      color: tokens.textPrimary,
+    },
+    headerTitleDark: {
+      color: tokens.textPrimary,
+    },
+    headerSubtitle: {
+      fontSize: tokens.fontSizeSm,
+      color: tokens.textSecondary,
+      marginTop: 2,
+    },
+    headerSubtitleDark: {
+      color: tokens.textSecondary,
+    },
+    connectionStatus: {
+      marginLeft: 12,
+    },
+    offlineDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: tokens.danger,
+    },
+    chatContainer: {
+      flex: 1,
+    },
+    messagesList: {
+      paddingHorizontal: tokens.spacingLarge,
+      paddingVertical: tokens.spacing,
+      paddingBottom: tokens.spacingLarge, // Reduced padding since tab bar is hidden
+    },
+    messageContainer: {
+      flexDirection: 'row',
+      marginVertical: 4,
+      alignItems: 'flex-end',
+    },
+    currentUserMessage: {
+      justifyContent: 'flex-end',
+    },
+    otherUserMessage: {
+      justifyContent: 'flex-start',
+    },
+    messageAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      marginRight: 8,
+      backgroundColor: tokens.avatarBackground,
+    },
+    messageBubble: {
+      maxWidth: screenWidth * 0.75,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 20,
+    },
+    currentUserBubble: {
+      backgroundColor: tokens.bubbleOutgoing,
+      borderBottomRightRadius: 4,
+    },
+    otherUserBubble: {
+      backgroundColor: tokens.bubbleIncoming,
+      borderBottomLeftRadius: 4,
+    },
+    messageText: {
+      fontSize: tokens.fontSizeBase,
+      lineHeight: 20,
+    },
+    currentUserText: {
+      color: tokens.primaryContrast,
+    },
+    otherUserText: {
+      color: tokens.textPrimary,
+    },
+    messageTime: {
+      fontSize: 12,
+      marginTop: 4,
+    },
+    currentUserTime: {
+      color: tokens.subtle,
+    },
+    otherUserTime: {
+      color: tokens.muted,
+    },
+    typingContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      marginVertical: 4,
+    },
+    typingAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      marginRight: 8,
+      backgroundColor: tokens.avatarBackground,
+    },
+    typingBubble: {
+      backgroundColor: tokens.bubbleIncoming,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 20,
+      borderBottomLeftRadius: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    typingText: {
+      fontSize: tokens.fontSizeBase,
+      color: tokens.textSecondary,
+      marginRight: 8,
+    },
+    typingDots: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    typingDot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: tokens.muted,
+      marginHorizontal: 1,
+    },
+    typingDot1: {
+      animationDelay: '0s',
+    },
+    typingDot2: {
+      animationDelay: '0.2s',
+    },
+    typingDot3: {
+      animationDelay: '0.4s',
+    },
+    inputContainer: {
+      paddingHorizontal: tokens.spacingLarge,
+      paddingVertical: tokens.spacing,
+      paddingBottom: tokens.spacing,
+      borderTopWidth: 1,
+      borderTopColor: tokens.headerBorder,
+      backgroundColor: tokens.surface,
+    },
+    inputContainerDark: {
+      backgroundColor: tokens.headerBackground,
+      borderTopColor: tokens.headerBorder,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      backgroundColor: tokens.inputBackground,
+      borderRadius: tokens.borderRadius,
+      paddingHorizontal: tokens.spacingLarge,
+      paddingVertical: tokens.spacing,
+      borderWidth: 1,
+      borderColor: tokens.inputBorder,
+    },
+    inputWrapperDark: {
+      backgroundColor: tokens.inputBackground,
+      borderColor: tokens.inputBorder,
+    },
+    textInput: {
+      flex: 1,
+      fontSize: tokens.fontSizeBase,
+      color: tokens.inputText,
+      maxHeight: 100,
+      paddingVertical: 8,
+    },
+    textInputDark: {
+      color: tokens.inputText,
+    },
+    sendButton: {
+      marginLeft: 8,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: tokens.primaryVariant,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sendButtonDisabled: {
+      backgroundColor: '#D1D5DB',
+    },
+    sendButtonText: {
+      fontSize: 16,
+      color: tokens.primaryContrast,
+      fontWeight: 'bold',
+    },
+    sendButtonTextDisabled: {
+      color: tokens.muted,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      fontSize: tokens.fontSizeBase,
+      color: tokens.muted,
+    },
+  });
+}
 
 export default ChatConversationScreen;

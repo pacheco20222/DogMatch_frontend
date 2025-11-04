@@ -27,12 +27,14 @@ import Animated, {
 import { useAuth } from '../hooks/useAuth';
 import { loginSchema } from '../validation/authSchemas';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import { logger } from '../utils/logger';
 import { GlassCard, GlassInput, GlassButton, GradientText } from '../components/glass';
 
 const LoginScreen = ({ navigation }) => {
   const { login } = useAuth();
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
   const [showPassword, setShowPassword] = useState(false);
 
   const heartBeat = useSharedValue(1);
@@ -107,8 +109,8 @@ const LoginScreen = ({ navigation }) => {
               className="items-center mb-12"
             >
               <Animated.View style={[heartAnimatedStyle, logoAnimatedStyle]} className="mb-6">
-                <View className="w-24 h-24 rounded-full bg-primary-500/20 items-center justify-center">
-                  <Heart size={48} className="text-primary-500" fill="#6366F1" />
+                <View className="w-24 h-24 rounded-full items-center justify-center" style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)' }}>
+                  <Heart size={48} color={tokens.primary} fill={tokens.primary} />
                 </View>
               </Animated.View>
               
@@ -119,7 +121,7 @@ const LoginScreen = ({ navigation }) => {
                 Welcome Back!
               </GradientText>
               
-              <Text className={`text-base text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Text style={{ color: tokens.textSecondary, textAlign: 'center' }}>
                 Sign in to continue your dog matching journey
               </Text>
             </Animated.View>
@@ -164,7 +166,7 @@ const LoginScreen = ({ navigation }) => {
                       />
 
                       {errors.general && (
-                        <Text className="text-error-500 text-sm mb-4 text-center">
+                        <Text style={{ color: tokens.danger, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
                           {errors.general}
                         </Text>
                       )}
@@ -190,8 +192,8 @@ const LoginScreen = ({ navigation }) => {
                   onPress={() => navigation.navigate('Register')}
                   activeOpacity={0.7}
                 >
-                  <Text className={`text-base ${isDark ? 'text-primary-400' : 'text-primary-600'}`}>
-                    Don't have an account? <Text className="font-semibold">Sign Up</Text>
+                  <Text style={{ color: tokens.primary, fontSize: 16 }}>
+                    Don't have an account? <Text style={{ fontWeight: '700' }}>Sign Up</Text>
                   </Text>
                 </TouchableOpacity>
 
@@ -199,9 +201,7 @@ const LoginScreen = ({ navigation }) => {
                   onPress={() => Alert.alert('Forgot Password', 'Password reset feature coming soon!')}
                   activeOpacity={0.7}
                 >
-                  <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Forgot Password?
-                  </Text>
+                  <Text style={{ color: tokens.textSecondary, fontSize: 16 }}>Forgot Password?</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>

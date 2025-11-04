@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { createEvent, uploadEventPhoto, clearError } from '../store/slices/eventsSlice';
 import { createEventSchema } from '../validation/eventSchemas';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import { logger } from '../utils/logger';
 import GlassCard from '../components/glass/GlassCard';
 import GlassInput from '../components/glass/GlassInput';
@@ -32,6 +33,7 @@ const CreateEventScreen = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
   const insets = useSafeAreaInsets();
 
   // Clear error when component unmounts
@@ -173,7 +175,7 @@ const CreateEventScreen = ({ navigation }) => {
 
   const renderSelectField = (label, field, options, values, setFieldValue, errors, touched) => (
     <View className="mb-4">
-      <Text className={`text-base font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      <Text style={{ color: tokens.textPrimary, fontSize: 16, fontWeight: '600', marginBottom: 12 }}>
         {label}
       </Text>
       <View className="flex-row flex-wrap gap-2">
@@ -181,15 +183,14 @@ const CreateEventScreen = ({ navigation }) => {
           <TouchableOpacity
             key={option.value}
             onPress={() => setFieldValue(field, option.value)}
-            className={`px-4 py-2.5 rounded-xl ${values[field] === option.value
-              ? (isDark ? 'bg-primary-500' : 'bg-primary-500')
-              : (isDark ? 'bg-white/10 border border-white/20' : 'bg-gray-100 border border-gray-300')
-            }`}
+            className={`px-4 py-2.5 rounded-xl`}
+            style={{
+              backgroundColor: values[field] === option.value ? tokens.primary : (isDark ? 'rgba(255,255,255,0.06)' : tokens.cardBackground),
+              borderWidth: values[field] === option.value ? 0 : 1,
+              borderColor: tokens.border,
+            }}
           >
-            <Text className={`font-medium ${values[field] === option.value
-              ? 'text-white'
-              : (isDark ? 'text-gray-300' : 'text-gray-700')
-            }`}>
+            <Text style={{ color: values[field] === option.value ? tokens.primaryContrast : tokens.textSecondary, fontWeight: '500' }}>
               {option.label}
             </Text>
           </TouchableOpacity>
@@ -203,7 +204,7 @@ const CreateEventScreen = ({ navigation }) => {
 
   const renderRadioGroup = (label, field, values, setFieldValue) => (
     <View className="mb-4">
-      <Text className={`text-base font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      <Text style={{ color: tokens.textPrimary, fontSize: 16, fontWeight: '600', marginBottom: 12 }}>
         {label}
       </Text>
       <View className="flex-row gap-4">
@@ -213,16 +214,12 @@ const CreateEventScreen = ({ navigation }) => {
             onPress={() => setFieldValue(field, option.value)}
             className="flex-row items-center gap-2"
           >
-            <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-              values[field] === option.value
-                ? 'border-primary-500'
-                : (isDark ? 'border-gray-500' : 'border-gray-400')
-            }`}>
+            <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: values[field] === option.value ? tokens.primary : tokens.border, alignItems: 'center', justifyContent: 'center' }}>
               {values[field] === option.value && (
-                <View className="w-2.5 h-2.5 rounded-full bg-primary-500" />
+                <View style={{ width: 10, height: 10, borderRadius: 6, backgroundColor: tokens.primary }} />
               )}
             </View>
-            <Text className={isDark ? 'text-gray-300' : 'text-gray-700'}>{option.label}</Text>
+            <Text style={{ color: tokens.textPrimary }}>{option.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -232,11 +229,11 @@ const CreateEventScreen = ({ navigation }) => {
   return (
     <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
       {/* Header with iPhone notch support */}
-      <View className="px-6 pt-4 pb-3 flex-row items-center" style={{ paddingTop: insets.top + 16 }}>
+        <View className="px-6 pt-4 pb-3 flex-row items-center" style={{ paddingTop: insets.top + 16 }}>
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
-          <ArrowLeft size={24} color={isDark ? '#fff' : '#000'} />
+          <ArrowLeft size={24} color={tokens.textPrimary} />
         </TouchableOpacity>
-        <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <Text style={{ color: tokens.textPrimary, fontSize: 24, fontWeight: '700' }}>
           Create Event
         </Text>
       </View>
@@ -277,7 +274,7 @@ const CreateEventScreen = ({ navigation }) => {
                 <Animated.View entering={FadeInDown.delay(100).duration(500)}>
                   <GlassCard className="mb-6">
                     <View className="items-center">
-                      <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
                         Event Photo
                       </Text>
                       
@@ -299,17 +296,14 @@ const CreateEventScreen = ({ navigation }) => {
                       ) : (
                         <TouchableOpacity
                           onPress={pickImage}
-                          className={`w-full h-48 rounded-xl items-center justify-center border-2 border-dashed mb-2 ${
-                            isDark ? 'bg-white/5 border-white/20' : 'bg-gray-50 border-gray-300'
-                          }`}
+                          className={`w-full h-48 rounded-xl items-center justify-center border-2 border-dashed mb-2`}
+                          style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tokens.cardBackground, borderColor: tokens.border }}
                         >
-                          <Camera size={48} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                          <Text className={`mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                            Add Event Photo
-                          </Text>
+                          <Camera size={48} color={tokens.placeholder} />
+                          <Text style={{ marginTop: 8, color: tokens.textSecondary }}>Add Event Photo</Text>
                         </TouchableOpacity>
                       )}
-                      <Text className={`text-sm text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <Text style={{ color: tokens.textSecondary, fontSize: 14, textAlign: 'center' }}>
                         Optional: Add a banner photo for your event
                       </Text>
                     </View>
@@ -319,7 +313,7 @@ const CreateEventScreen = ({ navigation }) => {
                 {/* Basic Information */}
                 <Animated.View entering={FadeInDown.delay(200).duration(500)}>
                   <GlassCard className="mb-6">
-                    <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
                       Basic Information
                     </Text>
                     
@@ -351,8 +345,8 @@ const CreateEventScreen = ({ navigation }) => {
                 <Animated.View entering={FadeInDown.delay(300).duration(500)}>
                   <GlassCard className="mb-6">
                     <View className="flex-row items-center mb-4">
-                      <Calendar size={20} color={isDark ? '#fff' : '#000'} className="mr-2" />
-                      <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      <Calendar size={20} color={tokens.textPrimary} style={{ marginRight: 8 }} />
+                      <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700' }}>
                         Date & Time
                       </Text>
                     </View>
@@ -364,19 +358,12 @@ const CreateEventScreen = ({ navigation }) => {
                       </Text>
                       <TouchableOpacity
                         onPress={() => setShowDatePicker(true)}
-                        className={`flex-row items-center justify-between p-4 rounded-xl border ${
-                          isDark 
-                            ? 'bg-white/10 border-white/20' 
-                            : 'bg-white border-gray-300'
-                        }`}
+                        className={`flex-row items-center justify-between p-4 rounded-xl border`}
+                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : tokens.cardBackground, borderColor: tokens.border }}
                       >
                         <View className="flex-row items-center">
-                          <Calendar size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                          <Text className={`ml-3 ${
-                            values.event_date 
-                              ? (isDark ? 'text-white' : 'text-gray-900')
-                              : (isDark ? 'text-gray-400' : 'text-gray-500')
-                          }`}>
+                  <Calendar size={20} color={tokens.placeholder} />
+                          <Text style={{ marginLeft: 12, color: values.event_date ? tokens.textPrimary : tokens.textSecondary }}>
                             {formatDisplayDate(values.event_date)}
                           </Text>
                         </View>
@@ -411,9 +398,10 @@ const CreateEventScreen = ({ navigation }) => {
                           {Platform.OS === 'ios' && (
                             <TouchableOpacity
                               onPress={() => setShowDatePicker(false)}
-                              className="mt-2 p-3 bg-primary-500 rounded-xl items-center"
+                              className="mt-2 p-3 rounded-xl items-center"
+                              style={{ backgroundColor: tokens.primary }}
                             >
-                              <Text className="text-white font-semibold">Done</Text>
+                              <Text style={{ color: tokens.primaryContrast, fontWeight: '600' }}>Done</Text>
                             </TouchableOpacity>
                           )}
                         </View>
@@ -427,19 +415,12 @@ const CreateEventScreen = ({ navigation }) => {
                       </Text>
                       <TouchableOpacity
                         onPress={() => setShowTimePicker(true)}
-                        className={`flex-row items-center justify-between p-4 rounded-xl border ${
-                          isDark 
-                            ? 'bg-white/10 border-white/20' 
-                            : 'bg-white border-gray-300'
-                        }`}
+                        className={`flex-row items-center justify-between p-4 rounded-xl border`}
+                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : tokens.cardBackground, borderColor: tokens.border }}
                       >
                         <View className="flex-row items-center">
-                          <Clock size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                          <Text className={`ml-3 ${
-                            values.event_time 
-                              ? (isDark ? 'text-white' : 'text-gray-900')
-                              : (isDark ? 'text-gray-400' : 'text-gray-500')
-                          }`}>
+                          <Clock size={20} color={tokens.placeholder} />
+                          <Text style={{ marginLeft: 12, color: values.event_time ? tokens.textPrimary : tokens.textSecondary }}>
                             {formatDisplayTime(values.event_time)}
                           </Text>
                         </View>
@@ -477,9 +458,10 @@ const CreateEventScreen = ({ navigation }) => {
                           {Platform.OS === 'ios' && (
                             <TouchableOpacity
                               onPress={() => setShowTimePicker(false)}
-                              className="mt-2 p-3 bg-primary-500 rounded-xl items-center"
+                              className="mt-2 p-3 rounded-xl items-center"
+                              style={{ backgroundColor: tokens.primary }}
                             >
-                              <Text className="text-white font-semibold">Done</Text>
+                              <Text style={{ color: tokens.primaryContrast, fontWeight: '600' }}>Done</Text>
                             </TouchableOpacity>
                           )}
                         </View>
@@ -502,8 +484,8 @@ const CreateEventScreen = ({ navigation }) => {
                 <Animated.View entering={FadeInDown.delay(400).duration(500)}>
                   <GlassCard className="mb-6">
                     <View className="flex-row items-center mb-4">
-                      <Users size={20} color={isDark ? '#fff' : '#000'} className="mr-2" />
-                      <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      <Users size={20} color={tokens.textPrimary} style={{ marginRight: 8 }} />
+                      <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700' }}>
                         Capacity & Pricing
                       </Text>
                     </View>
@@ -534,7 +516,7 @@ const CreateEventScreen = ({ navigation }) => {
                 {/* Contact Information */}
                 <Animated.View entering={FadeInDown.delay(500).duration(500)}>
                   <GlassCard className="mb-6">
-                    <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
                       Contact Information
                     </Text>
                     
@@ -564,7 +546,7 @@ const CreateEventScreen = ({ navigation }) => {
                 {/* Requirements & Settings */}
                 <Animated.View entering={FadeInDown.delay(600).duration(500)}>
                   <GlassCard className="mb-6">
-                    <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
                       Requirements & Settings
                     </Text>
                     
@@ -598,9 +580,9 @@ const CreateEventScreen = ({ navigation }) => {
                     className="mb-4"
                   >
                     {isSubmitting ? (
-                      <View className="flex-row items-center justify-center">
-                        <ActivityIndicator color="#fff" size="small" className="mr-2" />
-                        <Text className="text-white font-bold">Creating Event...</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                        <ActivityIndicator color={tokens.primaryContrast} size="small" style={{ marginRight: 8 }} />
+                        <Text style={{ color: tokens.primaryContrast, fontWeight: '700' }}>Creating Event...</Text>
                       </View>
                     ) : (
                       'Create Event'
