@@ -38,6 +38,16 @@ import { getDesignTokens } from '../styles/designTokens';
 import { logger } from '../utils/logger';
 import { GlassCard, GlassButton } from '../components/glass';
 
+const hexToRgba = (hex, alpha = 1) => {
+  if (!hex) return `rgba(0,0,0,${alpha})`;
+  const h = hex.replace('#','');
+  const bigint = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user, logout } = useAuth();
@@ -162,7 +172,7 @@ const ProfileScreen = ({ navigation }) => {
       {/* Gradient Background */}
       <LinearGradient
         colors={tokens.gradientBackground}
-        className="absolute top-0 left-0 right-0 h-80"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
       />
 
       <SafeAreaView className="flex-1" edges={['top']}>
@@ -174,7 +184,7 @@ const ProfileScreen = ({ navigation }) => {
           {/* Header */}
           <Animated.View 
             entering={FadeIn.duration(400)}
-            className="px-6 py-6"
+            style={{ paddingHorizontal: 24, paddingVertical: 24 }}
           >
             <View className="flex-row items-center justify-between">
               <View>
@@ -186,20 +196,18 @@ const ProfileScreen = ({ navigation }) => {
                 </Text>
               </View>
 
-              <View className="flex-row gap-2">
+              <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity
                   onPress={handleLogout}
-                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.actionPassBg }}
                   activeOpacity={0.7}
-                  style={{ backgroundColor: tokens.actionPassBg }}
                 >
                   <LogOut size={20} color={tokens.danger} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setEditingProfile(!editingProfile)}
-                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : tokens.cardBackground }}
                   activeOpacity={0.7}
-                  style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : tokens.cardBackground }}
                 >
                   <Edit3 size={20} color={tokens.textPrimary} />
                 </TouchableOpacity>
@@ -208,7 +216,7 @@ const ProfileScreen = ({ navigation }) => {
           </Animated.View>
 
           {/* Profile Card */}
-          <Animated.View entering={FadeInDown.delay(200).duration(400)} className="px-4 mb-3">
+          <Animated.View entering={FadeInDown.delay(200).duration(400)} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
             <GlassCard>
               {/* Avatar and Basic Info */}
               <View className="items-center mb-4">
@@ -232,9 +240,8 @@ const ProfileScreen = ({ navigation }) => {
                   <TouchableOpacity
                     onPress={handleChangePhoto}
                     disabled={loading}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full items-center justify-center"
+                    style={{ position: 'absolute', right: -4, bottom: -4, width: 32, height: 32, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.primary, borderWidth: 2, borderColor: tokens.primaryContrast }}
                     activeOpacity={0.8}
-                    style={{ backgroundColor: tokens.primary, borderWidth: 2, borderColor: tokens.primaryContrast }}
                   >
                     {loading ? (
                       <ActivityIndicator size="small" color={tokens.primaryContrast} />
@@ -256,16 +263,14 @@ const ProfileScreen = ({ navigation }) => {
 
                 {/* User Type Badge */}
                 <View 
-                  className="flex-row items-center px-4 py-2 rounded-full mt-3"
-                  style={{ backgroundColor: getUserTypeColor(user?.user_type) + '20' }}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, marginTop: 12, backgroundColor: hexToRgba(getUserTypeColor(user?.user_type), 0.12) }}
                 >
                   {React.createElement(getUserTypeIcon(user?.user_type), {
                     size: 16,
                     color: getUserTypeColor(user?.user_type)
                   })}
                   <Text 
-                    className="text-sm font-semibold ml-2"
-                    style={{ color: getUserTypeColor(user?.user_type) }}
+                    style={{ fontSize: 14, fontWeight: '600', marginLeft: 8, color: getUserTypeColor(user?.user_type) }}
                   >
                     {getUserTypeDisplay(user?.user_type)}
                   </Text>

@@ -115,15 +115,15 @@ const MyDogsScreen = ({ navigation }) => {
           {/* Dog Photo */}
           <View className={`w-20 h-20 rounded-2xl overflow-hidden mr-4`} style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : tokens.cardBackground }}>
             {dog.primary_photo_url ? (
-              <Image
-                source={{ 
-                  uri: dog.primary_photo_url.startsWith('http') 
-                    ? dog.primary_photo_url 
-                    : `https://dogmatch-backend.onrender.com${dog.primary_photo_url}`
-                }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
+                <Image
+                  source={{ 
+                    uri: dog.primary_photo_url.startsWith('http') 
+                      ? dog.primary_photo_url 
+                      : `https://dogmatch-backend.onrender.com${dog.primary_photo_url}`
+                  }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
             ) : (
               <View className="w-full h-full items-center justify-center">
                 <Dog size={32} color={tokens.primary} />
@@ -149,7 +149,7 @@ const MyDogsScreen = ({ navigation }) => {
             </Text>
             
             {/* Size and Gender Pills */}
-            <View className="flex-row space-x-2">
+              <View style={{ flexDirection: 'row', gap: 8 }}>
               <View 
                 key="size-pill"
                 className="px-2 py-1 rounded-lg flex-row items-center"

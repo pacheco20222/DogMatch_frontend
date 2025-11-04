@@ -39,6 +39,7 @@ import { fetchEvents, clearError } from '../store/slices/eventsSlice';
 import { useAuth } from '../hooks/useAuth';
 import { canCreateEvents } from '../utils/permissions';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import EmptyState from '../components/ui/EmptyState';
 import { GlassCard, GlassButton, FloatingActionButton } from '../components/glass';
 
@@ -53,6 +54,18 @@ const EventsScreen = ({ navigation }) => {
   const userCanCreateEvents = canCreateEvents(user);
 
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
+
+  const hexToRgba = (hex, alpha = 1) => {
+    if (!hex) return `rgba(0,0,0,${alpha})`;
+    const clean = hex.replace('#', '');
+    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+    const int = parseInt(full, 16);
+    const r = (int >> 16) & 255;
+    const g = (int >> 8) & 255;
+    const b = int & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
 
   const loadEvents = async (isRefresh = false) => {
     try {
@@ -167,7 +180,7 @@ const EventsScreen = ({ navigation }) => {
                     ? event.photo_url 
                     : `https://dogmatch-backend.onrender.com${event.photo_url}`
                 }} 
-                className="w-full h-48"
+                style={{ width: '100%', height: 192 }}
                 resizeMode="cover"
               />
             )}
@@ -178,34 +191,29 @@ const EventsScreen = ({ navigation }) => {
                 {/* Category Icon */}
                 <View 
                   className="w-12 h-12 rounded-2xl items-center justify-center mr-3"
-                  style={{ backgroundColor: categoryColor + '20' }}
+                  style={{ backgroundColor: hexToRgba(categoryColor, 0.125) }}
                 >
                   <CategoryIcon size={24} color={categoryColor} />
                 </View>
                 
                 {/* Event Info */}
                 <View className="flex-1">
-                  <Text className={`text-lg font-bold mb-1 ${
-                    isDark ? 'text-white' : 'text-gray-900'
-                  }`}>
+                  <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 4 }}>
                     {event.title}
                   </Text>
                   
                   <View 
                     className="self-start px-2.5 py-1 rounded-full mb-1"
-                    style={{ backgroundColor: categoryColor + '15' }}
+                    style={{ backgroundColor: hexToRgba(categoryColor, 0.08) }}
                   >
                     <Text 
-                      className="text-xs font-semibold"
-                      style={{ color: categoryColor }}
+                      style={{ color: categoryColor, fontSize: 12, fontWeight: '600' }}
                     >
                       {getCategoryDisplayName(event.category)}
                     </Text>
                   </View>
                   
-                  <Text className={`text-xs ${
-                    isDark ? 'text-gray-400' : 'text-gray-600'
-                  }`}>
+                  <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>
                     by {event.organizer?.user_type === 'admin' 
                       ? 'DogMatch' 
                       : (event.organizer?.full_name || event.organizer?.username || 'Unknown')}
@@ -213,18 +221,17 @@ const EventsScreen = ({ navigation }) => {
                 </View>
                 
                 {/* Price Badge */}
-                <View 
-                  className={`px-3 py-1.5 rounded-full ${
-                    event.price > 0 
-                      ? 'bg-yellow-100' 
-                      : 'bg-green-100'
-                  }`}
+                <View
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: event.price > 0 
+                      ? (isDark ? hexToRgba(tokens.warning, 0.12) : tokens.priceBgWarning) 
+                      : (isDark ? hexToRgba(tokens.success, 0.12) : tokens.priceBgSuccess)
+                  }}
                 >
-                  <Text className={`text-xs font-bold ${
-                    event.price > 0 
-                      ? 'text-yellow-700' 
-                      : 'text-green-700'
-                  }`}>
+                  <Text style={{ color: event.price > 0 ? tokens.warning : tokens.success, fontSize: 12, fontWeight: '700' }}>
                     {formatPrice(event.price, event.currency)}
                   </Text>
                 </View>
@@ -246,29 +253,21 @@ const EventsScreen = ({ navigation }) => {
               <View className="mb-3 space-y-2">
                 {/* Date */}
                 <View className="flex-row items-center">
-                  <View className={`w-8 h-8 rounded-lg items-center justify-center mr-2.5 ${
-                    isDark ? 'bg-white/5' : 'bg-gray-100'
-                  }`}>
-                    <Calendar size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                  <View style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 10, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}>
+                    <Calendar size={16} color={tokens.textSecondary} />
                   </View>
-                  <Text className={`text-sm flex-1 ${
-                    isDark ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <Text style={{ color: tokens.textSecondary, fontSize: 14, flex: 1 }}>
                     {formatEventDate(event.event_date)}
                   </Text>
                 </View>
                 
                 {/* Location */}
                 <View className="flex-row items-center mt-2">
-                  <View className={`w-8 h-8 rounded-lg items-center justify-center mr-2.5 ${
-                    isDark ? 'bg-white/5' : 'bg-gray-100'
-                  }`}>
-                    <MapPin size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                  <View style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 10, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}>
+                    <MapPin size={16} color={tokens.textSecondary} />
                   </View>
                   <Text 
-                    className={`text-sm flex-1 ${
-                      isDark ? 'text-gray-300' : 'text-gray-700'
-                    }`}
+                    style={{ color: tokens.textSecondary, fontSize: 14, flex: 1 }}
                     numberOfLines={1}
                   >
                     {event.location}
@@ -278,19 +277,15 @@ const EventsScreen = ({ navigation }) => {
                 {/* Participants */}
                 {event.max_participants && (
                   <View className="flex-row items-center mt-2">
-                    <View className={`w-8 h-8 rounded-lg items-center justify-center mr-2.5 ${
-                      isDark ? 'bg-white/5' : 'bg-gray-100'
-                    }`}>
-                      <Users size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                    <View style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 10, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : tokens.cardBackground }}>
+                      <Users size={16} color={tokens.textSecondary} />
                     </View>
-                    <Text className={`text-sm flex-1 ${
-                      isDark ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
+                    <Text style={{ color: tokens.textSecondary, fontSize: 14, flex: 1 }}>
                       {event.current_participants}/{event.max_participants} participants
                     </Text>
                     {event.is_full && (
-                      <View className="px-2 py-1 rounded-full bg-red-500">
-                        <Text className="text-white text-xs font-bold">FULL</Text>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: tokens.danger }}>
+                        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>FULL</Text>
                       </View>
                     )}
                   </View>
@@ -299,24 +294,24 @@ const EventsScreen = ({ navigation }) => {
 
               {/* Event Actions */}
               <View className="flex-row items-center justify-between pt-3 border-t" style={{
-                borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+                borderTopColor: isDark ? tokens.headerBorder : tokens.border
               }}>
                 {/* Status Badge */}
                 <View className="flex-row items-center">
                   {event.is_registered ? (
-                    <View className="flex-row items-center px-3 py-1.5 rounded-full bg-primary-500/20">
-                      <CheckCircle size={14} className="text-primary-500" />
-                      <Text className="text-primary-500 text-xs font-semibold ml-1.5">Registered</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: hexToRgba(tokens.primary, 0.125) }}>
+                      <CheckCircle size={14} color={tokens.primary} />
+                      <Text style={{ color: tokens.primary, fontSize: 12, fontWeight: '600', marginLeft: 8 }}>Registered</Text>
                     </View>
                   ) : event.is_registration_open ? (
-                    <View className="flex-row items-center px-3 py-1.5 rounded-full bg-green-500/20">
-                      <CalendarPlus size={14} className="text-green-600" />
-                      <Text className="text-green-600 text-xs font-semibold ml-1.5">Open</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: hexToRgba(tokens.success, 0.125) }}>
+                      <CalendarPlus size={14} color={tokens.success} />
+                      <Text style={{ color: tokens.success, fontSize: 12, fontWeight: '600', marginLeft: 8 }}>Open</Text>
                     </View>
                   ) : (
-                    <View className="flex-row items-center px-3 py-1.5 rounded-full bg-red-500/20">
-                      <XCircle size={14} className="text-red-500" />
-                      <Text className="text-red-500 text-xs font-semibold ml-1.5">Closed</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: hexToRgba(tokens.danger, 0.125) }}>
+                      <XCircle size={14} color={tokens.danger} />
+                      <Text style={{ color: tokens.danger, fontSize: 12, fontWeight: '600', marginLeft: 8 }}>Closed</Text>
                     </View>
                   )}
                 </View>
@@ -324,11 +319,12 @@ const EventsScreen = ({ navigation }) => {
                 {/* View Details Button */}
                 <TouchableOpacity
                   onPress={() => navigation.navigate('RegisterEvent', { eventId: event.id })}
-                  className="flex-row items-center px-4 py-2 rounded-full bg-primary-500"
+                  className="flex-row items-center px-4 py-2 rounded-full"
                   activeOpacity={0.8}
+                  style={{ backgroundColor: tokens.primary }}
                 >
-                  <Text className="text-white text-sm font-semibold mr-1">Details</Text>
-                  <ArrowRight size={16} className="text-white" />
+                  <Text style={{ color: tokens.primaryContrast, fontSize: 14, fontWeight: '600', marginRight: 6 }}>Details</Text>
+                  <ArrowRight size={16} color={tokens.primaryContrast} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -340,15 +336,12 @@ const EventsScreen = ({ navigation }) => {
 
   if (loading && !refreshing) {
     return (
-      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <View style={{ flex: 1, backgroundColor: tokens.background }}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         
         {/* Gradient Background */}
         <LinearGradient
-          colors={isDark 
-            ? ['#312E81', '#1E293B', '#0F172A'] 
-            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-          }
+          colors={tokens.gradientBackground}
           className="absolute top-0 left-0 right-0 h-64"
         />
 
@@ -357,17 +350,17 @@ const EventsScreen = ({ navigation }) => {
             entering={FadeIn.duration(400)}
             className="px-6 py-6"
           >
-            <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <Text style={{ color: tokens.textPrimary, fontSize: 34, fontWeight: '700' }}>
               Events
             </Text>
-            <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+            <Text style={{ color: tokens.textSecondary, fontSize: 16, marginTop: 4 }}>
               Join community events
             </Text>
           </Animated.View>
 
           <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#6366F1" />
-            <Text className={`mt-4 text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <ActivityIndicator size="large" color={tokens.primary} />
+            <Text style={{ marginTop: 12, fontSize: 16, color: tokens.textSecondary }}>
               Loading events...
             </Text>
           </View>
@@ -377,15 +370,12 @@ const EventsScreen = ({ navigation }) => {
   }
 
   return (
-    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+    <View style={{ flex: 1, backgroundColor: tokens.background }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Gradient Background */}
       <LinearGradient
-        colors={isDark 
-          ? ['#312E81', '#1E293B', '#0F172A'] 
-          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-        }
+        colors={tokens.gradientBackground}
         className="absolute top-0 left-0 right-0 h-64"
       />
 
@@ -397,10 +387,10 @@ const EventsScreen = ({ navigation }) => {
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
-              <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              <Text style={{ color: tokens.textPrimary, fontSize: 34, fontWeight: '700' }}>
                 Events
               </Text>
-              <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+              <Text style={{ color: tokens.textSecondary, fontSize: 16, marginTop: 4 }}>
                 Join community events and meetups
               </Text>
             </View>
@@ -408,11 +398,12 @@ const EventsScreen = ({ navigation }) => {
             {userCanCreateEvents && (
               <TouchableOpacity
                 onPress={() => navigation.navigate('CreateEvent')}
-                className="px-4 py-2.5 rounded-full bg-primary-500 flex-row items-center"
+                className="px-4 py-2.5 rounded-full flex-row items-center"
                 activeOpacity={0.8}
+                style={{ backgroundColor: tokens.primary }}
               >
-                <Plus size={18} className="text-white" />
-                <Text className="text-white text-sm font-semibold ml-1.5">Create</Text>
+                <Plus size={18} color={tokens.primaryContrast} />
+                <Text style={{ color: tokens.primaryContrast, fontSize: 14, fontWeight: '600', marginLeft: 8 }}>Create</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -426,8 +417,8 @@ const EventsScreen = ({ navigation }) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => loadEvents(true)}
-              colors={['#6366F1']}
-              tintColor="#6366F1"
+              colors={[tokens.primary]}
+              tintColor={tokens.primary}
             />
           }
         >
@@ -452,9 +443,7 @@ const EventsScreen = ({ navigation }) => {
             />
           ) : (
             <Animated.View entering={SlideInRight.duration(400)}>
-              <Text className={`text-sm font-semibold mb-4 ${
-                isDark ? 'text-gray-400' : 'text-gray-600'
-              }`}>
+              <Text style={{ color: tokens.textSecondary, fontSize: 14, fontWeight: '600', marginBottom: 12 }}>
                 {events.length} event{events.length !== 1 ? 's' : ''} available
               </Text>
               {events.map((event, index) => renderEventCard(event, index))}

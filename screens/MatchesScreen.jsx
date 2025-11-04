@@ -27,6 +27,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchMatches } from '../store/slices/matchesSlice';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/ui/EmptyState';
 import { GlassCard } from '../components/glass';
@@ -39,6 +40,18 @@ const MatchesScreen = ({ navigation }) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
+
+  const hexToRgba = (hex, alpha = 1) => {
+    if (!hex) return `rgba(0,0,0,${alpha})`;
+    const clean = hex.replace('#', '');
+    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+    const int = parseInt(full, 16);
+    const r = (int >> 16) & 255;
+    const g = (int >> 8) & 255;
+    const b = int & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
 
   // Fetch user's matches
   const loadMatches = useCallback(async (isRefresh = false) => {
@@ -96,39 +109,33 @@ const MatchesScreen = ({ navigation }) => {
             <View className="flex-row items-center">
               {/* Dog Avatar */}
               <View className="relative mr-4">
-                <Image
-                  source={{ 
-                    uri: otherDog.primary_photo_url && otherDog.primary_photo_url !== '/static/images/default-dog.jpg'
-                      ? otherDog.primary_photo_url
-                      : (otherDog.photos && otherDog.photos.length > 0 
-                          ? otherDog.photos[0].url
-                          : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop&crop=face')
-                  }}
-                  className="w-16 h-16 rounded-full"
-                />
-                {/* Match Badge */}
-                <View className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-pink-500 items-center justify-center border-2 border-white">
-                  <Heart size={12} className="text-white" fill="white" />
+                  <Image
+                    source={{ 
+                      uri: otherDog.primary_photo_url && otherDog.primary_photo_url !== '/static/images/default-dog.jpg'
+                        ? otherDog.primary_photo_url
+                        : (otherDog.photos && otherDog.photos.length > 0 
+                            ? otherDog.photos[0].url
+                            : 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop&crop=face')
+                    }}
+                    style={{ width: 64, height: 64, borderRadius: 999 }}
+                  />
+                  {/* Match Badge */}
+                  <View style={{ position: 'absolute', top: -4, right: -4, width: 24, height: 24, borderRadius: 999, backgroundColor: tokens.overlaySuperLikeBg || hexToRgba('#EC4899', 0.9), alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: tokens.primaryContrast }}>
+                    <Heart size={12} color={tokens.primaryContrast} />
+                  </View>
                 </View>
-              </View>
 
               {/* Match Info */}
               <View className="flex-1">
-                <Text className={`text-lg font-bold mb-1 ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}>
+                <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 4 }}>
                   {otherDog.name}
                 </Text>
-                <Text className={`text-sm mb-1 ${
-                  isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}>
+                <Text style={{ color: tokens.textSecondary, fontSize: 14, marginBottom: 4 }}>
                   {otherOwner.first_name} {otherOwner.last_name}
                 </Text>
                 <View className="flex-row items-center">
-                  <Calendar size={12} className={isDark ? 'text-gray-500' : 'text-gray-500'} />
-                  <Text className={`text-xs ml-1 ${
-                    isDark ? 'text-gray-500' : 'text-gray-500'
-                  }`}>
+                  <Calendar size={12} color={tokens.textSecondary} />
+                  <Text style={{ color: tokens.textSecondary, fontSize: 12, marginLeft: 6 }}>
                     Matched {new Date(item.matched_at).toLocaleDateString()}
                   </Text>
                 </View>
@@ -137,10 +144,11 @@ const MatchesScreen = ({ navigation }) => {
               {/* Chat Button */}
               <TouchableOpacity
                 onPress={() => handleChatPress(item)}
-                className="w-12 h-12 rounded-full bg-primary-500 items-center justify-center"
+                className="w-12 h-12 rounded-full items-center justify-center"
                 activeOpacity={0.8}
+                style={{ width: 48, height: 48, borderRadius: 999, backgroundColor: tokens.primary }}
               >
-                <MessageCircle size={20} className="text-white" />
+                <MessageCircle size={20} color={tokens.primaryContrast} />
               </TouchableOpacity>
             </View>
           </GlassCard>
@@ -151,15 +159,12 @@ const MatchesScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+      <View style={{ flex: 1, backgroundColor: tokens.background }}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         
         {/* Gradient Background */}
         <LinearGradient
-          colors={isDark 
-            ? ['#312E81', '#1E293B', '#0F172A'] 
-            : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-          }
+          colors={tokens.gradientBackground}
           className="absolute top-0 left-0 right-0 h-64"
         />
 
@@ -172,26 +177,24 @@ const MatchesScreen = ({ navigation }) => {
               onPress={() => navigation.goBack()}
               className="mr-4"
             >
-              <View className={`w-10 h-10 rounded-full items-center justify-center ${
-                isDark ? 'bg-white/10' : 'bg-white/70'
-              }`}>
-                <ChevronLeft size={24} className={isDark ? 'text-white' : 'text-gray-900'} />
+              <View style={{ width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : tokens.cardBackground }}>
+                <ChevronLeft size={24} color={isDark ? tokens.textPrimary : tokens.textPrimary} />
               </View>
             </TouchableOpacity>
             
             <View>
-              <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              <Text style={{ color: tokens.textPrimary, fontSize: 28, fontWeight: '700' }}>
                 Matches
               </Text>
-              <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+              <Text style={{ color: tokens.textSecondary, fontSize: 16, marginTop: 4 }}>
                 Loading...
               </Text>
             </View>
           </Animated.View>
 
           <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#6366F1" />
-            <Text className={`mt-4 text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <ActivityIndicator size="large" color={tokens.primary} />
+            <Text style={{ marginTop: 12, fontSize: 16, color: tokens.textSecondary }}>
               Loading your matches...
             </Text>
           </View>
@@ -201,15 +204,12 @@ const MatchesScreen = ({ navigation }) => {
   }
 
   return (
-    <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
+    <View style={{ flex: 1, backgroundColor: tokens.background }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Gradient Background */}
       <LinearGradient
-        colors={isDark 
-          ? ['#312E81', '#1E293B', '#0F172A'] 
-          : ['#EEF2FF', '#F8FAFC', '#F8FAFC']
-        }
+        colors={tokens.gradientBackground}
         className="absolute top-0 left-0 right-0 h-64"
       />
 
@@ -225,18 +225,16 @@ const MatchesScreen = ({ navigation }) => {
                 onPress={() => navigation.goBack()}
                 className="mr-4"
               >
-                <View className={`w-10 h-10 rounded-full items-center justify-center ${
-                  isDark ? 'bg-white/10' : 'bg-white/70'
-                }`}>
-                  <ChevronLeft size={24} className={isDark ? 'text-white' : 'text-gray-900'} />
+                <View style={{ width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : tokens.cardBackground }}>
+                  <ChevronLeft size={24} color={tokens.textPrimary} />
                 </View>
               </TouchableOpacity>
               
               <View>
-                <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <Text style={{ color: tokens.textPrimary, fontSize: 28, fontWeight: '700' }}>
                   Your Matches
                 </Text>
-                <Text className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                <Text style={{ color: tokens.textSecondary, fontSize: 16, marginTop: 4 }}>
                   {matches.length} {matches.length === 1 ? 'match' : 'matches'}
                 </Text>
               </View>
@@ -244,8 +242,8 @@ const MatchesScreen = ({ navigation }) => {
 
             {/* Sparkles Icon */}
             {matches.length > 0 && (
-              <View className="w-12 h-12 rounded-full bg-pink-500/20 items-center justify-center">
-                <Sparkles size={24} className="text-pink-500" />
+              <View style={{ width: 48, height: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: hexToRgba('#EC4899', 0.12) }}>
+                <Sparkles size={24} color={'#EC4899'} />
               </View>
             )}
           </View>
@@ -270,8 +268,8 @@ const MatchesScreen = ({ navigation }) => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={() => loadMatches(true)}
-                colors={['#6366F1']}
-                tintColor="#6366F1"
+                colors={[tokens.primary]}
+                tintColor={tokens.primary}
               />
             }
           />

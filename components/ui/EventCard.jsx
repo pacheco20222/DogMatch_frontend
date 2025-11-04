@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Calendar, MapPin, Users, Heart, Trophy, BookOpen, School, PartyPopper } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { getDesignTokens } from '../../styles/designTokens';
 import GlassCard from '../glass/GlassCard';
 import GlassButton from '../glass/GlassButton';
 
@@ -14,6 +15,7 @@ const EventCard = React.memo(({
   style 
 }) => {
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
 
   const getCategoryIcon = (category) => {
     const iconProps = { size: 16, color: '#fff' };
@@ -28,16 +30,26 @@ const EventCard = React.memo(({
     }
   };
 
-  const getCategoryColorClass = (category) => {
+  const getCategoryColor = (category) => {
     switch (category) {
-      case 'meetup': return 'bg-primary-500';
-      case 'training': return 'bg-secondary-500';
-      case 'adoption': return 'bg-success-500';
-      case 'competition': return 'bg-warning-500';
-      case 'social': return 'bg-accent-500';
-      case 'educational': return 'bg-error-500';
-      default: return 'bg-gray-500';
+      case 'meetup': return tokens.primary;
+      case 'training': return tokens.primaryVariant || tokens.primary;
+      case 'adoption': return tokens.success;
+      case 'competition': return tokens.warning;
+      case 'social': return tokens.primary;
+      case 'educational': return tokens.danger;
+      default: return tokens.muted || '#9CA3AF';
     }
+  };
+
+  const hexToRgba = (hex, alpha = 1) => {
+    if (!hex) return `rgba(0,0,0,${alpha})`;
+    const h = hex.replace('#','');
+    const bigint = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
   };
 
   const formatDate = (dateString) => {
@@ -66,59 +78,59 @@ const EventCard = React.memo(({
       <GlassCard className="m-2 overflow-hidden">
         <Image 
           source={{ uri: event.photo_url || 'https://via.placeholder.com/300x200?text=No+Photo' }}
-          className="w-full h-40"
+          style={{ width: '100%', height: 160 }}
           resizeMode="cover"
         />
         <View className="p-4">
           <View className="mb-3">
-            <Text className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 8, color: isDark ? tokens.textPrimary : tokens.textPrimary }}>
               {event.title}
             </Text>
             <View className="flex-row items-center">
-              <View className={`w-6 h-6 rounded-full ${getCategoryColorClass(event.category)} items-center justify-center mr-2`}>
+              <View style={{ width: 24, height: 24, borderRadius: 999, backgroundColor: getCategoryColor(event.category), alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
                 {getCategoryIcon(event.category)}
               </View>
-              <View className={`px-3 py-1 rounded-full ${getCategoryColorClass(event.category)}/20 border ${getCategoryColorClass(event.category)}/30`}>
-                <Text className={`text-xs font-semibold ${getCategoryColorClass(event.category).replace('bg-', 'text-')}`}>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: hexToRgba(getCategoryColor(event.category), 0.15), borderWidth: 1, borderColor: hexToRgba(getCategoryColor(event.category), 0.25) }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: getCategoryColor(event.category) }}>
                   {event.category?.replace('_', ' ').toUpperCase()}
                 </Text>
               </View>
             </View>
           </View>
 
-          <Text className={`mb-4 leading-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} numberOfLines={2}>
+          <Text style={{ marginBottom: 12, lineHeight: 20, color: isDark ? tokens.textSecondary : tokens.textSecondary }} numberOfLines={2}>
             {event.description}
           </Text>
 
-          <View className="mb-4 space-y-2">
-            <View className="flex-row items-center">
-              <View className={`w-5 h-5 rounded-full items-center justify-center mr-2 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
-                <Calendar size={14} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <View style={{ marginBottom: 12, gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 20, height: 20, borderRadius: 999, alignItems: 'center', justifyContent: 'center', marginRight: 8, backgroundColor: isDark ? hexToRgba('#FFFFFF', 0.06) : tokens.cardBackground }}>
+                <Calendar size={14} color={isDark ? tokens.muted : tokens.muted} />
               </View>
-              <Text className={`flex-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Text style={{ flex: 1, fontSize: 14, color: isDark ? tokens.textSecondary : tokens.textSecondary }}>
                 {formatDate(event.event_date)} at {formatTime(event.start_time)}
               </Text>
             </View>
-            <View className="flex-row items-center">
-              <View className={`w-5 h-5 rounded-full items-center justify-center mr-2 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
-                <MapPin size={14} color={isDark ? '#9CA3AF' : '#6B7280'} />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 20, height: 20, borderRadius: 999, alignItems: 'center', justifyContent: 'center', marginRight: 8, backgroundColor: isDark ? hexToRgba('#FFFFFF', 0.06) : tokens.cardBackground }}>
+                <MapPin size={14} color={isDark ? tokens.muted : tokens.muted} />
               </View>
-              <Text className={`flex-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Text style={{ flex: 1, fontSize: 14, color: isDark ? tokens.textSecondary : tokens.textSecondary }}>
                 {event.location}
               </Text>
             </View>
-            <View className="flex-row items-center">
-              <View className={`w-5 h-5 rounded-full items-center justify-center mr-2 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
-                <Users size={14} color={isDark ? '#9CA3AF' : '#6B7280'} />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 20, height: 20, borderRadius: 999, alignItems: 'center', justifyContent: 'center', marginRight: 8, backgroundColor: isDark ? hexToRgba('#FFFFFF', 0.06) : tokens.cardBackground }}>
+                <Users size={14} color={isDark ? tokens.muted : tokens.muted} />
               </View>
-              <Text className={`flex-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <Text style={{ flex: 1, fontSize: 14, color: isDark ? tokens.textSecondary : tokens.textSecondary }}>
                 {event.registered_count}/{event.capacity} registered
               </Text>
             </View>
           </View>
 
           <View className="flex-row justify-between items-center">
-            <Text className="text-xl font-bold text-primary-500">
+            <Text style={{ fontSize: 18, fontWeight: '700', color: tokens.primary }}>
               {event.price === 0 ? 'FREE' : `$${event.price}`}
             </Text>
             
@@ -130,7 +142,7 @@ const EventCard = React.memo(({
                     size="sm"
                     onPress={() => onUnregister?.(event)}
                   >
-                    <Text className={isDark ? 'text-white' : 'text-gray-900'}>Unregister</Text>
+                    <Text style={{ color: isDark ? tokens.textPrimary : tokens.textPrimary }}>Unregister</Text>
                   </GlassButton>
                 ) : (
                   <GlassButton
@@ -139,7 +151,7 @@ const EventCard = React.memo(({
                     onPress={() => onRegister?.(event)}
                     disabled={isFull}
                   >
-                    <Text className="text-white">{isFull ? 'Full' : 'Register'}</Text>
+                    <Text style={{ color: tokens.primaryContrast }}>{isFull ? 'Full' : 'Register'}</Text>
                   </GlassButton>
                 )}
               </View>

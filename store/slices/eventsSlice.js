@@ -126,12 +126,14 @@ export const unregisterFromEvent = createAsyncThunk(
   async (eventId, { getState, rejectWithValue }) => {
     try {
       const { auth } = getState();
-      await apiFetch(`/api/events/${eventId}/unregister`, {
+      const response = await apiFetch(`/api/events/${eventId}/unregister`, {
         method: 'DELETE',
         token: auth.accessToken,
       });
-      
-      return eventId;
+
+      // Server now returns the cancelled registration object. Return canonical data
+      // so reducers and UI can rely on server authoritative shape.
+      return { eventId, registration: response.registration || response };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to unregister from event');
     }
@@ -322,21 +324,38 @@ const eventsSlice = createSlice({
         state.myRegistrations.unshift(registration);
       });
 
-    // Unregister from event
+    // Unregister from event (now uses canonical registration payload)
     builder
       .addCase(unregisterFromEvent.fulfilled, (state, action) => {
-        const eventId = action.payload;
-        
-        // Update event registration status
-        const eventIndex = state.events.findIndex(event => event.id === eventId);
+        const payload = action.payload || {};
+        const { eventId: returnedEventId, registration } = payload;
+
+        // Determine event id (fall back to registration.event_id)
+        const id = returnedEventId || registration?.event_id || registration?.eventId;
+
+        // Update event registration with canonical object (may be cancelled)
+        const eventIndex = state.events.findIndex(event => event.id === id);
         if (eventIndex !== -1) {
-          state.events[eventIndex].user_registration = null;
+          state.events[eventIndex].user_registration = registration || null;
         }
-        
-        // Remove from my registrations
-        state.myRegistrations = state.myRegistrations.filter(
-          reg => reg.event_id !== eventId
-        );
+
+        // Update myRegistrations: if registration is cancelled remove it, otherwise update/add
+        if (registration) {
+          if (registration.status === 'cancelled' || registration.status === 'cancelled_by_user') {
+            state.myRegistrations = state.myRegistrations.filter(reg => reg.id !== registration.id && reg.event_id !== id);
+          } else {
+            // Replace existing registration or add to front
+            const idx = state.myRegistrations.findIndex(reg => reg.id === registration.id || reg.event_id === id);
+            if (idx !== -1) {
+              state.myRegistrations[idx] = registration;
+            } else {
+              state.myRegistrations.unshift(registration);
+            }
+          }
+        } else if (id) {
+          // No registration object returned: fallback to remove by event id
+          state.myRegistrations = state.myRegistrations.filter(reg => reg.event_id !== id);
+        }
       });
 
     // Upload photo
