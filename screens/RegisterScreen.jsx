@@ -243,8 +243,8 @@ const RegisterScreen = ({ navigation }) => {
                             activeOpacity={0.8}
                           >
                               <View style={{ padding: 16, borderRadius: 16, borderWidth: 2, backgroundColor: values.user_type === 'owner' ? tokens.primary : (isDark ? 'rgba(255,255,255,0.04)' : tokens.cardBackground), borderColor: values.user_type === 'owner' ? tokens.primary : tokens.border }}>
-                                <Home size={24} color={values.user_type === 'owner' ? tokens.primary : tokens.textSecondary} style={{ marginBottom: 8 }} />
-                                <Text style={{ color: values.user_type === 'owner' ? tokens.primary : tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>
+                                <Home size={24} color={values.user_type === 'owner' ? tokens.primaryContrast : tokens.textSecondary} style={{ marginBottom: 8 }} />
+                                <Text style={{ color: values.user_type === 'owner' ? tokens.primaryContrast : tokens.textPrimary, fontSize: 14, fontWeight: '600' }}>
                                   Dog Owner
                                 </Text>
                               </View>
