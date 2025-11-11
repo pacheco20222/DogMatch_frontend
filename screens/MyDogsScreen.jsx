@@ -21,7 +21,7 @@ import Animated, {
   Layout,
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
-import { fetchMyDogs, clearError } from '../store/slices/dogsSlice';
+import { fetchMyDogs, clearError, deleteDog } from '../store/slices/dogsSlice';
 import { useAuth } from '../hooks/useAuth';
 import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';

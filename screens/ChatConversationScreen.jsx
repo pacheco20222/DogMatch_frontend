@@ -40,7 +40,9 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const { isDark } = useTheme();
   const tokens = getDesignTokens(isDark);
   const styles = React.useMemo(() => createStyles(tokens), [isDark]);
-  const messages = reduxMessages[matchId] || [];
+  // Ensure we use string keys to match Redux storage (socket payloads use numeric IDs, store keys are strings)
+  const messagesKey = String(matchId);
+  const messages = reduxMessages[messagesKey] || [];
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [typingUsers, setTypingUsers] = useState([]);
@@ -122,11 +124,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const markSingleMessageAsRead = async (messageId) => {
     try {
       await dispatch(markMessageAsRead(messageId));
-      
-      // Update local state to reflect the read status
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId ? { ...msg, is_read: true } : msg
-      ));
+      // Redux state will be updated by the slice; no local state update required
     } catch (error) {
       logger.error('Error marking message as read:', error);
     }

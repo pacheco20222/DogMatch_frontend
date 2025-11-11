@@ -31,6 +31,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { fetchPendingSwipes, respondToSwipe } from '../store/slices/matchesSlice';
 import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 import EmptyState from '../components/ui/EmptyState';
 import { GlassCard } from '../components/glass';
 
@@ -45,6 +46,7 @@ const PendingSwipesScreen = ({ navigation }) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   const { isDark } = useTheme();
+  const tokens = getDesignTokens(isDark);
 
   // Fetch pending swipes from API
   const loadPendingSwipes = useCallback(async () => {

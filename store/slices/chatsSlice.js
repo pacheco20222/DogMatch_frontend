@@ -160,10 +160,11 @@ const chatsSlice = createSlice({
     },
     addMessage: (state, action) => {
       const { matchId, message } = action.payload;
-      if (!state.messages[matchId]) {
-        state.messages[matchId] = [];
+      const key = String(matchId);
+      if (!state.messages[key]) {
+        state.messages[key] = [];
       }
-      state.messages[matchId].push(message);
+      state.messages[key].push(message);
       state.lastMessage = message;
       
       // Update conversation last message
@@ -175,17 +176,19 @@ const chatsSlice = createSlice({
     },
     updateMessage: (state, action) => {
       const { matchId, messageId, updates } = action.payload;
-      if (state.messages[matchId]) {
-        const messageIndex = state.messages[matchId].findIndex(msg => msg.id === messageId);
+      const key = String(matchId);
+      if (state.messages[key]) {
+        const messageIndex = state.messages[key].findIndex(msg => msg.id === messageId);
         if (messageIndex !== -1) {
-          state.messages[matchId][messageIndex] = { ...state.messages[matchId][messageIndex], ...updates };
+          state.messages[key][messageIndex] = { ...state.messages[key][messageIndex], ...updates };
         }
       }
     },
     removeMessage: (state, action) => {
       const { matchId, messageId } = action.payload;
-      if (state.messages[matchId]) {
-        state.messages[matchId] = state.messages[matchId].filter(msg => msg.id !== messageId);
+      const key = String(matchId);
+      if (state.messages[key]) {
+        state.messages[key] = state.messages[key].filter(msg => msg.id !== messageId);
       }
     },
     setTyping: (state, action) => {
@@ -223,28 +226,28 @@ const chatsSlice = createSlice({
     // Socket event handlers
     newMessage: (state, action) => {
       const message = action.payload;
-      const matchId = message.match_id;
-      
-      if (!state.messages[matchId]) {
-        state.messages[matchId] = [];
+      const matchKey = String(message.match_id);
+
+      if (!state.messages[matchKey]) {
+        state.messages[matchKey] = [];
       }
-      
+
       // Prevent duplicate messages
-      const existingMessage = state.messages[matchId].find(msg => msg.id === message.id);
+      const existingMessage = state.messages[matchKey].find(msg => msg.id === message.id);
       if (!existingMessage) {
-        state.messages[matchId].push(message);
+        state.messages[matchKey].push(message);
         state.lastMessage = message;
         
         // Update conversation last message and unread count only for new messages
-        const conversation = state.conversations.find(conv => conv.match.id === matchId);
+        const conversation = state.conversations.find(conv => conv.match.id === message.match_id);
         if (conversation) {
           conversation.last_message = message;
           conversation.updated_at = message.created_at;
           
           // Increment unread count for messages not sent by current user
-          if (!message.is_sent_by_me && !message.is_read) {
+            if (!message.is_sent_by_me && !message.is_read) {
             conversation.unread_count = (conversation.unread_count || 0) + 1;
-            state.unreadCounts[matchId] = conversation.unread_count;
+            state.unreadCounts[matchKey] = conversation.unread_count;
           }
         }
       }
@@ -252,15 +255,17 @@ const chatsSlice = createSlice({
     userTyping: (state, action) => {
       const { match_id, user_id, is_typing } = action.payload;
       if (is_typing) {
-        if (!state.typing[match_id]) {
-          state.typing[match_id] = [];
+        const key = String(match_id);
+        if (!state.typing[key]) {
+          state.typing[key] = [];
         }
-        if (!state.typing[match_id].includes(user_id)) {
-          state.typing[match_id].push(user_id);
+        if (!state.typing[key].includes(user_id)) {
+          state.typing[key].push(user_id);
         }
       } else {
-        if (state.typing[match_id]) {
-          state.typing[match_id] = state.typing[match_id].filter(id => id !== user_id);
+        const key = String(match_id);
+        if (state.typing[key]) {
+          state.typing[key] = state.typing[key].filter(id => id !== user_id);
         }
       }
     },
@@ -320,8 +325,9 @@ const chatsSlice = createSlice({
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
         const { matchId, messages } = action.payload;
+        const key = String(matchId);
         state.messagesLoading[matchId] = false;
-        state.messages[matchId] = messages;
+        state.messages[key] = messages;
         state.error = null;
       })
       .addCase(fetchMessages.rejected, (state, action) => {
@@ -334,10 +340,11 @@ const chatsSlice = createSlice({
     builder
       .addCase(sendMessage.fulfilled, (state, action) => {
         const { matchId, message } = action.payload;
-        if (!state.messages[matchId]) {
-          state.messages[matchId] = [];
+        const key = String(matchId);
+        if (!state.messages[key]) {
+          state.messages[key] = [];
         }
-        state.messages[matchId].push(message);
+        state.messages[key].push(message);
         state.lastMessage = message;
         
         // Update conversation or create new one if it doesn't exist
@@ -357,25 +364,26 @@ const chatsSlice = createSlice({
     // Mark message as read
     builder
       .addCase(markMessageAsRead.fulfilled, (state, action) => {
-        const messageId = action.payload;
+          const messageId = action.payload;
         
-        // Find and update message in all conversations
-        Object.keys(state.messages).forEach(matchId => {
-          const messageIndex = state.messages[matchId].findIndex(msg => msg.id === messageId);
-          if (messageIndex !== -1) {
-            state.messages[matchId][messageIndex].read_at = new Date().toISOString();
-          }
+          // Find and update message in all conversations
+          Object.keys(state.messages).forEach(matchId => {
+            const messageIndex = state.messages[matchId].findIndex(msg => msg.id === messageId);
+            if (messageIndex !== -1) {
+              state.messages[matchId][messageIndex].read_at = new Date().toISOString();
+            }
+          });
         });
-      });
 
     // Mark conversation as read
     builder
       .addCase(markConversationAsRead.fulfilled, (state, action) => {
         const matchId = action.payload;
+        const key = String(matchId);
         
         // Mark all messages in conversation as read
-        if (state.messages[matchId]) {
-          state.messages[matchId].forEach(message => {
+        if (state.messages[key]) {
+          state.messages[key].forEach(message => {
             if (!message.read_at) {
               message.read_at = new Date().toISOString();
             }
@@ -383,7 +391,7 @@ const chatsSlice = createSlice({
         }
         
         // Update unread count
-        state.unreadCounts[matchId] = 0;
+        state.unreadCounts[key] = 0;
         const conversation = state.conversations.find(conv => conv.match.id === matchId);
         if (conversation) {
           conversation.unread_count = 0;
@@ -427,7 +435,8 @@ const chatsSlice = createSlice({
     builder
       .addCase(fetchUnreadCount.fulfilled, (state, action) => {
         const { matchId, unreadCount } = action.payload;
-        state.unreadCounts[matchId] = unreadCount;
+        const key = String(matchId);
+        state.unreadCounts[key] = unreadCount;
         
         // Update conversation
         const conversation = state.conversations.find(conv => conv.match.id === matchId);

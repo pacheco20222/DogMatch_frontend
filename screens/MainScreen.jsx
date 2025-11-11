@@ -18,6 +18,9 @@ import Animated, {
   SlideInUp,
 } from 'react-native-reanimated';
 import AnimatedButton from '../components/AnimatedButton';
+import FloatingActionButton from '../components/glass/FloatingActionButton';
+import AIAssistantModal from '../components/ui/AIAssistantModal';
+import { MessageCircle } from 'lucide-react-native';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -63,8 +66,12 @@ const MainScreen = ({ navigation }) => {
     transform: [{ translateY: (1 - buttonsOpacity.value) * 30 }],
   }));
 
+  // AI Assistant modal state
+  const [modalVisible, setModalVisible] = React.useState(false);
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <AIAssistantModal visible={modalVisible} onClose={() => setModalVisible(false)} />
       <View style={styles.content}>
         {/* Hero Section */}
         <Animated.View style={[styles.heroSection, logoAnimatedStyle]} entering={FadeIn.duration(1000)}>
@@ -115,6 +122,15 @@ const MainScreen = ({ navigation }) => {
             style={styles.secondaryButton}
           />
         </Animated.View>
+
+        {/* Floating AI assistant button */}
+        <FloatingActionButton
+          icon={MessageCircle}
+          variant="accent"
+          size="md"
+          position="bottom-right"
+          onPress={() => setModalVisible(true)}
+        />
 
         {/* Footer */}
         <Animated.View style={styles.footer} entering={FadeIn.delay(1000).duration(600)}>
