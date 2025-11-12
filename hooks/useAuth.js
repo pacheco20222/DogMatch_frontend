@@ -17,6 +17,9 @@ export const useAuth = () => {
   const login = async (credentials) => {
     const result = await dispatch(loginUser(credentials));
     if (loginUser.fulfilled.match(result)) {
+      // Trigger socket connection after successful login
+      console.log('🔌 Triggering socket connection after login');
+      dispatch({ type: 'socket/connect' });
       return result.payload.user;
     } else {
       throw new Error(result.payload || 'Login failed');
@@ -26,6 +29,9 @@ export const useAuth = () => {
   const register = async (userData) => {
     const result = await dispatch(registerUser(userData));
     if (registerUser.fulfilled.match(result)) {
+      // Trigger socket connection after successful registration
+      console.log('🔌 Triggering socket connection after registration');
+      dispatch({ type: 'socket/connect' });
       return result.payload.user;
     } else {
       throw new Error(result.payload || 'Registration failed');

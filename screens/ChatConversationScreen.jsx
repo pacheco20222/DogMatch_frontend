@@ -34,6 +34,10 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const { matchId, otherUser, otherDog, match } = route.params;
   const { user } = useAuth();
   const { isConnected, joinMatch, leaveMatch, sendMessage: sendSocketMessage, sendTypingIndicator } = useSocket();
+  
+  // DEBUG: Log socket connection state
+  console.log('🔌🔌🔌 ChatConversationScreen: isConnected =', isConnected);
+  
   const chatService = useChatService();
   const dispatch = useAppDispatch();
   const { messages: reduxMessages, loading, error } = useAppSelector(state => state.chats);
@@ -68,7 +72,13 @@ const ChatConversationScreen = ({ navigation, route }) => {
 
   // Handle socket connection changes
   useEffect(() => {
-    if (isConnected) {
+    console.log('🔌🔌🔌 Socket connection effect running, isConnected:', isConnected);
+    
+    // If not connected, try to connect
+    if (!isConnected) {
+      console.log('🔌🔌🔌 Socket NOT connected, dispatching connect action');
+      dispatch({ type: 'socket/connect' });
+    } else {
       logger.log('🔌 ChatConversationScreen: Socket connected, joining match room', matchId);
       joinMatch(matchId);
     }
@@ -80,7 +90,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
         leaveMatch(matchId);
       }
     };
-  }, [isConnected, matchId]); // Remove joinMatch and leaveMatch from dependencies
+  }, [isConnected, matchId, dispatch]); // Remove joinMatch and leaveMatch from dependencies
 
   // Socket listeners are now handled by Redux middleware
   // Real-time updates are managed through Redux state

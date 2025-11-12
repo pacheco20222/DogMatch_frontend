@@ -11,6 +11,7 @@ import {
 
 // Socket middleware for Redux
 export const createSocketMiddleware = () => {
+  console.log('🔌🔌🔌 SOCKET MIDDLEWARE CREATED');
   let socket = null;
   let reconnectTimeout = null;
   let reconnectAttempts = 0;
@@ -18,6 +19,11 @@ export const createSocketMiddleware = () => {
   let joinedRooms = new Set(); // Track joined rooms to prevent duplicates
 
   return (store) => (next) => (action) => {
+    // Log ALL actions to debug middleware execution
+    if (action.type && (action.type.includes('socket') || action.type.includes('auth'))) {
+      console.log('🔌🔌🔌 MIDDLEWARE RECEIVED ACTION:', action.type, action.payload ? JSON.stringify(action.payload).substring(0, 100) : 'no payload');
+    }
+    
     const result = next(action);
     const state = store.getState();
 
@@ -67,17 +73,27 @@ export const createSocketMiddleware = () => {
   };
 
   function connectSocket(store) {
+    console.log('🔌🔌🔌 CONNECTSOCKET FUNCTION CALLED');
     const state = store.getState();
     const { accessToken, isAuthenticated } = state.auth;
+
+    console.log('🔌 Auth state:', { isAuthenticated, hasToken: !!accessToken });
 
     if (!isAuthenticated || !accessToken) {
       console.log('🔌 Cannot connect socket: not authenticated or no token');
       return;
     }
 
-    if (socket && socket.connected) {
-      console.log('🔌 Socket already connected');
-      return;
+    if (socket) {
+      if (socket.connected) {
+        console.log('🔌 Socket already connected');
+        return;
+      }
+      // Disconnect and cleanup old socket instance
+      console.log('🔌 Cleaning up old socket instance');
+      socket.removeAllListeners();
+      socket.disconnect();
+      socket = null;
     }
 
     console.log('🔌 Attempting to connect to Socket.IO server:', config.SOCKET_URL);
@@ -91,11 +107,15 @@ export const createSocketMiddleware = () => {
         query: {
           token: accessToken
         },
-        transports: ['polling', 'websocket'],
+        transports: ['websocket', 'polling'], // Try websocket first
         timeout: 20000,
-        forceNew: true,
+        reconnection: true,
+        reconnectionAttempts: 3, // Limit reconnection attempts
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        forceNew: false, // Reuse existing connection if possible
         upgrade: true,
-        rememberUpgrade: false
+        rememberUpgrade: true // Remember successful websocket upgrade
       });
 
       // Connection event handlers
@@ -111,23 +131,33 @@ export const createSocketMiddleware = () => {
         store.dispatch(setDisconnected());
         joinedRooms.clear(); // Clear joined rooms on disconnect
         
-        // Attempt to reconnect if not manually disconnected
-        if (reason !== 'io client disconnect') {
-          scheduleReconnect(store);
+        // Socket.IO will handle auto-reconnection, no manual scheduling needed
+        if (reason === 'io client disconnect') {
+          console.log('🔌 Manual disconnect, will not reconnect');
+        } else {
+          console.log('🔌 Socket.IO will handle automatic reconnection');
         }
       });
 
       socket.on('connect_error', (error) => {
         console.error('🔌 Socket connection error:', error);
         store.dispatch(setConnectionError(error.message));
+        reconnectAttempts += 1;
         
         // Handle authentication errors
         if (error.message.includes('Authentication') || error.message.includes('401')) {
-          console.log('🔌 Authentication failed, will not retry');
+          console.log('🔌 Authentication failed, stopping reconnection');
+          socket.disconnect();
           return;
         }
         
-        scheduleReconnect(store);
+        // Check if we've exceeded max attempts
+        if (reconnectAttempts >= maxReconnectAttempts) {
+          console.log('🔌 Max reconnection attempts reached, disconnecting');
+          store.dispatch(setConnectionError('Unable to connect to chat server'));
+          socket.disconnect();
+        }
+        // Otherwise Socket.IO's built-in reconnection will handle it
       });
 
       socket.on('error', (error) => {
@@ -137,12 +167,20 @@ export const createSocketMiddleware = () => {
 
       // Chat-specific event handlers
       socket.on('new_message', (messageData) => {
-        console.log('💬 New message received:', messageData);
+        console.log('💬💬💬 NEW_MESSAGE EVENT RECEIVED 💬💬💬');
+        console.log('📦 Message data:', JSON.stringify(messageData, null, 2));
+        console.log('🔑 Match ID from message:', messageData.match_id);
+        console.log('👤 Sender user ID:', messageData.sender_user_id);
+        console.log('📝 Content:', messageData.content);
+        console.log('🏷️ Is sent by me:', messageData.is_sent_by_me);
+        
         // Dispatch action to update chat state
         store.dispatch({
           type: 'chats/newMessage',
           payload: messageData
         });
+        
+        console.log('✅ Dispatched chats/newMessage action to Redux');
       });
 
       socket.on('user_typing', (typingData) => {
@@ -179,6 +217,16 @@ export const createSocketMiddleware = () => {
 
       socket.on('connected', (data) => {
         console.log('✅ Socket authentication successful:', data);
+      });
+
+      socket.on('joined_match', (data) => {
+        console.log('✅✅✅ JOINED_MATCH CONFIRMATION ✅✅✅');
+        console.log('📦 Data:', JSON.stringify(data, null, 2));
+      });
+
+      socket.on('error', (errorData) => {
+        console.error('❌❌❌ SOCKET ERROR EVENT ❌❌❌');
+        console.error('📦 Error:', JSON.stringify(errorData, null, 2));
       });
 
     } catch (error) {
@@ -237,9 +285,18 @@ export const createSocketMiddleware = () => {
   // Socket utility functions
   function joinMatch(matchId) {
     if (socket && socket.connected && !joinedRooms.has(matchId)) {
-      console.log('🔌 Joining match room:', matchId);
+      console.log('�🟢🟢 JOINING MATCH ROOM 🟢🟢🟢');
+      console.log('🔑 Match ID:', matchId);
+      console.log('🔌 Socket ID:', socket.id);
+      console.log('📍 Currently joined rooms:', Array.from(joinedRooms));
       socket.emit('join_match', { match_id: matchId });
       joinedRooms.add(matchId);
+      console.log('✅ Emitted join_match and added to local tracking');
+    } else {
+      console.log('⚠️ Cannot join match room:');
+      console.log('  - Socket connected:', socket?.connected);
+      console.log('  - Already in room:', joinedRooms.has(matchId));
+      console.log('  - Match ID:', matchId);
     }
   }
 
