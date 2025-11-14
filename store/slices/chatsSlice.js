@@ -161,10 +161,8 @@ const chatsSlice = createSlice({
     addMessage: (state, action) => {
       const { matchId, message } = action.payload;
       const key = String(matchId);
-      if (!state.messages[key]) {
-        state.messages[key] = [];
-      }
-      state.messages[key].push(message);
+      const currentMessages = state.messages[key] || [];
+      state.messages[key] = [...currentMessages, message];
       state.lastMessage = message;
       
       // Update conversation last message
@@ -227,15 +225,14 @@ const chatsSlice = createSlice({
     newMessage: (state, action) => {
       const message = action.payload;
       const matchKey = String(message.match_id);
-
-      if (!state.messages[matchKey]) {
-        state.messages[matchKey] = [];
-      }
+      const currentMessages = state.messages[matchKey] || [];
+      const nextMessages = [...currentMessages];
 
       // Prevent duplicate messages
-      const existingMessage = state.messages[matchKey].find(msg => msg.id === message.id);
+      const existingMessage = currentMessages.find(msg => msg.id === message.id);
       if (!existingMessage) {
-        state.messages[matchKey].push(message);
+        nextMessages.push(message);
+        state.messages[matchKey] = nextMessages;
         state.lastMessage = message;
         
         // Update conversation last message and unread count only for new messages
@@ -341,10 +338,8 @@ const chatsSlice = createSlice({
       .addCase(sendMessage.fulfilled, (state, action) => {
         const { matchId, message } = action.payload;
         const key = String(matchId);
-        if (!state.messages[key]) {
-          state.messages[key] = [];
-        }
-        state.messages[key].push(message);
+        const currentMessages = state.messages[key] || [];
+        state.messages[key] = [...currentMessages, message];
         state.lastMessage = message;
         
         // Update conversation or create new one if it doesn't exist
