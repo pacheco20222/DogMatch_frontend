@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { 
   View, 
   ScrollView, 
-  Image,
   Text,
   TouchableOpacity,
   Alert,
   StatusBar,
   ActivityIndicator
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   User, 
   Mail, 
@@ -31,7 +32,8 @@ import Animated, {
   SlideInRight
 } from 'react-native-reanimated';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
-import { uploadProfilePhoto, clearError } from '../store/slices/userSlice';
+import { uploadProfilePhoto as uploadProfilePhotoThunk, clearError } from '../store/slices/userSlice';
+import { updateUser } from '../store/slices/authSlice';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../theme/ThemeContext';
 import { getDesignTokens } from '../styles/designTokens';
@@ -58,6 +60,8 @@ const ProfileScreen = ({ navigation }) => {
 
   const { isDark } = useTheme();
   const tokens = getDesignTokens(isDark);
+
+
 
   // Clear error when component unmounts
   React.useEffect(() => {
@@ -106,22 +110,26 @@ const ProfileScreen = ({ navigation }) => {
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        await uploadProfilePhoto(result.assets[0]);
-      }
+        if (!result.canceled && result.assets[0]) {
+          await handleUploadProfilePhoto(result.assets[0]);
+        }
     } catch (error) {
       logger.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 
-  const uploadProfilePhoto = async (imageAsset) => {
+  const handleUploadProfilePhoto = async (imageAsset) => {
     try {
-      await dispatch(uploadProfilePhoto({
+      const result = await dispatch(uploadProfilePhotoThunk({
         uri: imageAsset.uri,
         type: 'image/jpeg',
         name: 'profile_photo.jpg',
       })).unwrap();
+
+      if (result?.photo_url) {
+        dispatch(updateUser({ profile_photo_url: result.photo_url }));
+      }
       
       Alert.alert('Success!', 'Profile photo updated successfully!');
     } catch (error) {
@@ -221,20 +229,31 @@ const ProfileScreen = ({ navigation }) => {
               {/* Avatar and Basic Info */}
               <View className="items-center mb-4">
                 <View className="relative">
-                  {user?.profile_photo_url ? (
-                    <Image
-                      source={{ 
-                        uri: user.profile_photo_url.startsWith('http') 
-                          ? user.profile_photo_url 
-                          : `https://dogmatch-backend.onrender.com${user.profile_photo_url}`
-                      }}
-                      className="w-24 h-24 rounded-full"
-                    />
-                    ) : (
-                    <View className="w-24 h-24 rounded-full items-center justify-center" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : tokens.cardBackground }}>
-                      <User size={40} color={tokens.textSecondary} />
-                    </View>
-                  )}
+                  {(() => {
+                    const photoUrl = user?.profile_photo_url;
+                    
+                    if (photoUrl) {
+                      const finalUri = photoUrl.startsWith('http') 
+                        ? photoUrl 
+                        : `https://dogmatch-backend.onrender.com${photoUrl}`;
+                      
+                      return (
+                        <Image
+                          source={finalUri}
+                          style={{ width: 96, height: 96, borderRadius: 48 }}
+                          contentFit="cover"
+                          transition={200}
+                          cachePolicy="memory-disk"
+                        />
+                      );
+                    } else {
+                      return (
+                        <View className="w-24 h-24 rounded-full items-center justify-center" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : tokens.cardBackground }}>
+                          <User size={40} color={tokens.textSecondary} />
+                        </View>
+                      );
+                    }
+                  })()}
                   
                   {/* Camera Button */}
                   <TouchableOpacity

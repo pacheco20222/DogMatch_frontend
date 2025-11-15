@@ -52,16 +52,16 @@ export const uploadProfilePhoto = createAsyncThunk(
         name: photoData.name || 'profile.jpg',
       });
       
-      const response = await apiFetch('/api/users/profile/photo', {
+      const response = await apiFetch('/api/s3/upload/user-profile', {
         method: 'POST',
         body: formData,
         token: auth.accessToken,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
       });
       
-      return response.user || response;
+      return {
+        photo_url: response.photo_url,
+        filename: response.filename,
+      };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to upload photo');
     }
@@ -166,7 +166,11 @@ const userSlice = createSlice({
       })
       .addCase(uploadProfilePhoto.fulfilled, (state, action) => {
         state.loading = false;
-        state.profile = action.payload;
+        state.profile = {
+          ...(state.profile || {}),
+          profile_photo_url: action.payload.photo_url,
+          profile_photo_filename: action.payload.filename,
+        };
         state.uploadProgress = 100;
         state.error = null;
       })

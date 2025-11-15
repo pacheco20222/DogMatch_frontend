@@ -225,7 +225,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
   // Render message
   const renderMessage = ({ item: message, index }) => {
     const isFromCurrentUser = message.is_sent_by_me;
-    const showAvatar = index === 0 || messages[index - 1]?.sender_user_id !== message.sender_user_id;
+    const showAvatar = !isFromCurrentUser;
     
     return (
       <Animated.View
@@ -235,7 +235,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
           isFromCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
         ]}
       >
-        {!isFromCurrentUser && showAvatar && (
+        {showAvatar && (
           <Image
             source={{
               uri: otherUser?.profile_photo_url || 

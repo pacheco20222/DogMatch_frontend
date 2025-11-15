@@ -19,10 +19,32 @@ const EditProfileScreen = ({ navigation }) => {
   const [username, setUsername] = useState(user?.username || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [localImage, setLocalImage] = useState(user?.profile_photo_url || null);
+  const [pendingImageUri, setPendingImageUri] = useState(null);
+  const [savedImageUrl, setSavedImageUrl] = useState(user?.profile_photo_url || null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Ask permission and pick image from library
+  React.useEffect(() => {
+    if (!pendingImageUri && user?.profile_photo_url) {
+      setLocalImage(user.profile_photo_url);
+      setSavedImageUrl(user.profile_photo_url);
+    }
+  }, [user?.profile_photo_url, pendingImageUri]);
+
+  const extractImageUri = (pickerResult) => {
+    if (!pickerResult) return null;
+    const asset = pickerResult.assets && pickerResult.assets[0];
+    return asset?.uri || pickerResult.uri || null;
+  };
+
+  const isCancelled = (pickerResult) => {
+    if (pickerResult == null) return true;
+    if (typeof pickerResult.canceled !== 'undefined') {
+      return pickerResult.canceled;
+    }
+    return pickerResult.cancelled;
+  };
+
   const pickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -41,11 +63,18 @@ const EditProfileScreen = ({ navigation }) => {
         quality: 0.8,
       });
 
-      if (!result.cancelled) {
-        setLocalImage(result.uri);
-        // Optionally upload immediately
-        await uploadPhoto(result.uri);
+      if (isCancelled(result)) {
+        return;
       }
+
+      const uri = extractImageUri(result);
+      if (!uri) {
+        Alert.alert('Error', 'Unable to read selected image.');
+        return;
+      }
+
+      setLocalImage(uri);
+      setPendingImageUri(uri);
     } catch (e) {
       console.error('Pick image error', e);
       Alert.alert('Error', 'Unable to access photo library.');
@@ -71,10 +100,18 @@ const EditProfileScreen = ({ navigation }) => {
         quality: 0.8,
       });
 
-      if (!result.cancelled) {
-        setLocalImage(result.uri);
-        await uploadPhoto(result.uri);
+      if (isCancelled(result)) {
+        return;
       }
+
+      const uri = extractImageUri(result);
+      if (!uri) {
+        Alert.alert('Error', 'Unable to read captured image.');
+        return;
+      }
+
+      setLocalImage(uri);
+      setPendingImageUri(uri);
     } catch (e) {
       console.error('Take photo error', e);
       Alert.alert('Error', 'Unable to open camera.');
@@ -83,10 +120,10 @@ const EditProfileScreen = ({ navigation }) => {
 
   // Upload selected image to backend S3 endpoint
   const uploadPhoto = async (uri) => {
-    if (!uri) return;
+    if (!uri) return null;
     if (!accessToken) {
       Alert.alert('Not authenticated', 'Please login again.');
-      return;
+      return null;
     }
 
     try {
@@ -110,13 +147,13 @@ const EditProfileScreen = ({ navigation }) => {
       });
 
       if (response && response.photo_url) {
-        // Update local and redux user
-        dispatch(updateUser({ profile_photo_url: response.photo_url }));
-        Alert.alert('Success', 'Profile photo updated.');
+        return response.photo_url;
       }
+      return null;
     } catch (error) {
       console.error('Upload photo error', error);
       Alert.alert('Upload failed', error.message || 'Failed to upload photo');
+      return null;
     } finally {
       setUploading(false);
     }
@@ -132,9 +169,19 @@ const EditProfileScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
+      let profilePhotoUrl = user?.profile_photo_url || null;
+      if (pendingImageUri) {
+        const uploadedUrl = await uploadPhoto(pendingImageUri);
+        if (uploadedUrl) {
+          profilePhotoUrl = uploadedUrl;
+          setPendingImageUri(null);
+        }
+      }
+
       const payload = {
         username: username || user?.username,
         phone: phone || null,
+        profile_photo_url: profilePhotoUrl,
       };
 
       const response = await apiFetch('/api/users/profile', {
@@ -144,8 +191,24 @@ const EditProfileScreen = ({ navigation }) => {
       });
 
       if (response && response.user) {
-        dispatch(updateUser(response.user));
-        Alert.alert('Saved', 'Profile updated successfully', [
+        // Update local state with the confirmed URL FIRST
+        const finalPhotoUrl = response.user.profile_photo_url || profilePhotoUrl;
+        setLocalImage(finalPhotoUrl);
+        setSavedImageUrl(finalPhotoUrl);
+        
+        // Update Redux with the full user object from response
+        dispatch(updateUser({
+          ...response.user,
+          profile_photo_url: finalPhotoUrl
+        }));
+        
+        // Clear pending image URI AFTER local state is updated
+        setPendingImageUri(null);
+        
+        // Refresh the profile to ensure sync
+        await fetchProfile();
+        
+        Alert.alert('Success', 'Profile photo updated.', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       }
@@ -254,3 +317,4 @@ function createStyles(tokens) {
 }
 
 export default EditProfileScreen;
+

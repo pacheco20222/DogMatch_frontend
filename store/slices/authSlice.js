@@ -185,9 +185,10 @@ const authSlice = createSlice({
       state.initialized = true;
     },
     updateUser: (state, action) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-      }
+      if (!state.user) return;
+
+      state.user = { ...state.user, ...action.payload };
+
     },
     setTokens: (state, action) => {
       state.accessToken = action.payload.accessToken;
@@ -258,7 +259,11 @@ const authSlice = createSlice({
     // Fetch profile
     builder
       .addCase(fetchUserProfile.fulfilled, (state, action) => {
-        state.user = action.payload;
+        const payload = action.payload || {};
+        state.user = state.user
+          ? { ...state.user, ...payload }
+          : payload;
+  
         state.isAuthenticated = true;
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
