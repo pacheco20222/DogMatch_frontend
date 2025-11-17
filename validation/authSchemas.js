@@ -66,6 +66,8 @@ export const registerSchema = Yup.object().shape({
   user_type: Yup.string()
     .oneOf(['owner', 'shelter', 'admin'], 'Invalid user type')
     .default('owner'),
+  profile_photo_url: Yup.string()
+    .required('Profile photo is required'),
 });
 
 // Password change validation schema

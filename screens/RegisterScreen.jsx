@@ -8,10 +8,13 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Mail, User, Users, Phone, MapPin, Lock, Eye, EyeOff, Heart, Home } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { Mail, User, Users, Phone, MapPin, Lock, Eye, EyeOff, Heart, Home, Camera, Upload } from 'lucide-react-native';
 import { Formik } from 'formik';
 import Animated, {
   useSharedValue,
@@ -29,14 +32,17 @@ import { useTheme } from '../theme/ThemeContext';
 import { logger } from '../utils/logger';
 import { GlassCard, GlassInput, GlassButton, GradientText } from '../components/glass';
 import { getDesignTokens } from '../styles/designTokens';
+import { apiFetch } from '../api/client';
 
 const RegisterScreen = ({ navigation }) => {
-  const { register, loading } = useAuth();
+  const { register, loading, accessToken } = useAuth();
   const { isDark } = useTheme();
   const tokens = getDesignTokens(isDark);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedUserType, setSelectedUserType] = useState('owner');
+  const [profilePhotoUri, setProfilePhotoUri] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const heartBeat = useSharedValue(1);
 
@@ -51,8 +57,167 @@ const RegisterScreen = ({ navigation }) => {
     );
   }, []);
 
+  const extractImageUri = (pickerResult) => {
+    if (!pickerResult) return null;
+    const asset = pickerResult.assets && pickerResult.assets[0];
+    return asset?.uri || pickerResult.uri || null;
+  };
+
+  const isCancelled = (pickerResult) => {
+    if (pickerResult == null) return true;
+    if (typeof pickerResult.canceled !== 'undefined') {
+      return pickerResult.canceled;
+    }
+    return pickerResult.cancelled;
+  };
+
+  const uploadPhotoToS3 = async (uri) => {
+    if (!uri) return null;
+
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+      const filename = uri.split('/').pop();
+      const match = filename.match(/\.([0-9a-z]+)$/i);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('photo', {
+        uri,
+        name: filename,
+        type,
+      });
+
+      // Upload without token for registration (public endpoint)
+      const response = await apiFetch('/api/s3/upload/user-profile-public', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response && response.photo_url) {
+        return response.photo_url;
+      }
+      return null;
+    } catch (error) {
+      logger.error('Photo upload error:', error);
+      Alert.alert('Upload Failed', 'Unable to upload photo. Please try again.');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const pickImage = async (setFieldValue) => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission required',
+          'We need permission to access your photos.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (isCancelled(result)) {
+        return;
+      }
+
+      const uri = extractImageUri(result);
+      if (!uri) {
+        Alert.alert('Error', 'Unable to read selected image.');
+        return;
+      }
+
+      setProfilePhotoUri(uri);
+      
+      // Upload immediately and get S3 key
+      const s3Key = await uploadPhotoToS3(uri);
+      if (s3Key) {
+        setFieldValue('profile_photo_url', s3Key);
+      }
+    } catch (e) {
+      logger.error('Pick image error:', e);
+      Alert.alert('Error', 'Unable to access photo library.');
+    }
+  };
+
+  const takePhoto = async (setFieldValue) => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission required',
+          'We need camera permission to take a photo.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (isCancelled(result)) {
+        return;
+      }
+
+      const uri = extractImageUri(result);
+      if (!uri) {
+        Alert.alert('Error', 'Unable to read captured image.');
+        return;
+      }
+
+      setProfilePhotoUri(uri);
+      
+      // Upload immediately and get S3 key
+      const s3Key = await uploadPhotoToS3(uri);
+      if (s3Key) {
+        setFieldValue('profile_photo_url', s3Key);
+      }
+    } catch (e) {
+      logger.error('Take photo error:', e);
+      Alert.alert('Error', 'Unable to open camera.');
+    }
+  };
+
+  const showPhotoOptions = (setFieldValue) => {
+    Alert.alert(
+      'Profile Photo',
+      'Choose how you want to add your profile photo',
+      [
+        {
+          text: 'Take Photo',
+          onPress: () => takePhoto(setFieldValue),
+        },
+        {
+          text: 'Choose from Library',
+          onPress: () => pickImage(setFieldValue),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
   const handleRegister = async (values, { setSubmitting, setFieldError }) => {
     try {
+      // Ensure profile photo was uploaded
+      if (!values.profile_photo_url) {
+        setFieldError('profile_photo_url', 'Please upload a profile photo');
+        return;
+      }
+
       await register(values);
       // Navigation handled by AuthNavigator
     } catch (error) {
@@ -131,12 +296,65 @@ const RegisterScreen = ({ navigation }) => {
                     state: '',
                     country: '',
                     user_type: 'owner',
+                    profile_photo_url: '',
                   }}
                   validationSchema={registerSchema}
                   onSubmit={handleRegister}
                 >
                   {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting, setFieldValue }) => (
                     <View>
+                      {/* Profile Photo Upload */}
+                      <View className="mb-6 items-center">
+                        <Text style={{ color: tokens.textPrimary, fontSize: 14, fontWeight: '600', marginBottom: 12 }}>
+                          Profile Photo *
+                        </Text>
+                        
+                        <TouchableOpacity
+                          onPress={() => showPhotoOptions(setFieldValue)}
+                          activeOpacity={0.8}
+                          disabled={uploading}
+                        >
+                          <View style={{
+                            width: 120,
+                            height: 120,
+                            borderRadius: 60,
+                            backgroundColor: tokens.cardBackground,
+                            borderWidth: 3,
+                            borderColor: errors.profile_photo_url && touched.profile_photo_url ? tokens.danger : tokens.primary,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            overflow: 'hidden',
+                          }}>
+                            {uploading ? (
+                              <ActivityIndicator size="large" color={tokens.primary} />
+                            ) : profilePhotoUri ? (
+                              <Image
+                                source={{ uri: profilePhotoUri }}
+                                style={{ width: '100%', height: '100%' }}
+                                contentFit="cover"
+                              />
+                            ) : (
+                              <View style={{ alignItems: 'center' }}>
+                                <Camera size={32} color={tokens.textSecondary} />
+                                <Text style={{ color: tokens.textSecondary, fontSize: 12, marginTop: 8, textAlign: 'center' }}>
+                                  Add Photo
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+
+                        {errors.profile_photo_url && touched.profile_photo_url && (
+                          <Text style={{ color: tokens.danger, fontSize: 12, marginTop: 8 }}>
+                            {errors.profile_photo_url}
+                          </Text>
+                        )}
+                        
+                        <Text style={{ color: tokens.textSecondary, fontSize: 12, marginTop: 8, textAlign: 'center' }}>
+                          Tap to add a profile photo
+                        </Text>
+                      </View>
+
                       <GlassInput
                         label="Email"
                         value={values.email}

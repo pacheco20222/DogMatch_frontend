@@ -31,6 +31,7 @@ import { fetchEvents } from '../store/slices/eventsSlice';
 import { selectDashboardStats } from '../store/selectors';
 import { useTheme } from '../theme/ThemeContext';
 import { GlassCard, GlassButton, GradientText } from '../components/glass';
+import AIAssistantModal from '../components/ui/AIAssistantModal';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -43,6 +44,7 @@ const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   
   const [refreshing, setRefreshing] = useState(false);
+  const [aiModalVisible, setAiModalVisible] = useState(false);
 
   // Animation values
   const sparkleRotate = useSharedValue(0);
@@ -158,6 +160,7 @@ const HomeScreen = ({ navigation }) => {
   return (
     <View className={`flex-1 ${isDark ? 'bg-background-dark' : 'bg-background-light'}`}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <AIAssistantModal visible={aiModalVisible} onClose={() => setAiModalVisible(false)} />
       
       {/* Gradient Background */}
       <LinearGradient
@@ -198,11 +201,18 @@ const HomeScreen = ({ navigation }) => {
               </View>
               
               <Animated.View style={sparkleAnimatedStyle}>
-                <View className={`w-12 h-12 rounded-full items-center justify-center ${
-                  isDark ? 'bg-primary-500/20' : 'bg-primary-100'
-                }`}>
-                  <Sparkles size={24} className="text-primary-500" />
-                </View>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setAiModalVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open AI assistant"
+                >
+                  <View className={`w-12 h-12 rounded-full items-center justify-center ${
+                    isDark ? 'bg-primary-500/20' : 'bg-primary-100'
+                  }`}>
+                    <Sparkles size={24} className="text-primary-500" />
+                  </View>
+                </TouchableOpacity>
               </Animated.View>
             </View>
 

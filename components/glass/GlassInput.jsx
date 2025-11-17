@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, TouchableOpacity } from 'react-native';
+import { View, TextInput, Text, TouchableOpacity, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withTiming 
-} from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
-import { Platform } from 'react-native';
 
 /**
  * GlassInput - Modern glass morphism input with floating label
@@ -35,29 +29,13 @@ const GlassInput = ({
 }) => {
   const { isDark } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
-  const labelPosition = useSharedValue(value ? -18 : 0);
-  const labelScale = useSharedValue(value ? 0.85 : 1);
 
-  const handleFocus = () => {
-    setIsFocused(true);
-    labelPosition.value = withTiming(-18, { duration: 200 });
-    labelScale.value = withTiming(0.85, { duration: 200 });
-  };
+  const handleFocus = () => setIsFocused(true);
+  const handleBlur = () => setIsFocused(false);
 
-  const handleBlur = () => {
-    setIsFocused(false);
-    if (!value) {
-      labelPosition.value = withTiming(0, { duration: 200 });
-      labelScale.value = withTiming(1, { duration: 200 });
-    }
-  };
-
-  const animatedLabelStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: labelPosition.value },
-      { scale: labelScale.value },
-    ],
-  }));
+  // Import design tokens for proper theming
+  const { getDesignTokens } = require('../../styles/designTokens');
+  const tokens = getDesignTokens(isDark);
 
   const borderColor = error 
     ? 'border-error-500' 
@@ -67,105 +45,109 @@ const GlassInput = ({
 
   return (
     <View className={`w-full ${className}`}>
-      <View className="relative">
-        <View className={`rounded-2xl overflow-hidden`}>
-          <BlurView
-            intensity={20}
-            tint={isDark ? 'dark' : 'light'}
-            className="w-full h-full absolute"
-          />
-          <View className={`
-            ${isDark ? 'bg-white/10' : 'bg-white/70'}
-            border-2 ${borderColor}
-            rounded-2xl
-            px-4
-            ${props.multiline ? 'py-3' : 'py-4'}
-            flex-row items-center
-            min-h-[56px]
-          `}>
+      {label && (
+        <Text
+          className={`mb-2 ml-1 text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
+        >
+          {label}
+        </Text>
+      )}
+      <View className="relative rounded-2xl overflow-hidden">
+        <BlurView
+          intensity={20}
+          tint={isDark ? 'dark' : 'light'}
+          className="w-full h-full absolute"
+        />
+        <View
+          style={{
+            backgroundColor: tokens.inputBackground,
+            borderRadius: 16,
+            borderWidth: 2,
+            borderColor: error ? tokens.danger : isFocused ? tokens.primary : tokens.inputBorder,
+            paddingHorizontal: 16,
+            paddingVertical: 0,
+            flexDirection: 'row',
+            height: 56,
+          }}
+        >
             {LeftIcon && (
-              // If the label is floated (input has value or is focused) the
-              // TextInput content is pushed down (we add mt-4). Mirror that
-              // offset for the icon so both glyph and input text share the
-              // same visual baseline.
-              (() => {
-                // Use platform-tuned negative offsets to lift the icon so it
-                // visually aligns with the numeric/text baseline on iPhones.
-                // Increase the upward nudge here after user's feedback.
-                const floatedOffset = Platform.OS === 'ios' ? -8 : -6;
-                const iconOffset = (isFocused || value) ? floatedOffset : -2;
-                return (
-                  <View style={{ marginRight: 12, alignSelf: 'center', transform: [{ translateY: iconOffset }] }}>
-                    <LeftIcon 
-                      size={20} 
-                      className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}
-                    />
-                  </View>
-                );
-              })()
+              <View style={{ marginRight: 12, justifyContent: 'center' }}>
+                <LeftIcon
+                  size={20}
+                  color={tokens.textSecondary}
+                />
+              </View>
             )}
-            
-            <View className="flex-1 relative pt-1">
-              {label && (
-                <Animated.View 
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'stretch', overflow: 'hidden' }}>
+              {Platform.OS === 'ios' ? (
+                // iOS-specific: TextInput doesn't support textAlignVertical
+                // Manually center using padding to align text with icon center
+                // These values have been fine-tuned for proper vertical alignment
+                <TextInput
+                  {...props}
+                  value={value}
+                  onChangeText={onChangeText}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
                   style={[
-                    animatedLabelStyle,
-                    { 
-                      position: 'absolute', 
-                      left: 0, 
-                      top: isFocused || value ? 0 : 12, 
-                      zIndex: 1 
-                    }
+                    props.style,
+                    {
+                      fontSize: 16,
+                      color: tokens.inputText,
+                      height: 56, // Match container height
+                      lineHeight: RightIcon ? 25 : 25, // Slightly larger for better visual centering
+                      paddingTop: RightIcon ? 20 : 12, // Fine-tuned padding to center text with icons
+                      paddingBottom: RightIcon ? 6 : 10, // Asymmetric to account for text baseline
+                      paddingHorizontal: 0,
+                      letterSpacing: -0.2, // Slight negative spacing for better appearance
+                      margin: 0,
+                      // Note: textAlignVertical doesn't work on iOS, but padding handles centering
+                    },
                   ]}
-                  pointerEvents="none"
-                >
-                  <Text className={`
-                    ${isFocused || value 
-                      ? (isDark ? 'text-primary-400' : 'text-primary-600')
-                      : (isDark ? 'text-gray-400' : 'text-gray-500')
-                    }
-                    ${isFocused || value ? 'text-xs' : 'text-base'}
-                    font-semibold
-                  `}>
-                    {label}
-                  </Text>
-                </Animated.View>
+                  placeholderTextColor={tokens.placeholder}
+                />
+              ) : (
+                // Android: Use textAlignVertical which works properly
+                <TextInput
+                  {...props}
+                  value={value}
+                  onChangeText={onChangeText}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  style={[
+                    props.style,
+                    {
+                      fontSize: 16,
+                      lineHeight: 20,
+                      color: tokens.inputText,
+                      padding: 0,
+                      margin: 0,
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                      textAlignVertical: 'center',
+                      includeFontPadding: false,
+                    },
+                  ]}
+                  placeholderTextColor={tokens.placeholder}
+                />
               )}
-              
-              <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                className={`
-                  ${isDark ? 'text-white' : 'text-gray-900'}
-                  text-base
-                  ${label && (value || isFocused) ? 'mt-4' : 'mt-0'}
-                `}
-                placeholder={(isFocused || value) ? placeholder : ''}
-                placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                {...props}
-              />
             </View>
 
             {RightIcon && (
-              (() => {
-                const floatedOffsetR = Platform.OS === 'ios' ? -8 : -6;
-                const iconOffset = (isFocused || value) ? floatedOffsetR : -2;
-                return (
-                  <TouchableOpacity onPress={onRightIconPress} style={{ marginLeft: 12, alignSelf: 'center', transform: [{ translateY: iconOffset }] }}>
-                    <RightIcon 
-                      size={20} 
-                      className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}
-                    />
-                  </TouchableOpacity>
-                );
-              })()
+              <TouchableOpacity
+                onPress={onRightIconPress}
+                style={{ marginLeft: 12, padding: 4, justifyContent: 'center' }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <RightIcon
+                  size={20}
+                  color={tokens.textSecondary}
+                />
+              </TouchableOpacity>
             )}
           </View>
         </View>
-      </View>
-      
+      {/* keep wrapper open for error message */}
       {error && (
         <Text className="text-error-500 text-sm mt-2 ml-2">
           {error}

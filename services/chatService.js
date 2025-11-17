@@ -91,7 +91,7 @@ class ChatService {
 
     // Message events
     socket.on('new_message', (messageData) => {
-      console.log('💬 New message received:', messageData);
+      console.log('New message received:', messageData);
       
       // Add to cache
       const matchId = messageData.match_id;
@@ -112,14 +112,14 @@ class ChatService {
     });
 
     socket.on('message_sent', (data) => {
-      console.log('✅ Message sent confirmation:', data);
+      console.log('Message sent confirmation:', data);
       if (callbacks.onMessageSent) {
         callbacks.onMessageSent(data);
       }
     });
 
     socket.on('message_read', (readData) => {
-      console.log('✅ Message read receipt:', readData);
+      console.log('Message read receipt:', readData);
       if (callbacks.onMessageRead) {
         callbacks.onMessageRead(readData);
       }
@@ -127,7 +127,7 @@ class ChatService {
 
     // Typing events
     socket.on('user_typing', (typingData) => {
-      console.log('⌨️ User typing:', typingData);
+      console.log('User typing:', typingData);
       
       const matchId = typingData.match_id;
       const userId = typingData.user_id;
@@ -151,21 +151,21 @@ class ChatService {
 
     // Connection events
     socket.on('connected', (data) => {
-      console.log('✅ Socket connected:', data);
+      console.log('Socket connected:', data);
       if (callbacks.onConnected) {
         callbacks.onConnected(data);
       }
     });
 
     socket.on('joined_match', (data) => {
-      console.log('✅ Joined match room:', data);
+      console.log('Joined match room:', data);
       if (callbacks.onJoinedMatch) {
         callbacks.onJoinedMatch(data);
       }
     });
 
     socket.on('left_match', (data) => {
-      console.log('✅ Left match room:', data);
+      console.log('Left match room:', data);
       if (callbacks.onLeftMatch) {
         callbacks.onLeftMatch(data);
       }

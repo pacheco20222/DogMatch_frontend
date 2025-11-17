@@ -1,141 +1,105 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet,
-  Image,
-  Dimensions
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  withRepeat,
-  withSequence,
-  FadeIn,
-  SlideInUp,
-} from 'react-native-reanimated';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import AnimatedButton from '../components/AnimatedButton';
-import FloatingActionButton from '../components/glass/FloatingActionButton';
 import AIAssistantModal from '../components/ui/AIAssistantModal';
-import { MessageCircle } from 'lucide-react-native';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../styles/DesignSystem';
+import { MapPin, Heart, Sparkles } from 'lucide-react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { getDesignTokens } from '../styles/designTokens';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
+
+const FeatureCard = ({ icon: Icon, title, description, tokens }) => (
+  <View style={[styles.featureCard, { backgroundColor: tokens.cardBackground, borderColor: tokens.border }]}>
+    <View style={[styles.featureIcon, { backgroundColor: tokens.overlayLikeBg }]}>
+      <Icon size={20} color={tokens.primaryContrast} />
+    </View>
+    <Text style={[styles.featureTitle, { color: tokens.textPrimary }]}>{title}</Text>
+    <Text style={[styles.featureDescription, { color: tokens.textSecondary }]}>{description}</Text>
+  </View>
+);
 
 const MainScreen = ({ navigation }) => {
-  // Animation values
-  const logoScale = useSharedValue(0);
-  const logoRotation = useSharedValue(0);
-  const titleOpacity = useSharedValue(0);
-  const subtitleOpacity = useSharedValue(0);
-  const buttonsOpacity = useSharedValue(0);
-
-  React.useEffect(() => {
-    // Animate logo with bounce and rotation
-    logoScale.value = withDelay(300, withSpring(1, { damping: 8, stiffness: 100 }));
-    logoRotation.value = withDelay(500, withSpring(360, { damping: 15, stiffness: 50 }));
-    
-    // Animate text elements
-    titleOpacity.value = withDelay(800, withSpring(1, { damping: 15, stiffness: 100 }));
-    subtitleOpacity.value = withDelay(1000, withSpring(1, { damping: 15, stiffness: 100 }));
-    buttonsOpacity.value = withDelay(1200, withSpring(1, { damping: 15, stiffness: 100 }));
-  }, []);
-
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: logoScale.value },
-      { rotate: `${logoRotation.value}deg` }
-    ],
-  }));
-
-  const titleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: titleOpacity.value,
-    transform: [{ translateY: (1 - titleOpacity.value) * 20 }],
-  }));
-
-  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: subtitleOpacity.value,
-    transform: [{ translateY: (1 - subtitleOpacity.value) * 20 }],
-  }));
-
-  const buttonsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: buttonsOpacity.value,
-    transform: [{ translateY: (1 - buttonsOpacity.value) * 30 }],
-  }));
-
-  // AI Assistant modal state
+  const { isDark } = useTheme();
+  const tokens = React.useMemo(() => getDesignTokens(isDark), [isDark]);
   const [modalVisible, setModalVisible] = React.useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.background }} edges={['top', 'left', 'right']}>
+      <LinearGradient colors={tokens.gradientBackground} style={StyleSheet.absoluteFill} />
+
       <AIAssistantModal visible={modalVisible} onClose={() => setModalVisible(false)} />
-      <View style={styles.content}>
-        {/* Hero Section */}
-        <Animated.View style={[styles.heroSection, logoAnimatedStyle]} entering={FadeIn.duration(1000)}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoEmoji}>🐕</Text>
-            <Text style={styles.logoText}>DogMatch</Text>
-          </View>
-        </Animated.View>
 
-        {/* Content Section */}
-        <Animated.View style={[styles.contentSection, titleAnimatedStyle]} entering={SlideInUp.delay(400).duration(800)}>
-          <Text style={styles.title}>Welcome to DogMatch!</Text>
-          <Text style={styles.subtitle}>
-            Connect with other dog owners and find the perfect playmate for your furry friend.
+      <View
+        style={[
+          styles.container,
+          {
+            paddingHorizontal: tokens.spacingLarge,
+            paddingTop: insets.top + tokens.spacingLarge,
+            paddingBottom: insets.bottom + 32,
+          },
+        ]}
+      >
+        <Animated.View
+          entering={FadeIn.duration(800)}
+          style={[styles.heroCard, { backgroundColor: tokens.cardBackground, borderColor: tokens.border }]}
+        >
+          <View style={[styles.heroBadge, { backgroundColor: tokens.actionLikeBg }]}>
+            <Text style={[styles.heroBadgeText, { color: tokens.primaryContrast }]}>DOGMATCH</Text>
+          </View>
+
+          <Text style={[styles.heroTitle, { color: tokens.textPrimary }]}>
+            Connect your dog with their next best friend
           </Text>
+          <Text style={[styles.heroSubtitle, { color: tokens.textSecondary }]}>
+            Premium matchmaking for modern dog owners. Discover local pups, schedule playdates and
+            join curated events in a polished experience.
+          </Text>
+
+          <View style={styles.heroActions}>
+            <AnimatedButton
+              title="Create an account"
+              size="large"
+              onPress={() => navigation.navigate('Register')}
+              style={{ marginBottom: tokens.spacing }}
+            />
+            <AnimatedButton
+              title="Sign in"
+              variant="outline"
+              size="large"
+              onPress={() => navigation.navigate('Login')}
+            />
+          </View>
         </Animated.View>
 
-        {/* Features Section */}
-        <Animated.View style={[styles.featuresSection, subtitleAnimatedStyle]} entering={SlideInUp.delay(600).duration(800)}>
-          <View style={styles.featureItem}>
-            <Text style={styles.featureIcon}>💕</Text>
-            <Text style={styles.featureText}>Find perfect matches</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <Text style={styles.featureIcon}>🎉</Text>
-            <Text style={styles.featureText}>Join community events</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <Text style={styles.featureIcon}>🏠</Text>
-            <Text style={styles.featureText}>Connect with local owners</Text>
-          </View>
-        </Animated.View>
-
-        {/* Action Buttons */}
-        <Animated.View style={[styles.buttonsSection, buttonsAnimatedStyle]} entering={SlideInUp.delay(800).duration(800)}>
-          <AnimatedButton
-            title="Get Started"
-            onPress={() => navigation.navigate('Register')}
-            size="large"
-            style={styles.primaryButton}
+        <Animated.View entering={FadeInUp.delay(200).duration(700)} style={styles.featuresWrapper}>
+          <FeatureCard
+            icon={Heart}
+            title="Smart Matching"
+            description="Curated profiles powered by your dog's preferences and behaviour."
+            tokens={tokens}
           />
-          
-          <AnimatedButton
-            title="Already have an account? Sign In"
-            onPress={() => navigation.navigate('Login')}
-            variant="outline"
-            size="large"
-            style={styles.secondaryButton}
+          <FeatureCard
+            icon={MapPin}
+            title="Local Events"
+            description="Meetups, group walks and curated experiences hosted by DogMatch."
+            tokens={tokens}
+          />
+          <FeatureCard
+            icon={Sparkles}
+            title="Safety First"
+            description="Verified owners, profile badges and AI support keep playdates safe."
+            tokens={tokens}
           />
         </Animated.View>
 
-        {/* Floating AI assistant button */}
-        <FloatingActionButton
-          icon={MessageCircle}
-          variant="accent"
-          size="md"
-          position="bottom-right"
-          onPress={() => setModalVisible(true)}
-        />
-
-        {/* Footer */}
-        <Animated.View style={styles.footer} entering={FadeIn.delay(1000).duration(600)}>
-          <Text style={styles.footerText}>
-            Join thousands of dog owners finding their perfect matches
+        <Animated.View entering={FadeIn.delay(400).duration(600)} style={styles.footer}>
+          <Text style={[styles.footerTitle, { color: tokens.textPrimary }]}>Trusted by thousands of dog owners</Text>
+          <Text style={[styles.footerText, { color: tokens.textSecondary }]}>
+            As seen in Dog Weekly, Woof Times and BarkJournal. Join the community today.
           </Text>
         </Animated.View>
       </View>
@@ -146,107 +110,88 @@ const MainScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  
-  content: {
-    flex: 1,
-    paddingHorizontal: Spacing.xl,
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingBottom: 32,
   },
-  
-  heroSection: {
-    alignItems: 'center',
-    marginBottom: Spacing['3xl'],
+  heroCard: {
+    borderWidth: 1,
+    borderRadius: 32,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
   },
-  
-  logoContainer: {
-    alignItems: 'center',
+  heroBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 12,
   },
-  
-  logoEmoji: {
-    fontSize: 120,
-    marginBottom: Spacing.lg,
-  },
-  
-  logoText: {
-    fontSize: Typography.fontSize['5xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.primary[500],
+  heroBadgeText: {
+    fontSize: 12,
     letterSpacing: 2,
   },
-  
-  contentSection: {
-    alignItems: 'center',
-    marginBottom: Spacing['3xl'],
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 34,
+    marginBottom: 12,
   },
-  
-  title: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: Spacing.lg,
-    lineHeight: Typography.lineHeight.tight * Typography.fontSize['3xl'],
+  heroSubtitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    marginBottom: 24,
   },
-  
-  subtitle: {
-    fontSize: Typography.fontSize.lg,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.lg,
-    paddingHorizontal: Spacing.lg,
+  heroActions: {
+    marginTop: 4,
   },
-  
-  featuresSection: {
+  featuresWrapper: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginBottom: Spacing['3xl'],
-    paddingHorizontal: Spacing.lg,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 16,
   },
-  
-  featureItem: {
-    alignItems: 'center',
+  featureCard: {
     flex: 1,
+    minWidth: (screenWidth - 80) / 2,
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
   },
-  
   featureIcon: {
-    fontSize: Typography.fontSize['2xl'],
-    marginBottom: Spacing.sm,
-  },
-  
-  featureText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    fontWeight: Typography.fontWeight.medium,
-  },
-  
-  buttonsSection: {
-    width: '100%',
-    marginBottom: Spacing['3xl'],
-  },
-  
-  primaryButton: {
-    marginBottom: Spacing.lg,
-    paddingVertical: Spacing.lg,
-  },
-  
-  secondaryButton: {
-    paddingVertical: Spacing.lg,
-  },
-  
-  footer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
-  
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  featureDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  footer: {
+    marginTop: 32,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  footerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
   footerText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.text.tertiary,
+    fontSize: 14,
     textAlign: 'center',
-    fontStyle: 'italic',
+    lineHeight: 20,
   },
 });
 

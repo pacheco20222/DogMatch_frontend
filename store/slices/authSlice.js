@@ -52,6 +52,7 @@ export const registerUser = createAsyncThunk(
         city: userData.city,
         state: userData.state,
         country: userData.country,
+        profile_photo_url: userData.profile_photo_url || null,
       };
       
       const response = await apiFetch('/api/auth/register', {
