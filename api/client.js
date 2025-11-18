@@ -22,7 +22,11 @@ export async function apiFetch(path, { method = "GET", token, body, headers: cus
         }
     }
 
-    const url = `${BASE_URL}${path}`;
+    // Normalize URL - ensure no double slashes
+    // Remove trailing slash from BASE_URL and leading slash from path, then combine
+    const baseUrl = BASE_URL.replace(/\/+$/, ''); // Remove trailing slashes
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`; // Ensure path starts with /
+    const url = `${baseUrl}${normalizedPath}`;
     console.log(`🌐 API Request: ${method} ${url}`);
     
     let response;
