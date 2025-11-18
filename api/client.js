@@ -22,25 +22,44 @@ export async function apiFetch(path, { method = "GET", token, body, headers: cus
         }
     }
 
-    const response = await fetch(`${BASE_URL}${path}`, { 
-        method, 
-        headers, 
-        body: isFormData ? body : (body ? JSON.stringify(body) : undefined)
-    });
+    const url = `${BASE_URL}${path}`;
+    console.log(`🌐 API Request: ${method} ${url}`);
+    
+    let response;
+    try {
+        response = await fetch(url, { 
+            method, 
+            headers, 
+            body: isFormData ? body : (body ? JSON.stringify(body) : undefined)
+        });
+    } catch (networkError) {
+        console.error('❌ Network Error:', networkError);
+        const error = new Error(`Network error: ${networkError.message}`);
+        error.status = 0;
+        error.isNetworkError = true;
+        throw error;
+    }
 
     let data = null;
     try {
-        data = await response.json();
+        const text = await response.text();
+        if (text) {
+            data = JSON.parse(text);
+        }
     } catch {
         data = null;
     }
 
+    console.log(`📡 API Response: ${response.status} ${response.statusText}`, data || '(no body)');
+
     if (!response.ok) {
         const message = data?.messages
             ? Object.values(data.messages).flat().join('\n')
-            : data?.message || `Request failed: ${response.status}`;
+            : data?.message || data?.error || `Request failed: ${response.status}`;
         const error = new Error(message);
         error.status = response.status;
+        error.response = data;
+        console.error(`❌ API Error [${response.status}]:`, message, data);
         throw error;
     }
 
