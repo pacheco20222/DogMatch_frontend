@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { 
   View, 
   Text,
-  Image, 
   Alert, 
   Dimensions,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Swiper } from 'rn-swiper-list';
@@ -149,9 +149,12 @@ const DiscoverScreen = ({ navigation }) => {
         <Image
           source={{ uri: imageUrl }}
           style={styles.cardImage}
-          resizeMode="cover"
+          contentFit="cover"
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          transition={200}
+          cachePolicy="memory-disk"
           onError={(e) => {
-            logger.log('❌ Image load error for', dog.name, ':', e.nativeEvent.error);
+            logger.log('❌ Image load error for', dog.name, ':', e.nativeEvent?.error || e);
             logger.log('Failed URL:', imageUrl);
           }}
           onLoad={() => logger.log('✅ Image loaded successfully for:', dog.name)}

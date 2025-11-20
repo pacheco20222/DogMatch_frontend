@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   FlatList,
   TextInput,
   TouchableOpacity,
-  Image,
   Alert,
   StyleSheet,
   SafeAreaView,
@@ -14,6 +13,7 @@ import {
   Platform,
   Dimensions
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
@@ -31,8 +31,16 @@ import { getDesignTokens } from '../styles/designTokens';
 const { width: screenWidth } = Dimensions.get('window');
 
 const ChatConversationScreen = ({ navigation, route }) => {
-  const { matchId, otherUser, otherDog, match } = route.params;
+  const { matchId, otherUser: initialOtherUser, otherDog: initialOtherDog, match: initialMatch } = route.params;
   const { user } = useAuth();
+  
+  // State for match data (may be updated from API)
+  const [matchData, setMatchData] = useState(initialMatch);
+  const [otherUser, setOtherUser] = useState(initialOtherUser);
+  const [otherDog, setOtherDog] = useState(initialOtherDog);
+  
+  // Get current user's profile photo URL
+  const currentUserProfilePhoto = user?.profile_photo_url;
   const { isConnected, joinMatch, leaveMatch, sendMessage: sendSocketMessage, sendTypingIndicator } = useSocket();
   
   // DEBUG: Log socket connection state
@@ -55,9 +63,10 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
 
-  // Load messages on mount
+  // Load match data and messages on mount
   useFocusEffect(
     useCallback(() => {
+      loadMatchData();
       loadMessages();
       
       // Mark all messages as read when entering the chat
@@ -69,6 +78,59 @@ const ChatConversationScreen = ({ navigation, route }) => {
       };
     }, [matchId])
   );
+
+  // Load fresh match data to ensure profile photos are included
+  const loadMatchData = async () => {
+    try {
+      const state = store.getState();
+      const accessToken = state.auth.accessToken;
+      
+      if (!accessToken) {
+        logger.warn('No access token available for loading match data');
+        return;
+      }
+      
+      const response = await apiFetch(`/api/matches/${matchId}`, {
+        token: accessToken,
+      });
+      
+      if (response.match) {
+        // Get current user ID at the start
+        const currentUserId = user?.id;
+        
+        // Check all possible paths for the owner data
+        const otherDog = response.match.other_dog;
+        const owner = otherDog?.owner;
+        
+        // Also check dog_one and dog_two directly - they might have the owner data
+        const dogOne = response.match.dog_one;
+        const dogTwo = response.match.dog_two;
+        
+        // Determine which dog is the "other" dog and get its owner
+        let finalOwner = owner;
+        let finalOtherDog = otherDog;
+        
+        // If other_dog doesn't have owner or profile photo, try to find it from dog_one or dog_two
+        if (!finalOwner || !finalOwner.profile_photo_url) {
+          // Check if we can identify the other dog from dog_one or dog_two
+          if (dogOne && dogOne.owner?.id !== currentUserId && dogOne.owner?.profile_photo_url) {
+            finalOwner = dogOne.owner;
+            finalOtherDog = dogOne;
+          } else if (dogTwo && dogTwo.owner?.id !== currentUserId && dogTwo.owner?.profile_photo_url) {
+            finalOwner = dogTwo.owner;
+            finalOtherDog = dogTwo;
+          }
+        }
+        
+        setMatchData(response.match);
+        setOtherUser(finalOwner || owner);
+        setOtherDog(finalOtherDog || otherDog);
+      }
+    } catch (error) {
+      logger.error('Error loading match data:', error);
+      // Use initial data if API call fails
+    }
+  };
 
   // Handle socket connection changes
   useEffect(() => {
@@ -222,10 +284,57 @@ const ChatConversationScreen = ({ navigation, route }) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Render message
-  const renderMessage = ({ item: message, index }) => {
+  // Memoize profile photo URLs to avoid recalculating on every render
+  const currentUserPhotoUri = useMemo(() => 
+    currentUserProfilePhoto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
+    [currentUserProfilePhoto]
+  );
+  
+  const otherUserPhotoUri = useMemo(() => 
+    otherUser?.profile_photo_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
+    [otherUser?.profile_photo_url]
+  );
+  
+  // Memoized message renderer for better performance
+  const renderMessage = useCallback(({ item: message, index }) => {
     const isFromCurrentUser = message.is_sent_by_me;
-    const showAvatar = !isFromCurrentUser;
+    const showAvatar = true; // Show avatar for both users
+    
+    const avatar = showAvatar ? (
+      <Image
+        source={{
+          uri: isFromCurrentUser ? currentUserPhotoUri : otherUserPhotoUri
+        }}
+        style={[
+          styles.messageAvatar,
+          isFromCurrentUser ? styles.currentUserAvatar : styles.otherUserAvatar
+        ]}
+        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
+      />
+    ) : null;
+    
+    const messageBubble = (
+      <View style={[
+        styles.messageBubble,
+        isFromCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
+      ]}>
+        <Text style={[
+          styles.messageText,
+          isFromCurrentUser ? styles.currentUserText : styles.otherUserText
+        ]}>
+          {message.content}
+        </Text>
+        <Text style={[
+          styles.messageTime,
+          isFromCurrentUser ? styles.currentUserTime : styles.otherUserTime
+        ]}>
+          {formatMessageTime(message.sent_at)}
+        </Text>
+      </View>
+    );
     
     return (
       <Animated.View
@@ -235,37 +344,22 @@ const ChatConversationScreen = ({ navigation, route }) => {
           isFromCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
         ]}
       >
-        {showAvatar && (
-          <Image
-            source={{
-              uri: otherUser?.profile_photo_url || 
-                   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
-            }}
-            style={styles.messageAvatar}
-            defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
-          />
+        {isFromCurrentUser ? (
+          // Current user: message bubble first, then avatar
+          <>
+            {messageBubble}
+            {avatar}
+          </>
+        ) : (
+          // Other user: avatar first, then message bubble
+          <>
+            {avatar}
+            {messageBubble}
+          </>
         )}
-        
-        <View style={[
-          styles.messageBubble,
-          isFromCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
-        ]}>
-          <Text style={[
-            styles.messageText,
-            isFromCurrentUser ? styles.currentUserText : styles.otherUserText
-          ]}>
-            {message.content}
-          </Text>
-          <Text style={[
-            styles.messageTime,
-            isFromCurrentUser ? styles.currentUserTime : styles.otherUserTime
-          ]}>
-            {formatMessageTime(message.sent_at)}
-          </Text>
-        </View>
       </Animated.View>
     );
-  };
+  }, [currentUserPhotoUri, otherUserPhotoUri]);
 
   // Render typing indicator
   const renderTypingIndicator = () => {
@@ -282,7 +376,10 @@ const ChatConversationScreen = ({ navigation, route }) => {
                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
           }}
           style={styles.typingAvatar}
-          defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
         />
         <View style={styles.typingBubble}>
           <Text style={styles.typingText}>typing...</Text>
@@ -315,7 +412,10 @@ const ChatConversationScreen = ({ navigation, route }) => {
                'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
         }}
         style={styles.headerAvatar}
-        defaultSource={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' }}
+        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
       />
       
       <View style={styles.headerInfo}>
@@ -323,7 +423,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
           {otherUser?.first_name} {otherUser?.last_name}
         </Text>
         <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]} numberOfLines={1}>
-          🐕 {otherDog?.name} & {match?.my_dog?.name}
+          🐕 {otherDog?.name} & {matchData?.my_dog?.name}
         </Text>
       </View>
       
@@ -369,6 +469,17 @@ const ChatConversationScreen = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
           onContentSizeChange={scrollToBottom}
           onLayout={scrollToBottom}
+          // Performance optimizations
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={15}
+          windowSize={10}
+          getItemLayout={(data, index) => ({
+            length: 80, // Approximate message height
+            offset: 80 * index,
+            index,
+          })}
         />
         
         {/* Message Input */}
@@ -504,8 +615,15 @@ function createStyles(tokens) {
       width: 32,
       height: 32,
       borderRadius: 16,
-      marginRight: 8,
       backgroundColor: tokens.avatarBackground,
+    },
+    currentUserAvatar: {
+      marginLeft: 8, // Avatar on right side for current user
+      marginRight: 0,
+    },
+    otherUserAvatar: {
+      marginRight: 8, // Avatar on left side for other user
+      marginLeft: 0,
     },
     messageBubble: {
       maxWidth: screenWidth * 0.75,

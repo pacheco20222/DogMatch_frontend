@@ -3,13 +3,13 @@ import {
   View, 
   Text,
   ScrollView, 
-  Image, 
   Alert,
   RefreshControl,
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -122,7 +122,10 @@ const MyDogsScreen = ({ navigation }) => {
                       : `https://dogmatch-backend.onrender.com${dog.primary_photo_url}`
                   }}
                   style={{ width: '100%', height: '100%' }}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+                  transition={200}
+                  cachePolicy="memory-disk"
                 />
             ) : (
               <View className="w-full h-full items-center justify-center">
