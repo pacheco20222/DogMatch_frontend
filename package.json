@@ -5,6 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
+    "start:prod": "cross-env ENV=production API_URL=https://dogmatch-api-app-hnh2dqhcgag9d4g4.westus3-01.azurewebsites.net SOCKET_URL=https://dogmatch-api-app-hnh2dqhcgag9d4g4.westus3-01.azurewebsites.net expo start --clear",
+    "start:dev": "cross-env ENV=development API_URL=http://localhost:5002 SOCKET_URL=http://localhost:5002 expo start",
+    "publish:prod": "cross-env ENV=production API_URL=https://dogmatch-api-app-hnh2dqhcgag9d4g4.westus3-01.azurewebsites.net SOCKET_URL=https://dogmatch-api-app-hnh2dqhcgag9d4g4.westus3-01.azurewebsites.net eas update --branch production --message \"Production update with Azure backend\"",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
@@ -51,6 +54,7 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "babel-preset-expo": "^54.0.4",
+    "cross-env": "^10.1.0",
     "typescript": "~5.9.2"
   }
 }
