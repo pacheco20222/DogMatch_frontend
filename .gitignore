@@ -43,3 +43,7 @@ config.js
 # generated native folders
 /ios
 /android
+
+.env.local
+.env.development
+.env.production
