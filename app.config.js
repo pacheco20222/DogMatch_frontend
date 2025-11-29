@@ -29,11 +29,19 @@ export default {
     plugins: [
       "expo-secure-store"
     ],
+    updates: {
+      url: "https://u.expo.dev/f4907d90-fc5c-4818-a121-b4627903c6c1"
+    },
+    runtimeVersion: {
+      policy: "appVersion"
+    },
     extra: {
+      eas: {
+        projectId: "f4907d90-fc5c-4818-a121-b4627903c6c1"
+      },
       API_URL: process.env.API_URL || "https://dogmatch-api-app-hnh2dqhcgag9d4g4.westus3-01.azurewebsites.net",
       SOCKET_URL: process.env.SOCKET_URL || "https://dogmatch-api-app-hnh2dqhcgag9d4g4.westus3-01.azurewebsites.net",
       ENV: process.env.ENV || "production"
     }
   }
 };
-
